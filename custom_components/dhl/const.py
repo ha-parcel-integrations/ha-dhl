@@ -94,6 +94,15 @@ DHL_DE_SCOPE = "openid offline_access"
 # rather than reuse a token that is about to expire mid-request.
 DHL_DE_TOKEN_REFRESH_MARGIN_SECONDS = 300
 
+# aiohttp's own default (300s total) is too long to sit silently on a stalled
+# connection to DHL's identity provider: observed live 2026-08-23, a stalled
+# first-refresh hung the full 300s with nothing logged (HA suppresses
+# tracebacks on a config entry's first refresh), and by the time it gave up
+# the refresh token had likely already been rotated server-side, burning it
+# before this integration ever saw the new one. A short timeout turns that
+# into a fast, retryable failure instead.
+DHL_DE_REQUEST_TIMEOUT_SECONDS = 30
+
 # One JSON endpoint serves both models: `piececode` omitted is the account
 # inbox, `piececode=<code>&cid=app` is the by-number lookup the `track_parcel`
 # service drives. `noRedirect=true` is required (BUILD_PLAN.md §4) — without

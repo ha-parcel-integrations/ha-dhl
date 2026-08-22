@@ -3,6 +3,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Set up DHL",
+        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}).",
+        "data": {
+          "country": "Country"
+        }
+      },
+      "de": {
         "title": "Set up DHL (Germany)",
         "description": "Open this link in a browser and log in with your DHL Kundenkonto: {authorize_url}\n\nYour browser will fail to open the final `dhllogin://…` redirect — that is expected. Copy the full address from the address bar and paste it below.",
         "data": {
@@ -26,7 +33,8 @@
       "already_configured": "That DHL account is already set up.",
       "cannot_connect": "Could not reach DHL. Please try again.",
       "reauth_successful": "DHL was reauthenticated successfully.",
-      "wrong_account": "That sign-in is for a different DHL account. Sign in with the account this entry was set up for."
+      "wrong_account": "That sign-in is for a different DHL account. Sign in with the account this entry was set up for.",
+      "unsupported_country": "That country isn't supported yet."
     }
   },
   "options": {
@@ -68,6 +76,11 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "de": "Germany"
+      }
+    },
     "refresh_interval": {
       "options": {
         "15": "15 minutes",

@@ -44,6 +44,7 @@ from ...const import (
     DHL_DE_CLIENT_ID,
     DHL_DE_DISCOVERY_URL,
     DHL_DE_REDIRECT_URI,
+    DHL_DE_REQUEST_TIMEOUT_SECONDS,
     DHL_DE_SCOPE,
     DHL_DE_TOKEN_REFRESH_MARGIN_SECONDS,
     NEW_ISSUE_URL,
@@ -52,6 +53,7 @@ from ...const import (
 _LOGGER = logging.getLogger(__name__)
 
 TOKEN_REFRESH_MARGIN = timedelta(seconds=DHL_DE_TOKEN_REFRESH_MARGIN_SECONDS)
+_REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=DHL_DE_REQUEST_TIMEOUT_SECONDS)
 
 # Fallback lifetime when a token response carries no `expires_in` at all —
 # the confirmed live value (app-auth.md, 2026-08-17: `expires_in: 1800`).
@@ -196,7 +198,9 @@ class DHLDeSession:
         """
         if self._endpoints is not None:
             return self._endpoints
-        async with self._session.get(DHL_DE_DISCOVERY_URL) as response:
+        async with self._session.get(
+            DHL_DE_DISCOVERY_URL, timeout=_REQUEST_TIMEOUT
+        ) as response:
             if response.status != 200:
                 raise DHLDeSessionError(
                     f"discovery document returned HTTP {response.status}",
@@ -320,7 +324,9 @@ class DHLDeSession:
         self, url: str, body: dict[str, str]
     ) -> dict[str, Any]:
         """POST to the token endpoint; raises :class:`DHLDeAuthError` on rejection."""
-        async with self._session.post(url, data=body) as response:
+        async with self._session.post(
+            url, data=body, timeout=_REQUEST_TIMEOUT
+        ) as response:
             text = await response.text()
             try:
                 payload = json.loads(text) if text else {}

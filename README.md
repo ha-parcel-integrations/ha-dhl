@@ -79,12 +79,13 @@ Copy `custom_components/dhl` into your `config/custom_components/` folder and re
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration → DHL**.
-2. The setup form shows a sign-in link. Open it in a browser and log in with
+2. Pick a country — only Germany is supported today.
+3. The next form shows a sign-in link. Open it in a browser and log in with
    your DHL Kundenkonto.
-3. Your browser will fail to open the final `dhllogin://…` redirect it lands
+4. Your browser will fail to open the final `dhllogin://…` redirect it lands
    on — **that is expected**. Copy the full address from the address bar and
    paste it back into the form.
-4. Submit. Your account's parcels start appearing on the next poll.
+5. Submit. Your account's parcels start appearing on the next poll.
 
 Nothing is typed into Home Assistant itself except that pasted-back address —
 your DHL password never passes through this integration.

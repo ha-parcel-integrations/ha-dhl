@@ -16,6 +16,17 @@ different backend, not something this repo extends. The maintainer's stated
 intent is to eventually fold it in as `countries/nl/`, but that is a
 repo-consolidation decision for later, not something to design toward here.
 
+**Config flow is a country router from day one, mirroring the module
+layout.** `async_step_user` only shows a country picker (`COUNTRIES` —
+today just DE) and dispatches to `async_step_<code>`; `async_step_de` holds
+the entire browser-paste OIDC dance and is otherwise unchanged from before
+the router existed. NL's auth model (email/password, like `ha-dhl-nl`) has
+nothing in common with DE's OAuth flow, so its step will look nothing like
+`async_step_de` — no shared base class is worth building for two data
+points. `unique_id` is `f"{country}:{subject}"`; reauth reads the country
+back off the existing entry (`entry_data[CONF_COUNTRY]`), it never asks
+again.
+
 ## Shared conventions — fetch when relevant
 
 Suite-wide rules live in
@@ -70,6 +81,17 @@ a tester's diagnostics export, not to wait for one before shipping — see
   refresh token raises `DHLDeAuthError`, converted to `DHLAuthError` at the
   transport layer and to `ConfigEntryAuthFailed` by the coordinator, so HA
   starts reauth rather than retrying forever.
+- **Every DE request carries an explicit 30s timeout**
+  (`DHL_DE_REQUEST_TIMEOUT_SECONDS`, `const.py`) — discovery, token exchange
+  and the tracking GET all set it. Observed live 2026-08-23: with no timeout,
+  a stalled first-refresh hung the full aiohttp default (300s) with nothing
+  logged (HA suppresses tracebacks on a config entry's first refresh), and
+  by the time it gave up, the refresh token had likely already rotated
+  server-side — the retry got `invalid_grant` on the now-dead token. A short
+  timeout turns that into a fast, retryable failure instead of a silent
+  5-minute hang plus a forced reauth. `config_flow.py` catches `TimeoutError`
+  alongside `aiohttp.ClientError` for the same reason — a total-timeout
+  raises the former, not the latter.
 - **A rotated refresh token is persisted.** Some OIDC providers issue a new
   refresh token on every refresh call; `DHLDeSession` flags this
   (`pop_refresh_token_changed`) and the coordinator writes it back to

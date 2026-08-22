@@ -29,6 +29,7 @@ from ...const import (
     DHL_DE_ARCHIVED_MARKER,
     DHL_DE_COOKIE_NAME,
     DHL_DE_PUBLIC_TRACKING_URL,
+    DHL_DE_REQUEST_TIMEOUT_SECONDS,
     DHL_DE_TRACKING_URL,
     HISTORY_MAX_EVENTS,
     NEW_ISSUE_URL,
@@ -41,6 +42,7 @@ from .session import DHLDeAuthError, DHLDeSession, DHLDeSessionError
 _LOGGER = logging.getLogger(__name__)
 
 _BERLIN = ZoneInfo("Europe/Berlin")
+_REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=DHL_DE_REQUEST_TIMEOUT_SECONDS)
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +58,7 @@ async def _async_do_request(
         DHL_DE_TRACKING_URL,
         params=params,
         cookies={DHL_DE_COOKIE_NAME: id_token},
+        timeout=_REQUEST_TIMEOUT,
     ) as response:
         try:
             body = await response.json(content_type=None)

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from homeassistant.config_entries import SOURCE_USER
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.config_flow import DHLConfigFlow
 from custom_components.dhl.const import (
     CONF_ACCOUNT_SUBJECT,
     CONF_COUNTRY,
@@ -68,27 +69,66 @@ def _jwt_for(sub: str) -> str:
     return f"h.{encoded.decode()}.s"
 
 
+async def _start_de_flow(hass):
+    """Init the flow and pick Germany — the two-step shape every test needs."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["step_id"] == "user"
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"country": "de"}
+    )
+
+
 # ---------------------------------------------------------------------------
-# user step
+# user step — country picker
+# ---------------------------------------------------------------------------
+
+
+async def test_user_flow_shows_country_picker(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    assert result["step_id"] == "user"
+    assert result["type"] == "form"
+
+
+async def test_user_flow_dispatches_to_de(hass):
+    with patch(SESSION_CLASS, return_value=_fake_session()):
+        result = await _start_de_flow(hass)
+
+    assert result["step_id"] == "de"
+    assert result["description_placeholders"]["authorize_url"] == AUTH_URL
+
+
+async def test_user_flow_rejects_unsupported_country(hass):
+    flow = DHLConfigFlow()
+    flow.hass = hass
+
+    result = await flow.async_step_user({"country": "fr"})
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "unsupported_country"
+
+
+# ---------------------------------------------------------------------------
+# de step
 # ---------------------------------------------------------------------------
 
 
 async def test_user_flow_shows_authorize_url(hass):
     with patch(SESSION_CLASS, return_value=_fake_session()):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
 
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "de"
     assert result["description_placeholders"]["authorize_url"] == AUTH_URL
 
 
 async def test_user_flow_creates_entry(hass):
     session = _fake_session(id_token=_jwt_for("subject-1"))
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": REDIRECT}
         )
@@ -107,9 +147,7 @@ async def test_user_flow_pasted_url_with_whitespace_and_extra_params(hass):
     messy = f"  {REDIRECT}&extra=1&another=two \n"
     session = _fake_session()
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": messy}
         )
@@ -120,9 +158,7 @@ async def test_user_flow_pasted_url_with_whitespace_and_extra_params(hass):
 async def test_user_flow_state_mismatch_is_invalid_redirect(hass):
     session = _fake_session(state="expected-state")
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {"redirect_url": "dhllogin://x/login?code=abc&state=wrong-state"},
@@ -135,9 +171,7 @@ async def test_user_flow_state_mismatch_is_invalid_redirect(hass):
 async def test_user_flow_missing_code_is_invalid_redirect(hass):
     session = _fake_session()
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": "dhllogin://x/login?state=state123"}
         )
@@ -148,9 +182,7 @@ async def test_user_flow_missing_code_is_invalid_redirect(hass):
 async def test_user_flow_surfaces_auth_error(hass):
     session = _fake_session(exchange_side_effect=DHLDeAuthError("rejected"))
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": REDIRECT}
         )
@@ -161,9 +193,7 @@ async def test_user_flow_surfaces_auth_error(hass):
 async def test_user_flow_surfaces_connection_error(hass):
     session = _fake_session(exchange_side_effect=DHLDeSessionError("outage"))
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": REDIRECT}
         )
@@ -177,9 +207,7 @@ async def test_user_flow_aborts_when_discovery_fails(hass):
         side_effect=DHLDeSessionError("discovery unreachable")
     )
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
 
     assert result["type"] == "abort"
     assert result["reason"] == "cannot_connect"
@@ -190,9 +218,7 @@ async def test_user_flow_aborts_on_duplicate_account(hass):
     session = _fake_session(id_token=_jwt_for("subject-abc"))
 
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"redirect_url": REDIRECT}
         )
@@ -205,9 +231,7 @@ async def test_authorize_url_generated_once_per_flow(hass):
     """A retry after an error must not invalidate the URL the user already opened."""
     session = _fake_session(state="expected-state")
     with patch(SESSION_CLASS, return_value=session):
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": SOURCE_USER}
-        )
+        result = await _start_de_flow(hass)
         await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {"redirect_url": "dhllogin://x/login?code=abc&state=wrong"},

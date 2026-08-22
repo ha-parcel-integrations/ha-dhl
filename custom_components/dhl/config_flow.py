@@ -49,6 +49,7 @@ from .const import (
     DEFAULT_INCLUDE_HISTORY,
     DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
+    NEW_COUNTRY_ISSUE_URL,
     REFRESH_INTERVAL_OPTIONS,
 )
 from .countries.de.session import (
@@ -61,6 +62,21 @@ from .countries.de.session import (
 _LOGGER = logging.getLogger(__name__)
 
 _REDIRECT_SCHEMA = vol.Schema({vol.Required("redirect_url"): str})
+
+# First-run form: pick which DHL country to set up. Mirrors ha-gls's
+# _COUNTRY_SELECTOR — selector option values double as translation keys
+# (must be lowercase); COUNTRIES/CONF_COUNTRY's stored value stays
+# upper-case everywhere else, same convention as ha-gls/ha-dpd.
+_COUNTRY_SELECTOR = selector.SelectSelector(
+    selector.SelectSelectorConfig(
+        options=[code.lower() for code in COUNTRIES],
+        translation_key=CONF_COUNTRY,
+        mode=selector.SelectSelectorMode.DROPDOWN,
+    )
+)
+_COUNTRY_SCHEMA = vol.Schema(
+    {vol.Required(CONF_COUNTRY, default=DEFAULT_COUNTRY.lower()): _COUNTRY_SELECTOR}
+)
 
 
 def _parse_redirect_url(value: str) -> tuple[str | None, str | None]:
@@ -78,14 +94,14 @@ def _parse_redirect_url(value: str) -> tuple[str | None, str | None]:
     return code, state
 
 
-def _entry_title(subject: str) -> str:
+def _entry_title(country: str, subject: str) -> str:
     """Build the config-entry title — device.py wraps it as ``f"DHL {title}"``.
 
     Includes a short, non-reversible suffix of the account subject so two
     accounts of the same country are distinguishable in the UI; falls back
     to the bare country name when the subject could not be decoded.
     """
-    country_name = COUNTRIES[DEFAULT_COUNTRY]["name"]
+    country_name = COUNTRIES[country]["name"]
     if subject and subject != "unknown":
         return f"{country_name} ({subject[-6:]})"
     return country_name
@@ -108,7 +124,8 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self) -> None:
-        """Initialise per-flow OIDC state — never persisted, never reused."""
+        """Initialise per-flow state — never persisted, never reused."""
+        self._country: str | None = None
         self._oidc_session: DHLDeSession | None = None
         self._authorize_url: str | None = None
         self._code_verifier: str | None = None
@@ -143,7 +160,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._code_verifier,
                 self._state,
             ) = await self._get_oidc_session().async_authorization_url()
-        except (DHLDeSessionError, aiohttp.ClientError):
+        except (DHLDeSessionError, aiohttp.ClientError, TimeoutError):
             return False
         return True
 
@@ -162,14 +179,39 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             )
         except DHLDeAuthError:
             return "invalid_auth"
-        except (DHLDeSessionError, aiohttp.ClientError):
+        except (DHLDeSessionError, aiohttp.ClientError, TimeoutError):
             return "cannot_connect"
         return None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show the authorization URL and the paste-back form."""
+        """Pick which DHL country to set up, then dispatch to its own flow.
+
+        Only Germany exists today, but the dispatch is in place from day
+        one — mirrors countries/__init__.py's transport dispatch — so NL
+        (once ha-dhl-nl folds in) plugs in as its own async_step_<code>
+        without reshaping this one. NL's auth model (email/password) has
+        nothing in common with DE's OAuth dance, so its step will look
+        nothing like async_step_de below; no shared base is worth building
+        for two data points.
+        """
+        if user_input is not None:
+            self._country = user_input[CONF_COUNTRY].upper()
+            if self._country == "DE":
+                return await self.async_step_de()
+            return self.async_abort(reason="unsupported_country")
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_COUNTRY_SCHEMA,
+            description_placeholders={"issue_url": NEW_COUNTRY_ISSUE_URL},
+        )
+
+    async def async_step_de(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show the DE authorization URL and the paste-back form."""
         if not await self._async_ensure_authorize_url():
             return self.async_abort(reason="cannot_connect")
 
@@ -181,13 +223,13 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 session = self._get_oidc_session()
                 subject = decode_id_token_subject(session.id_token or "") or "unknown"
-                unique_id = f"{DEFAULT_COUNTRY}:{subject}"
+                unique_id = f"{self._country}:{subject}"
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=_entry_title(subject),
+                    title=_entry_title(self._country, subject),
                     data={
-                        CONF_COUNTRY: DEFAULT_COUNTRY,
+                        CONF_COUNTRY: self._country,
                         CONF_REFRESH_TOKEN: session.refresh_token,
                         CONF_ACCOUNT_SUBJECT: subject,
                     },
@@ -201,7 +243,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="de",
             data_schema=_REDIRECT_SCHEMA,
             errors=errors,
             description_placeholders={"authorize_url": self._authorize_url or ""},
@@ -210,7 +252,12 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
-        """Start reauth after the refresh token stopped working."""
+        """Start reauth after the refresh token stopped working.
+
+        The entry already carries its country (set at creation by
+        async_step_user's dispatch) — reauth never needs to ask again.
+        """
+        self._country = entry_data[CONF_COUNTRY]
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
@@ -228,7 +275,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             else:
                 session = self._get_oidc_session()
                 subject = decode_id_token_subject(session.id_token or "") or "unknown"
-                unique_id = f"{DEFAULT_COUNTRY}:{subject}"
+                unique_id = f"{self._country}:{subject}"
                 # Pasting a *different* account's authorization must not
                 # silently rebind this entry to it.
                 await self.async_set_unique_id(unique_id)
