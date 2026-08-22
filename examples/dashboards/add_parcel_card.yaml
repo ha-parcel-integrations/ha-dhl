@@ -1,0 +1,54 @@
+# Track a DHL parcel by number straight from a dashboard.
+#
+# Your DHL account's own inbox already shows the parcels addressed to you —
+# this is only for a parcel it would not otherwise carry (a parcel someone
+# else is sending you, for example). The integration exposes two services:
+#   - dhl.track_parcel   (tracking_code, optional config_entry_id)
+#   - dhl.untrack_parcel (tracking_code, optional config_entry_id)
+#
+# This example wires a text field + a button on a Lovelace card to
+# dhl.track_parcel. It needs one helper and one script (below), then the card.
+# `config_entry_id` is only needed with more than one DHL account configured.
+
+# ---------------------------------------------------------------------------
+# 1) Helper — Settings → Devices & Services → Helpers → Create → Text,
+#    or in configuration.yaml:
+# ---------------------------------------------------------------------------
+input_text:
+  dhl_new_parcel:
+    name: New DHL tracking number
+    max: 30
+
+# ---------------------------------------------------------------------------
+# 2) Script — reads the text field, tracks the parcel, then clears the field.
+#    Add to scripts.yaml (or Settings → Automations & Scenes → Scripts).
+# ---------------------------------------------------------------------------
+dhl_track_new_parcel:
+  alias: "DHL: track the parcel in the input box"
+  sequence:
+    - condition: template
+      value_template: "{{ states('input_text.dhl_new_parcel') | trim != '' }}"
+    - action: dhl.track_parcel
+      data:
+        tracking_code: "{{ states('input_text.dhl_new_parcel') | trim }}"
+    - action: input_text.set_value
+      target:
+        entity_id: input_text.dhl_new_parcel
+      data:
+        value: ""
+
+# ---------------------------------------------------------------------------
+# 3) Lovelace card — paste into a dashboard (Edit → raw config, or add a
+#    manual card). Type the number, press the button.
+# ---------------------------------------------------------------------------
+# type: entities
+# title: Track a DHL parcel
+# entities:
+#   - entity: input_text.dhl_new_parcel
+#   - type: button
+#     name: Track
+#     icon: mdi:package-variant-plus
+#     action_name: Add
+#     tap_action:
+#       action: perform-action
+#       perform_action: script.dhl_track_new_parcel

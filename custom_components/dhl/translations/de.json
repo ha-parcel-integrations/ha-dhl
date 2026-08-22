@@ -1,0 +1,156 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "DHL (Deutschland) einrichten",
+        "description": "Öffne diesen Link in einem Browser und melde dich mit deinem DHL Kundenkonto an: {authorize_url}\n\nDein Browser kann die abschließende `dhllogin://…`-Weiterleitung nicht öffnen — das ist normal. Kopiere die vollständige Adresse aus der Adressleiste und füge sie unten ein.",
+        "data": {
+          "redirect_url": "Weiterleitungs-URL"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL-Anmeldung abgelaufen",
+        "description": "DHL akzeptiert die gespeicherte Sitzung nicht mehr. Öffne diesen Link, melde dich erneut an und füge dann die Weiterleitungs-URL ein: {authorize_url}",
+        "data": {
+          "redirect_url": "Weiterleitungs-URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Das sieht nicht nach der DHL-Weiterleitungs-URL aus — stelle sicher, dass du die vollständige Adresse nach der Anmeldung kopiert hast.",
+      "invalid_auth": "DHL hat diese Anmeldung abgelehnt.",
+      "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen."
+    },
+    "abort": {
+      "already_configured": "Dieses DHL-Konto ist bereits eingerichtet.",
+      "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen.",
+      "reauth_successful": "DHL wurde erfolgreich erneut authentifiziert.",
+      "wrong_account": "Diese Anmeldung gehört zu einem anderen DHL-Konto. Melde dich mit dem Konto an, für das dieser Eintrag eingerichtet wurde."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL-Optionen",
+        "sections": {
+          "delivered": {
+            "name": "Zugestellte Sendungen",
+            "data": {
+              "delivered_filter_type": "Filtern nach",
+              "delivered_filter_amount": "Anzahl"
+            },
+            "data_description": {
+              "delivered_filter_type": "Zugestellte Sendungen der letzten X Tage anzeigen, oder auf die X neuesten begrenzen.",
+              "delivered_filter_amount": "Anzahl der Tage oder Sendungen, die angezeigt werden sollen."
+            }
+          },
+          "history": {
+            "name": "Sendungsverlauf",
+            "data": {
+              "include_history": "Statusverlauf einbeziehen"
+            },
+            "data_description": {
+              "include_history": "Fügt jeder Sendung ein Verlaufsattribut mit jeder Statusaktualisierung hinzu (Zeitpunkt, Status, Originaltext). Standardmäßig aus."
+            }
+          },
+          "polling": {
+            "name": "Abfrage",
+            "data": {
+              "refresh_interval": "Aktualisieren alle"
+            },
+            "data_description": {
+              "refresh_interval": "Wie oft die Integration DHL auf Sendungsaktualisierungen prüft. Ein langsameres Intervall ist schonender für die API von DHL; der Standard von 30 Minuten reicht für die meisten Sendungen aus."
+            }
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "refresh_interval": {
+      "options": {
+        "15": "15 Minuten",
+        "30": "30 Minuten",
+        "60": "60 Minuten",
+        "120": "120 Minuten",
+        "240": "240 Minuten"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Tage",
+        "parcels": "Anzahl Sendungen"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Sendung verfolgen",
+      "description": "Beginnt, eine Sendung anhand ihrer DHL-Sendungsnummer zu verfolgen — zusätzlich zu dem, was dein DHL-Konto bereits anzeigt.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sendungsnummer",
+          "description": "Die DHL-Sendungsnummer."
+        },
+        "config_entry_id": {
+          "name": "DHL-Konto",
+          "description": "Zu welchem eingerichteten DHL-Konto diese Sendung hinzugefügt wird. Nur nötig, wenn mehr als eines eingerichtet ist."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Sendung nicht mehr verfolgen",
+      "description": "Beendet die Verfolgung einer manuell hinzugefügten DHL-Sendung anhand ihrer Sendungsnummer.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sendungsnummer",
+          "description": "Die DHL-Sendungsnummer, die nicht mehr verfolgt werden soll."
+        },
+        "config_entry_id": {
+          "name": "DHL-Konto",
+          "description": "Aus welchem eingerichteten DHL-Konto diese Sendung entfernt wird. Nur nötig, wenn mehr als eines eingerichtet ist."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Eine Sendung wurde registriert",
+      "parcel_status_changed": "Der Status einer Sendung hat sich geändert",
+      "parcel_delivered": "Eine Sendung wurde zugestellt",
+      "parcel_delivery_time_changed": "Die voraussichtliche Zustellzeit einer Sendung hat sich geändert"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Aktualisieren"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Zustellungen"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Eingehende Sendungen",
+        "unit_of_measurement": "Sendungen"
+      },
+      "next_delivery": {
+        "name": "Nächste Zustellung"
+      },
+      "delivered_parcels": {
+        "name": "Zugestellte Sendungen",
+        "unit_of_measurement": "Sendungen"
+      },
+      "last_update": {
+        "name": "Letzte erfolgreiche Aktualisierung"
+      },
+      "parcel": {
+        "name": "Sendung {barcode}"
+      }
+    }
+  }
+}

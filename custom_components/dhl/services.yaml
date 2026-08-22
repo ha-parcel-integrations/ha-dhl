@@ -1,0 +1,25 @@
+track_parcel:
+  fields:
+    tracking_code:
+      required: true
+      example: "3S00123456789"
+      selector:
+        text:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: dhl
+
+untrack_parcel:
+  fields:
+    tracking_code:
+      required: true
+      example: "3S00123456789"
+      selector:
+        text:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: dhl

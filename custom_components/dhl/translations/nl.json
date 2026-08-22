@@ -1,0 +1,156 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "DHL (Duitsland) instellen",
+        "description": "Open deze link in een browser en meld je aan met je DHL Kundenkonto: {authorize_url}\n\nJe browser kan de uiteindelijke `dhllogin://…`-omleiding niet openen — dat is normaal. Kopieer het volledige adres uit de adresbalk en plak het hieronder.",
+        "data": {
+          "redirect_url": "Omleidings-URL"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Aanmelding bij DHL verlopen",
+        "description": "DHL accepteert de opgeslagen sessie niet meer. Open deze link, meld je opnieuw aan en plak daarna de omleidings-URL: {authorize_url}",
+        "data": {
+          "redirect_url": "Omleidings-URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Dit lijkt niet op de omleidings-URL van DHL — controleer of je het volledige adres na het aanmelden hebt gekopieerd.",
+      "invalid_auth": "DHL heeft deze aanmelding geweigerd.",
+      "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw."
+    },
+    "abort": {
+      "already_configured": "Dat DHL-account is al ingesteld.",
+      "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw.",
+      "reauth_successful": "DHL is opnieuw geverifieerd.",
+      "wrong_account": "Deze aanmelding hoort bij een ander DHL-account. Meld je aan met het account waarvoor deze integratie is ingesteld."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL-opties",
+        "sections": {
+          "delivered": {
+            "name": "Bezorgde pakketten",
+            "data": {
+              "delivered_filter_type": "Filteren op",
+              "delivered_filter_amount": "Aantal"
+            },
+            "data_description": {
+              "delivered_filter_type": "Toon bezorgde pakketten van de laatste X dagen, of beperk tot de X meest recente.",
+              "delivered_filter_amount": "Aantal dagen of pakketten om te tonen."
+            }
+          },
+          "history": {
+            "name": "Pakketgeschiedenis",
+            "data": {
+              "include_history": "Statusgeschiedenis toevoegen"
+            },
+            "data_description": {
+              "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
+            }
+          },
+          "polling": {
+            "name": "Verversen",
+            "data": {
+              "refresh_interval": "Ververs elke"
+            },
+            "data_description": {
+              "refresh_interval": "Hoe vaak de integratie DHL controleert op pakketupdates. Een langzamer interval is vriendelijker voor de API van DHL; de standaard van 30 minuten is ruim voldoende voor de meeste pakketten."
+            }
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "refresh_interval": {
+      "options": {
+        "15": "15 minuten",
+        "30": "30 minuten",
+        "60": "60 minuten",
+        "120": "120 minuten",
+        "240": "240 minuten"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dagen",
+        "parcels": "Aantal pakketten"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Pakket volgen",
+      "description": "Begin een pakket te volgen op DHL-trackingnummer, naast wat je DHL-account al toont.",
+      "fields": {
+        "tracking_code": {
+          "name": "Trackingnummer",
+          "description": "Het DHL-trackingnummer."
+        },
+        "config_entry_id": {
+          "name": "DHL-account",
+          "description": "Aan welk geconfigureerd DHL-account dit pakket wordt toegevoegd. Alleen nodig als er meer dan één is ingesteld."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Pakket niet meer volgen",
+      "description": "Stop met het volgen van een handmatig toegevoegd DHL-pakket op trackingnummer.",
+      "fields": {
+        "tracking_code": {
+          "name": "Trackingnummer",
+          "description": "Het DHL-trackingnummer om niet meer te volgen."
+        },
+        "config_entry_id": {
+          "name": "DHL-account",
+          "description": "Uit welk geconfigureerd DHL-account dit pakket wordt verwijderd. Alleen nodig als er meer dan één is ingesteld."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Een pakket is geregistreerd",
+      "parcel_status_changed": "De status van een pakket is gewijzigd",
+      "parcel_delivered": "Een pakket is bezorgd",
+      "parcel_delivery_time_changed": "De verwachte bezorgtijd van een pakket is gewijzigd"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Verversen"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Bezorgingen"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Inkomende pakketten",
+        "unit_of_measurement": "pakketten"
+      },
+      "next_delivery": {
+        "name": "Volgende bezorging"
+      },
+      "delivered_parcels": {
+        "name": "Bezorgde pakketten",
+        "unit_of_measurement": "pakketten"
+      },
+      "last_update": {
+        "name": "Laatste succesvolle update"
+      },
+      "parcel": {
+        "name": "Pakket {barcode}"
+      }
+    }
+  }
+}
