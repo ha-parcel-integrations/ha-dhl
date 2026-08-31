@@ -97,6 +97,16 @@ DHL_DE_LOGIN_CLAIMS = (
     '"data_confirmation_required":null}}'
 )
 
+# The token endpoint rejects a request with aiohttp's default headers
+# (HTTP 400) — it wants a native-app-shaped request, not a browser one.
+DHL_DE_TOKEN_HEADERS = {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/x-www-form-urlencoded",
+    "origin": "https://login.dhl.de",
+    "user-agent": "DHLPaket_PROD/1367 CFNetwork/1240.0.4 Darwin/20.6.0",
+    "accept-language": "de-de",
+}
+
 # Refresh a cached ID/access token this long before it actually expires.
 # Confirmed live lifetime is 1800s (30 min) — short relative to the default
 # 30 min poll interval, so a margin measured in minutes (not the "hours"

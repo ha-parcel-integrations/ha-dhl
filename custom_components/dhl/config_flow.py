@@ -1,7 +1,7 @@
 """Config flow for the DHL parcel tracker integration.
 
 DHL Germany's login is a one-time browser hop, not a form the integration
-can submit for the user (BUILD_PLAN.md §3): the flow builds its own
+can submit for the user: the flow builds its own
 authorization URL with a freshly generated PKCE verifier, the user opens it,
 logs in, and pastes back the `dhllogin://…?code=…` URL the browser could not
 open. The stored credential is the refresh token that comes out of the code
@@ -147,6 +147,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._state,
             ) = await self._get_oidc_session().async_authorization_url()
         except (DHLDeSessionError, aiohttp.ClientError, TimeoutError):
+            _LOGGER.debug("Failed to build the DE authorization URL", exc_info=True)
             return False
         return True
 
@@ -166,6 +167,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         except DHLDeAuthError:
             return "invalid_auth"
         except (DHLDeSessionError, aiohttp.ClientError, TimeoutError):
+            _LOGGER.debug("Failed to exchange the pasted redirect URL", exc_info=True)
             return "cannot_connect"
         return None
 

@@ -6,9 +6,9 @@ token lifecycle:
 
 - **Config-flow time**: :meth:`DHLDeSession.async_authorization_url` builds
   the one-time browser URL with a freshly generated PKCE verifier and
-  ``state`` (never a fixed constant — BUILD_PLAN.md §3 is explicit that
-  copying the ioBroker adapter's hardcoded verifier is not acceptable).
-  :meth:`async_exchange_code` trades the pasted-back ``code`` for tokens.
+  ``state`` — never a fixed constant, a shared value would let one flow's
+  code be replayed against another's. :meth:`async_exchange_code` trades the
+  pasted-back ``code`` for tokens.
 - **Every poll**, :meth:`async_get_id_token` refreshes the cached ID token
   once it is within :data:`DHL_DE_TOKEN_REFRESH_MARGIN_SECONDS` of expiry —
   never lazily on 401 alone, because a 30-minute token easily expires between
@@ -20,9 +20,8 @@ token lifecycle:
   ``unauthorized_client``) raises :class:`DHLDeAuthError`, which the caller
   turns into ``ConfigEntryAuthFailed`` so Home Assistant prompts a reauth
   instead of retrying a token that will never work again — the same
-  ``invalid_client``/401 shape also means the client itself was retired
-  (BUILD_PLAN.md §7a "Client retirement"), which reauth is the correct
-  response to either way.
+  ``invalid_client``/401 shape also means the client itself was retired,
+  which reauth is the correct response to either way.
 
 Never hand the ID token out for any host other than ``www.dhl.de`` — that is
 the caller's responsibility (countries/de/__init__.py), not enforced here.
@@ -47,6 +46,7 @@ from ...const import (
     DHL_DE_REDIRECT_URI,
     DHL_DE_REQUEST_TIMEOUT_SECONDS,
     DHL_DE_SCOPE,
+    DHL_DE_TOKEN_HEADERS,
     DHL_DE_TOKEN_REFRESH_MARGIN_SECONDS,
     NEW_ISSUE_URL,
 )
@@ -265,11 +265,10 @@ class DHLDeSession:
         """
         endpoints = await self._async_discover()
         body = {
-            "grant_type": "authorization_code",
-            "code": code,
-            "client_id": DHL_DE_CLIENT_ID,
             "redirect_uri": DHL_DE_REDIRECT_URI,
+            "grant_type": "authorization_code",
             "code_verifier": code_verifier,
+            "code": code,
         }
         payload = await self._async_post_token(endpoints["token_endpoint"], body)
         self._store_tokens(payload)
@@ -311,9 +310,9 @@ class DHLDeSession:
         """``grant_type=refresh_token`` with an empty Basic-auth secret."""
         endpoints = await self._async_discover()
         body = {
+            "redirect_uri": DHL_DE_REDIRECT_URI,
             "grant_type": "refresh_token",
             "refresh_token": self.refresh_token,
-            "client_id": DHL_DE_CLIENT_ID,
         }
         payload = await self._async_post_token(endpoints["token_endpoint"], body)
         self._store_tokens(payload)
@@ -326,7 +325,10 @@ class DHLDeSession:
         self, url: str, body: dict[str, str]
     ) -> dict[str, Any]:
         """POST to the token endpoint; raises :class:`DHLDeAuthError` on rejection."""
-        headers = {"Authorization": aiohttp.encode_basic_auth(DHL_DE_CLIENT_ID, "")}
+        headers = {
+            **DHL_DE_TOKEN_HEADERS,
+            "Authorization": aiohttp.encode_basic_auth(DHL_DE_CLIENT_ID, ""),
+        }
         async with self._session.post(
             url, data=body, headers=headers, timeout=_REQUEST_TIMEOUT
         ) as response:
