@@ -217,10 +217,10 @@ def find_element_by_id(elements: list[dict], piece_code: str) -> dict | None:
 def needs_enrichment(element: dict) -> bool:
     """Whether an inbox element is a bare stub the account listing hasn't detailed yet.
 
-    A stub has no `sendungsverlauf` at all and needs a by-number fetch to
-    fill one in — an element already carrying a `sendungNichtGefunden`
-    marker is left alone either way, since :func:`is_not_found` decides its
-    fate from `sendungsverlauf` alone.
+    Distinct from :func:`is_not_found`: a genuine not-found element still
+    carries a `sendungsverlauf` (with zero progress) alongside its
+    `sendungNichtGefunden` marker — a stub has neither and needs a
+    by-number fetch to fill in.
     """
     if isinstance(element.get("sendungNichtGefunden"), dict):
         return False
@@ -233,19 +233,23 @@ def needs_enrichment(element: dict) -> bool:
 
 
 def is_not_found(element: dict) -> bool:
-    """Whether a populated element is *not* a real parcel.
+    """Whether a populated element is *not* a real parcel (§5a's three failure modes).
 
-    The ``sendungNichtGefunden.keineDatenVerfuegbar`` marker also appears on
-    real, account-linked parcels that simply have no scan events yet —
-    confirmed live: DHL tags every zero-event shipment this way, not only
-    genuinely unrecognised piece codes, so it is not a reliable signal on
-    its own. A ``sendungsverlauf`` dict being present at all — even with
-    zero events — means the parcel is real; its absence means there is
-    nothing to show, marker or not.
+    Checks the explicit ``sendungNichtGefunden.keineDatenVerfuegbar`` marker
+    first, then falls back to the structural test (no events, no
+    ``kurzStatus``) a second independent client uses for the same condition.
     """
+    not_found = element.get("sendungNichtGefunden")
+    if isinstance(not_found, dict) and not_found.get("keineDatenVerfuegbar"):
+        return True
     details = element.get("sendungsdetails")
     verlauf = details.get("sendungsverlauf") if isinstance(details, dict) else None
-    return not isinstance(verlauf, dict)
+    if not isinstance(verlauf, dict):
+        return True
+    events = verlauf.get("events")
+    has_events = isinstance(events, list) and len(events) > 0
+    has_kurz_status = bool(verlauf.get("kurzStatus"))
+    return not has_events and not has_kurz_status
 
 
 # ---------------------------------------------------------------------------

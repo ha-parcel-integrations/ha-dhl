@@ -109,18 +109,8 @@ def test_is_not_found_explicit_marker():
     assert is_not_found(not_found_sample()) is True
 
 
-def test_is_not_found_false_for_a_real_parcel_with_no_scan_events_yet():
-    """The not-found marker also appears on real, just-announced parcels."""
-    freshly_announced = {
-        "id": "X",
-        "sendungsdetails": {"sendungsverlauf": {"fortschritt": 0, "events": []}},
-        "sendungNichtGefunden": {"keineDatenVerfuegbar": True},
-    }
-    assert is_not_found(freshly_announced) is False
-
-
-def test_is_not_found_true_for_a_bare_marker_with_no_sendungsverlauf_at_all():
-    empty = {"id": "X", "sendungsdetails": {}}
+def test_is_not_found_structural_backstop():
+    empty = {"id": "X", "sendungsdetails": {"sendungsverlauf": {}}}
     assert is_not_found(empty) is True
 
 
