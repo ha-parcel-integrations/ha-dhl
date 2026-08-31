@@ -3,7 +3,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "DHL (Duitsland) instellen",
+        "title": "DHL instellen",
+        "description": "Welk DHL-account wil je toevoegen? Duitsland wordt momenteel ondersteund — [vraag een ander land aan]({issue_url}).",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "de": {
+        "title": "DHL instellen (Duitsland)",
         "description": "Open deze link in een browser en meld je aan met je DHL Kundenkonto: {authorize_url}\n\nJe browser kan de uiteindelijke `dhllogin://…`-omleiding niet openen — dat is normaal. Kopieer het volledige adres uit de adresbalk en plak het hieronder.",
         "data": {
           "redirect_url": "Omleidings-URL"
@@ -26,7 +33,8 @@
       "already_configured": "Dat DHL-account is al ingesteld.",
       "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw.",
       "reauth_successful": "DHL is opnieuw geverifieerd.",
-      "wrong_account": "Deze aanmelding hoort bij een ander DHL-account. Meld je aan met het account waarvoor deze integratie is ingesteld."
+      "wrong_account": "Deze aanmelding hoort bij een ander DHL-account. Meld je aan met het account waarvoor deze integratie is ingesteld.",
+      "unsupported_country": "Dit land wordt nog niet ondersteund."
     }
   },
   "options": {
@@ -68,6 +76,11 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "de": "Duitsland"
+      }
+    },
     "refresh_interval": {
       "options": {
         "15": "15 minuten",

@@ -3,7 +3,14 @@
   "config": {
     "step": {
       "user": {
-        "title": "DHL (Deutschland) einrichten",
+        "title": "DHL einrichten",
+        "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland wird derzeit unterstützt — [fordere ein anderes Land an]({issue_url}).",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "de": {
+        "title": "DHL einrichten (Deutschland)",
         "description": "Öffne diesen Link in einem Browser und melde dich mit deinem DHL Kundenkonto an: {authorize_url}\n\nDein Browser kann die abschließende `dhllogin://…`-Weiterleitung nicht öffnen — das ist normal. Kopiere die vollständige Adresse aus der Adressleiste und füge sie unten ein.",
         "data": {
           "redirect_url": "Weiterleitungs-URL"
@@ -26,7 +33,8 @@
       "already_configured": "Dieses DHL-Konto ist bereits eingerichtet.",
       "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen.",
       "reauth_successful": "DHL wurde erfolgreich erneut authentifiziert.",
-      "wrong_account": "Diese Anmeldung gehört zu einem anderen DHL-Konto. Melde dich mit dem Konto an, für das dieser Eintrag eingerichtet wurde."
+      "wrong_account": "Diese Anmeldung gehört zu einem anderen DHL-Konto. Melde dich mit dem Konto an, für das dieser Eintrag eingerichtet wurde.",
+      "unsupported_country": "Dieses Land wird noch nicht unterstützt."
     }
   },
   "options": {
@@ -68,6 +76,11 @@
     }
   },
   "selector": {
+    "country": {
+      "options": {
+        "de": "Deutschland"
+      }
+    },
     "refresh_interval": {
       "options": {
         "15": "15 Minuten",
