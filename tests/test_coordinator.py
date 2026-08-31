@@ -1,5 +1,6 @@
 """Tests for the DHL coordinator: fetching, tracked-code merging, events."""
-from unittest.mock import AsyncMock, MagicMock
+from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -15,7 +16,7 @@ from custom_components.dhl.const import (
     DHLAuthError,
     ParcelStatus,
 )
-from custom_components.dhl.coordinator import DHLCoordinator
+from custom_components.dhl.coordinator import DHLCoordinator, compute_poll_interval
 
 from .payloads import ACTIVE_CODE, active_sample, delivered_sample, in_transit_sample
 
@@ -213,6 +214,104 @@ async def test_rotated_refresh_token_is_persisted(hass):
     await coordinator._async_update_data()
 
     assert entry.data[CONF_REFRESH_TOKEN] == "new-refresh-token"
+
+
+async def test_rotated_refresh_token_survives_a_failed_inbox_fetch(hass):
+    """A token refresh can rotate the refresh token and still be followed by
+    a failing request in the same poll (e.g. the inbox GET times out right
+    after a successful refresh). The rotated token must be persisted before
+    that failure propagates, or every later attempt keeps presenting a
+    refresh token DHL has already superseded.
+    """
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client([])
+    client.async_get_incoming.side_effect = DHLApiError("timed out")
+    de_session = MagicMock()
+    de_session.pop_refresh_token_changed.return_value = True
+    de_session.refresh_token = "rotated-refresh-token"
+    coordinator = DHLCoordinator(hass, client, entry, de_session=de_session)
+
+    with pytest.raises(DHLApiError):
+        await coordinator._async_update_data()
+
+    assert entry.data[CONF_REFRESH_TOKEN] == "rotated-refresh-token"
+
+
+# ---------------------------------------------------------------------------
+# dynamic polling
+# ---------------------------------------------------------------------------
+
+_NOW = "custom_components.dhl.coordinator.dt_util.now"
+_UTCNOW = "custom_components.dhl.coordinator.dt_util.utcnow"
+
+
+def _at(hour: int, minute: int = 0):
+    from datetime import datetime, timezone
+
+    return datetime(2026, 1, 15, hour, minute, tzinfo=timezone.utc)
+
+
+def test_poll_interval_quiet_window_targets_the_end_anchor():
+    with patch(_NOW, return_value=_at(2, 30)):
+        interval = compute_poll_interval("entry-1", [])
+    # 2:30 -> 06:00 is 3h30m, plus a 0-6min stagger.
+    assert timedelta(hours=3, minutes=30) <= interval <= timedelta(hours=3, minutes=36)
+
+
+def test_poll_interval_mid_tier_with_no_active_parcels():
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        interval = compute_poll_interval("entry-1", [])
+    assert timedelta(minutes=30) <= interval <= timedelta(minutes=36)
+
+
+def test_poll_interval_hot_tier_when_out_for_delivery_with_no_eta():
+    parcels = [{"status": ParcelStatus.OUT_FOR_DELIVERY, "planned_from": None}]
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        interval = compute_poll_interval("entry-1", parcels)
+    assert timedelta(minutes=15) <= interval <= timedelta(minutes=21)
+
+
+def test_poll_interval_hot_tier_within_the_lead_time():
+    parcels = [
+        {
+            "status": ParcelStatus.OUT_FOR_DELIVERY,
+            "planned_from": _at(12, 30).isoformat(),
+        }
+    ]
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        interval = compute_poll_interval("entry-1", parcels)
+    assert timedelta(minutes=15) <= interval <= timedelta(minutes=21)
+
+
+def test_poll_interval_stays_mid_tier_well_before_the_eta():
+    parcels = [
+        {
+            "status": ParcelStatus.OUT_FOR_DELIVERY,
+            "planned_from": _at(20, 0).isoformat(),
+        }
+    ]
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        interval = compute_poll_interval("entry-1", parcels)
+    assert timedelta(minutes=30) <= interval <= timedelta(minutes=36)
+
+
+def test_poll_interval_not_hot_for_non_out_for_delivery_statuses():
+    parcels = [
+        {"status": ParcelStatus.IN_TRANSIT, "planned_from": None},
+        {"status": ParcelStatus.PROBLEM, "planned_from": None},
+        {"status": ParcelStatus.RETURNING, "planned_from": None},
+    ]
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        interval = compute_poll_interval("entry-1", parcels)
+    assert timedelta(minutes=30) <= interval <= timedelta(minutes=36)
+
+
+def test_poll_interval_stagger_is_stable_per_entry():
+    with patch(_NOW, return_value=_at(12)), patch(_UTCNOW, return_value=_at(12)):
+        first = compute_poll_interval("same-entry", [])
+        second = compute_poll_interval("same-entry", [])
+    assert first == second
 
 
 # ---------------------------------------------------------------------------

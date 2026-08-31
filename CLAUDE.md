@@ -60,14 +60,37 @@ repo)** — the OIDC discovery/token endpoints, the `int-verfolgen/data/search`
 inbox+by-number envelope, the `fortschritt` ladder and every contested field.
 Do not duplicate them here.
 
-**Pre-1.0, `payload: reconstructed`.** Nobody who built this integration has
-a DHL parcel in flight — the account-inbox *envelope* is confirmed live, but
-a populated `sendungen` element has never been observed on the wire by
-anyone in this suite. Every mapping decision in `countries/de/__init__.py`
-is guarded and paired with a one-shot `WARNING` (`issues/new?template=
-unrecognised_status.yml`). The plan is to finish `normalize_parcel_de` from
-a tester's diagnostics export, not to wait for one before shipping — see
-`countries/de/__init__.py`'s module docstring.
+**`payload: confirmed`, 1.0.0.** A real account's populated `sendungen`
+elements have been observed on the wire, both via the account inbox and the
+by-number search. Every mapping decision in `countries/de/__init__.py` stays
+guarded with a one-shot `WARNING` (`issues/new?template=
+unrecognised_status.yml`) regardless — the free-text status vocabulary and
+the delivery-window shape are still open — but the payload itself is no
+longer a reconstruction.
+
+**Requests must originate from a German IP.** DHL's tracking endpoint does
+not answer a non-German client correctly — not a bot-detection quirk tied to
+being a script rather than a browser, a country-level thing. This is a
+non-issue for the integration's actual users (a DHL Paket customer's own
+Home Assistant is already in Germany) but matters for anyone developing or
+testing this repo from elsewhere: use a German VPN/VM, or expect every
+request to stall until `DHL_DE_REQUEST_TIMEOUT_SECONDS` and fail.
+
+**`dhli` cookie plus plain headers — no `dhlcs`, no desktop-browser
+spoofing.** A `dhlcs` cookie (decoded from the ID token's `sub` claim) is not
+needed. A header set is: a bare aiohttp request (no `User-Agent`, no
+`Accept`) to `www.dhl.de` stalls until timeout rather than getting a fast
+response, so `DHL_DE_TRACKING_HEADERS` sends a plain, realistic set — no
+desktop-Chrome `User-Agent`, no `Referer`.
+
+**Polling is unconditional and status-driven, no user-facing interval.**
+`coordinator.compute_poll_interval()`: a quiet window 00:00–06:00 local time
+(one wake near each end), a 15-minute hot tier once any active parcel is
+`out_for_delivery` (immediately if `planned_from` is missing, otherwise
+starting 1h before it), a 30-minute mid tier otherwise, and a small
+per-install stagger so installs don't all poll in sync. Recomputed at the
+end of every `_async_update_data()`. Account-based, so it never fully
+stops — there's always the next poll's new-shipment-detection value.
 
 - **Login is a one-time browser hop, then headless.** `config_flow.py`
   builds its own PKCE authorization URL (`countries/de/session.py`), the

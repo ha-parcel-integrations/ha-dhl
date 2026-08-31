@@ -39,7 +39,6 @@ from .const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
-    CONF_REFRESH_INTERVAL,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
     COUNTRIES,
@@ -47,10 +46,8 @@ from .const import (
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
     DEFAULT_INCLUDE_HISTORY,
-    DEFAULT_REFRESH_INTERVAL,
     DOMAIN,
     NEW_COUNTRY_ISSUE_URL,
-    REFRESH_INTERVAL_OPTIONS,
 )
 from .countries.de.session import (
     DHLDeAuthError,
@@ -105,17 +102,6 @@ def _entry_title(country: str, subject: str) -> str:
     if subject and subject != "unknown":
         return f"{country_name} ({subject[-6:]})"
     return country_name
-
-
-def _interval_selector() -> selector.SelectSelector:
-    """Return the refresh-interval dropdown selector (options translated via strings)."""
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=[str(minutes) for minutes in REFRESH_INTERVAL_OPTIONS],
-            translation_key=CONF_REFRESH_INTERVAL,
-            mode=selector.SelectSelectorMode.DROPDOWN,
-        )
-    )
 
 
 class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -236,7 +222,6 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={
                         CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
                         CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
-                        CONF_REFRESH_INTERVAL: DEFAULT_REFRESH_INTERVAL,
                         CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
                         CONF_TRACKED_CODES: [],
                     },
@@ -297,7 +282,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class DHLOptionsFlowHandler(OptionsFlow):
-    """Manage delivered retention, history and polling in one sectioned form."""
+    """Manage delivered retention and history in one sectioned form."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -306,9 +291,8 @@ class DHLOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             delivered = user_input["delivered"]
             history = user_input["history"]
-            polling = user_input["polling"]
-            # Reload so a changed interval takes effect immediately. No update
-            # listener is registered — combining the two is deprecated.
+            # No update listener is registered — combining one with a
+            # reload-on-update flow is deprecated.
             self.hass.config_entries.async_schedule_reload(
                 self.config_entry.entry_id
             )
@@ -320,7 +304,6 @@ class DHLOptionsFlowHandler(OptionsFlow):
                         delivered[CONF_DELIVERED_FILTER_AMOUNT]
                     ),
                     CONF_INCLUDE_HISTORY: bool(history[CONF_INCLUDE_HISTORY]),
-                    CONF_REFRESH_INTERVAL: int(polling[CONF_REFRESH_INTERVAL]),
                     # Not part of the form — carried through untouched so the
                     # options flow never wipes the tracked-code list
                     # `dhl.track_parcel`/`dhl.untrack_parcel` maintain.
@@ -376,24 +359,6 @@ class DHLOptionsFlowHandler(OptionsFlow):
                                     CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY
                                 ),
                             ): selector.BooleanSelector(),
-                        }
-                    ),
-                    {"collapsed": True},
-                ),
-                vol.Required("polling"): section(
-                    vol.Schema(
-                        {
-                            vol.Required(
-                                CONF_REFRESH_INTERVAL,
-                                # str(): selector option values are strings, so
-                                # a stored int default trips "expected str".
-                                default=str(
-                                    current.get(
-                                        CONF_REFRESH_INTERVAL,
-                                        DEFAULT_REFRESH_INTERVAL,
-                                    )
-                                ),
-                            ): _interval_selector(),
                         }
                     ),
                     {"collapsed": True},

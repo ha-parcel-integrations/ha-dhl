@@ -11,7 +11,6 @@ from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
-    CONF_REFRESH_INTERVAL,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
     DOMAIN,
@@ -55,7 +54,6 @@ def _entry() -> MockConfigEntry:
             CONF_DELIVERED_FILTER_TYPE: "days",
             CONF_DELIVERED_FILTER_AMOUNT: 7,
             CONF_INCLUDE_HISTORY: False,
-            CONF_REFRESH_INTERVAL: 30,
             CONF_TRACKED_CODES: ["EXISTING000001"],
         },
     )
@@ -137,7 +135,6 @@ async def test_user_flow_creates_entry(hass):
     assert result["data"][CONF_COUNTRY] == "DE"
     assert result["data"][CONF_REFRESH_TOKEN] == "the-refresh-token"
     assert result["data"][CONF_ACCOUNT_SUBJECT] == "subject-1"
-    assert result["options"][CONF_REFRESH_INTERVAL] == 30
     assert result["options"][CONF_TRACKED_CODES] == []
     session.async_exchange_code.assert_awaited_once_with("abc123", "verifier")
 
@@ -338,7 +335,6 @@ async def test_options_flow_saves_and_reloads(hass):
                     CONF_DELIVERED_FILTER_AMOUNT: 5,
                 },
                 "history": {CONF_INCLUDE_HISTORY: True},
-                "polling": {CONF_REFRESH_INTERVAL: "60"},
             },
         )
 
@@ -347,7 +343,6 @@ async def test_options_flow_saves_and_reloads(hass):
         CONF_DELIVERED_FILTER_TYPE: "parcels",
         CONF_DELIVERED_FILTER_AMOUNT: 5,
         CONF_INCLUDE_HISTORY: True,
-        CONF_REFRESH_INTERVAL: 60,
         # Not part of the form — carried through untouched.
         CONF_TRACKED_CODES: ["EXISTING000001"],
     }

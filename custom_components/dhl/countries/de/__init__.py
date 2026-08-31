@@ -1,15 +1,9 @@
 """DHL Germany: the account-inbox/by-number transport, status map, mapping.
 
-Built **past** the real-parcel gate (BUILD_PLAN.md's front matter:
-``blocker: real-parcel``, priced at zero by this suite's standing
-convention — the GLS Germany and DPD Germany/Switzerland expansions shipped
-the same way). The account-inbox *envelope* is confirmed live
-(app-auth.md, 2026-08-17); a populated ``sendungen`` element has never been
-seen on the wire by anyone in this suite. §5/§6 below are written against a
-reconstruction from three independent third-party clients
-(app-auth.md, 2026-08-22) — every key is guarded, and every guess is paired
-with a one-shot ``WARNING`` so a tester's diagnostics export
-(BUILD_PLAN.md §7c) can correct it without a second build session.
+The payload is confirmed against a real account, on the wire — but the
+free-text status vocabulary and the delivery-window shape are still open, so
+every contested field stays guarded with a one-shot ``WARNING`` rather than
+assumed.
 
 Needs its own nested package (rather than a flat ``countries/de.py``) because
 it also needs an OIDC token-lifecycle module with no simpler-country
@@ -30,6 +24,7 @@ from ...const import (
     DHL_DE_COOKIE_NAME,
     DHL_DE_PUBLIC_TRACKING_URL,
     DHL_DE_REQUEST_TIMEOUT_SECONDS,
+    DHL_DE_TRACKING_HEADERS,
     DHL_DE_TRACKING_URL,
     HISTORY_MAX_EVENTS,
     NEW_ISSUE_URL,
@@ -50,20 +45,60 @@ _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=DHL_DE_REQUEST_TIMEOUT_SECONDS)
 # ---------------------------------------------------------------------------
 
 
+_unexpected_body_logged = False
+
+
+def _warn_unexpected_body_once(status: int, content_type: str | None, text: str) -> None:
+    """One-shot: a 200 whose body isn't a JSON object at all.
+
+    Distinct from the payload-shape WARNINGs in this module (those fire on a
+    genuine ``sendungen`` element with an unrecognised key) — this fires
+    before parsing even gets that far, most likely an HTML challenge/consent
+    page rather than a shape change. Logs enough of the raw response to tell
+    the two apart without needing a second round trip.
+    """
+    global _unexpected_body_logged
+    if _unexpected_body_logged:
+        return
+    _unexpected_body_logged = True
+    _LOGGER.warning(
+        "DHL Germany's tracking endpoint answered HTTP %s with a non-JSON "
+        "body (content-type=%s). Open an issue and paste this line: %s\n"
+        "  body[:2000]=%r",
+        status,
+        content_type,
+        NEW_ISSUE_URL,
+        text[:2000],
+    )
+
+
 async def _async_do_request(
     session: aiohttp.ClientSession, id_token: str, params: dict[str, str]
 ) -> tuple[dict[str, Any] | None, int]:
-    """One GET against the DE tracking endpoint; returns ``(body, status)``."""
+    """One GET against the DE tracking endpoint; returns ``(body, status)``.
+
+    Plain `dhli` cookie only — no `dhlcs`, no desktop-browser spoofing.
+    """
     async with session.get(
         DHL_DE_TRACKING_URL,
         params=params,
         cookies={DHL_DE_COOKIE_NAME: id_token},
+        headers=DHL_DE_TRACKING_HEADERS,
         timeout=_REQUEST_TIMEOUT,
     ) as response:
         try:
             body = await response.json(content_type=None)
         except ValueError:
             body = None
+        if not isinstance(body, dict):
+            # Best-effort only — a broken diagnostic read must never take
+            # down the actual request handling above.
+            try:
+                text = await response.text()
+                content_type = response.content_type
+            except Exception:
+                text, content_type = repr(body), None
+            _warn_unexpected_body_once(response.status, content_type, text)
         return body, response.status
 
 
@@ -103,11 +138,13 @@ async def async_get_inbox_envelope(
 ) -> dict[str, Any]:
     """Fetch the account inbox: ``{"sendungen": [...], "rateLimited": bool, ...}``.
 
-    `piececode` omitted — confirmed live 2026-08-17 to behave as an inbox
-    listing. An empty account returns ``sendungen: []``, never an error.
+    `piececode` omitted — confirmed live to behave as an inbox listing. An
+    empty account returns ``sendungen: []``, never an error.
     """
     return await _async_request(
-        session, de_session, {"noRedirect": "true", "language": "de"}
+        session,
+        de_session,
+        {"noRedirect": "true", "language": "de", "cid": "app"},
     )
 
 
@@ -310,6 +347,22 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "expressSendung",
     "quelle",
     "zustellung",
+    # Confirmed real, raw-only fields — not unknowns. `email` is PII,
+    # redacted in diagnostics.py's TO_REDACT.
+    "sendungsnummern",
+    "services",
+    "isSameDayDelivery",
+    "bahnpaket",
+    "mehrInformationenVerfuegbar",
+    "international",
+    "showDigitalNotificationCtaHint",
+    "nachhaltigkeitsstatus",
+    "unplausibel",
+    "invalidTimeOfDay",
+    "email",
+    "isShipperPlz",
+    "showQualityLevelHint",
+    "twoManHandling",
 }
 
 _unexpected_keys_logged: set[str] = set()

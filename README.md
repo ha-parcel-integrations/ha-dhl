@@ -6,13 +6,6 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-> ⚠️ **Pre-release.** Nobody involved in building this integration has a DHL
-> parcel in flight, so the parcel payload mapping is reconstructed from
-> third-party sources rather than confirmed on the wire. It works — logging
-> in and reading your parcel list is fully tested — but some field mappings
-> may be corrected once a real parcel's diagnostics export is available. See
-> [Troubleshooting](#troubleshooting) if you can help.
-
 A custom Home Assistant integration that tracks your **DHL Paket** (Germany)
 parcels. Log in once with your DHL Kundenkonto and your parcels are imported
 automatically — no tracking codes to copy in by hand. You can also add a
@@ -63,6 +56,12 @@ DHL's Netherlands business is a separate integration,
 - A DHL Kundenkonto (a free DHL account) — the same account you use on
   dhl.de or in the DHL Paket app
 - A browser to complete the one-time sign-in during setup
+- **A German IP address.** DHL's tracking endpoint only answers requests
+  that originate from Germany — this is normally not a concern (a DHL Paket
+  customer's own Home Assistant is already reached from Germany), but it
+  means the integration will not work over a non-German VPN, from a
+  non-German cloud/VPS-hosted Home Assistant, or during development/testing
+  from outside Germany.
 
 ## Installation
 
@@ -83,8 +82,12 @@ Copy `custom_components/dhl` into your `config/custom_components/` folder and re
 3. The next form shows a sign-in link. Open it in a browser and log in with
    your DHL Kundenkonto.
 4. Your browser will fail to open the final `dhllogin://…` redirect it lands
-   on — **that is expected**. Copy the full address from the address bar and
-   paste it back into the form.
+   on — **that is expected**. This address never appears in the address bar
+   (no desktop browser has an app registered for it); you catch it in your
+   browser's developer tools' Network tab instead. See
+   [docs/finding-the-redirect-url.md](docs/finding-the-redirect-url.md) for
+   step-by-step instructions for Chrome, Edge, Firefox and Safari. Paste the
+   full address into the form.
 5. Submit. Your account's parcels start appearing on the next poll.
 
 Nothing is typed into Home Assistant itself except that pasted-back address —

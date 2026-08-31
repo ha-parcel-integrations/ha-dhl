@@ -117,6 +117,19 @@ DHL_DE_PUBLIC_TRACKING_URL = (
 # to any other host.
 DHL_DE_COOKIE_NAME = "dhli"
 
+# A bare aiohttp request (no User-Agent, no Accept) to the tracking endpoint
+# stalls until timeout rather than getting a fast response — send a plain,
+# realistic header set.
+DHL_DE_TRACKING_HEADERS = {
+    "accept": "application/json",
+    "content-type": "application/json",
+    "user-agent": (
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 14_8 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"
+    ),
+    "accept-language": "de-de",
+}
+
 # `sendungsinfo.sendungsliste` value that excludes an element from the inbox
 # unless it would empty the list (BUILD_PLAN.md §5b) — the only value any
 # source names.
@@ -167,18 +180,17 @@ CONF_DELIVERED_FILTER_AMOUNT = "delivered_filter_amount"
 DEFAULT_DELIVERED_FILTER_TYPE = "days"
 DEFAULT_DELIVERED_FILTER_AMOUNT = 7
 
-# Refresh interval (minutes) controls how often the coordinator polls the
-# carrier. Default 30 min keeps the load on a consumer endpoint gentle; the
-# minimum is 15 min for the same reason. No rate limiting has been observed
-# (front matter: rate_limit: none-observed) — the account inbox's own
-# `rateLimited` flag is read every poll regardless (coordinator.py).
-#
-# Deliberate divergence from the HA Core rule that polling intervals are not
-# user-configurable: that rule targets core integrations, and in a HACS
-# parcel tracker a tunable cadence is a wanted feature.
-CONF_REFRESH_INTERVAL = "refresh_interval"
-REFRESH_INTERVAL_OPTIONS = (15, 30, 60, 120, 240)
-DEFAULT_REFRESH_INTERVAL = 30
+# Dynamic, status-driven polling — no user-facing interval option. Quiet
+# overnight, a mid cadence during the day, and a hot cadence once a parcel is
+# actually out for delivery. See coordinator.py's tiering function.
+DHL_POLL_HOT_INTERVAL_MINUTES = 15
+DHL_POLL_MID_INTERVAL_MINUTES = 30
+DHL_POLL_QUIET_START_HOUR = 0
+DHL_POLL_QUIET_END_HOUR = 6
+DHL_POLL_HOT_LEAD_HOURS = 1
+# Stable per-install offset (0..N-1 minutes) so installs don't all poll on
+# the same second.
+DHL_POLL_STAGGER_MINUTES = 7
 
 # Per-parcel status history is opt-in and off by default, identical across the
 # suite.

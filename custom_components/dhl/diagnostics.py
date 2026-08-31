@@ -42,6 +42,8 @@ TO_REDACT = {
     "id",
     "name",
     "sendungsnummer",
+    # the account holder's own email address, present on every element
+    "email",
 }
 
 
@@ -60,11 +62,17 @@ async def async_get_config_entry_diagnostics(
     if isinstance(tracked_codes, list):
         entry_options[CONF_TRACKED_CODES] = ["**REDACTED**" for _ in tracked_codes]
 
+    interval = coordinator.update_interval
     return {
         "entry_options": async_redact_data(entry_options, TO_REDACT),
         "counts": {
             "incoming_active": len(coordinator.data or []),
             "delivered": len(coordinator.delivered or []),
+        },
+        "polling": {
+            "interval_minutes": (
+                round(interval.total_seconds() / 60, 1) if interval else None
+            ),
         },
         "incoming": async_redact_data(coordinator.data or [], TO_REDACT),
         "delivered": async_redact_data(coordinator.delivered or [], TO_REDACT),

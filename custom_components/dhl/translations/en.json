@@ -4,21 +4,21 @@
     "step": {
       "user": {
         "title": "Set up DHL",
-        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}).",
+        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl](https://github.com/ha-parcel-integrations/ha-dhl-nl).",
         "data": {
           "country": "Country"
         }
       },
       "de": {
         "title": "Set up DHL (Germany)",
-        "description": "Open this link in a browser and log in with your DHL Kundenkonto: {authorize_url}\n\nYour browser will fail to open the final `dhllogin://…` redirect — that is expected. Copy the full address from the address bar and paste it below.",
+        "description": "Open this link in a browser and log in with your DHL Kundenkonto: {authorize_url}\n\nYour browser will fail to open the final `dhllogin://…` redirect — that is expected. This address never appears in the address bar; you catch it in your browser's developer tools' Network tab instead — see [step-by-step instructions](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md). Paste the full address below.\n\nNote: DHL's tracking endpoint only responds correctly to a German IP address — this integration will not work if your Home Assistant reaches the internet from another country.",
         "data": {
           "redirect_url": "Redirect URL"
         }
       },
       "reauth_confirm": {
         "title": "DHL sign-in expired",
-        "description": "DHL no longer accepts the stored session. Open this link, log in again, then paste the redirect URL: {authorize_url}",
+        "description": "DHL no longer accepts the stored session. Open this link, log in again, then paste the redirect URL you catch in your browser's developer tools' Network tab (see [step-by-step instructions](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md)): {authorize_url}",
         "data": {
           "redirect_url": "Redirect URL"
         }
@@ -61,15 +61,6 @@
             "data_description": {
               "include_history": "Add a per-parcel history attribute listing each status update (timestamp, status, original text). Off by default."
             }
-          },
-          "polling": {
-            "name": "Polling",
-            "data": {
-              "refresh_interval": "Refresh every"
-            },
-            "data_description": {
-              "refresh_interval": "How often the integration checks DHL for parcel updates. A slower interval is gentler on DHL's API; the default of 30 minutes is plenty for most parcels."
-            }
           }
         }
       }
@@ -79,15 +70,6 @@
     "country": {
       "options": {
         "de": "Germany"
-      }
-    },
-    "refresh_interval": {
-      "options": {
-        "15": "15 minutes",
-        "30": "30 minutes",
-        "60": "60 minutes",
-        "120": "120 minutes",
-        "240": "240 minutes"
       }
     },
     "delivered_filter_type": {

@@ -18,15 +18,20 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util
 
 from .api import DHLApiClient, DHLApiError, DHLAuthError
 from .const import (
     CONF_INCLUDE_HISTORY,
-    CONF_REFRESH_INTERVAL,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
     DEFAULT_INCLUDE_HISTORY,
-    DEFAULT_REFRESH_INTERVAL,
+    DHL_POLL_HOT_INTERVAL_MINUTES,
+    DHL_POLL_HOT_LEAD_HOURS,
+    DHL_POLL_MID_INTERVAL_MINUTES,
+    DHL_POLL_QUIET_END_HOUR,
+    DHL_POLL_QUIET_START_HOUR,
+    DHL_POLL_STAGGER_MINUTES,
     DOMAIN,
     NEW_ISSUE_URL,
     ParcelStatus,
@@ -36,11 +41,49 @@ from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_t
 
 _LOGGER = logging.getLogger(__name__)
 
+_HOT_INTERVAL = timedelta(minutes=DHL_POLL_HOT_INTERVAL_MINUTES)
+_MID_INTERVAL = timedelta(minutes=DHL_POLL_MID_INTERVAL_MINUTES)
+_HOT_LEAD_TIME = timedelta(hours=DHL_POLL_HOT_LEAD_HOURS)
 
-def _refresh_interval(entry: ConfigEntry) -> timedelta:
-    """Return the configured refresh interval as a ``timedelta``."""
-    minutes = int(entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL))
-    return timedelta(minutes=minutes)
+
+def _stagger(entry_id: str) -> timedelta:
+    """Small, stable per-install offset so installs don't all poll in sync."""
+    offset = hash(entry_id) % DHL_POLL_STAGGER_MINUTES
+    return timedelta(minutes=offset)
+
+
+def _in_quiet_window(now_local: datetime) -> bool:
+    return DHL_POLL_QUIET_START_HOUR <= now_local.hour < DHL_POLL_QUIET_END_HOUR
+
+
+def _until_next_hour(now_local: datetime, hour: int) -> timedelta:
+    """Time remaining until the next occurrence of ``hour:00`` local time."""
+    target = now_local.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if target <= now_local:
+        target += timedelta(days=1)
+    return target - now_local
+
+
+def _is_hot(parcel: dict, now: datetime) -> bool:
+    if parcel.get("status") != ParcelStatus.OUT_FOR_DELIVERY:
+        return False
+    planned_from = parcel.get("planned_from")
+    if not planned_from:
+        return True
+    parsed = dt_util.parse_datetime(str(planned_from))
+    return parsed is None or now >= dt_util.as_utc(parsed) - _HOT_LEAD_TIME
+
+
+def compute_poll_interval(entry_id: str, active_parcels: list[dict]) -> timedelta:
+    """Return the next poll interval: quiet overnight, hot/mid tiered by day."""
+    now = dt_util.now()
+    if _in_quiet_window(now):
+        interval = _until_next_hour(now, DHL_POLL_QUIET_END_HOUR)
+    elif any(_is_hot(parcel, dt_util.utcnow()) for parcel in active_parcels):
+        interval = _HOT_INTERVAL
+    else:
+        interval = _MID_INTERVAL
+    return interval + _stagger(entry_id)
 
 
 class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
@@ -66,7 +109,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             # base class, which every helper below relies on.
             config_entry=entry,
             name=DOMAIN,
-            update_interval=_refresh_interval(entry),
+            update_interval=compute_poll_interval(entry.entry_id, []),
         )
         self._client = client
         self._de_session = de_session
@@ -217,6 +260,15 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             elements, rate_limited = await self._client.async_get_incoming()
         except DHLAuthError as err:
             raise ConfigEntryAuthFailed("DHL session expired") from err
+        finally:
+            # A rotated refresh token is captured in `_de_session` the moment
+            # the token endpoint responds, before the request that follows
+            # it (here: the inbox GET) runs. Persist it now rather than only
+            # after the whole poll succeeds — otherwise a rotated token that
+            # DHL already invalidated the old value for is lost the instant
+            # anything after the refresh fails (e.g. a timed-out GET),
+            # permanently burning a token that was in fact refreshed fine.
+            self._persist_refresh_token_if_rotated()
 
         self._warn_rate_limited(rate_limited)
 
@@ -228,6 +280,8 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             elements.extend(await self._async_fetch_missing_tracked(missing))
         except DHLAuthError as err:
             raise ConfigEntryAuthFailed("DHL session expired") from err
+        finally:
+            self._persist_refresh_token_if_rotated()
 
         include_history = self._include_history
         normalized = [
@@ -259,8 +313,10 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel.get("barcode")
         }
 
-        self._persist_refresh_token_if_rotated()
         self.last_success_time = datetime.now(timezone.utc)
+        self.update_interval = compute_poll_interval(
+            self.config_entry.entry_id, normalized_active
+        )
         return normalized_active
 
     def _fire_change_events(self, parcels: list[dict]) -> None:

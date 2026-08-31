@@ -4,21 +4,21 @@
     "step": {
       "user": {
         "title": "DHL einrichten",
-        "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland wird derzeit unterstützt — [fordere ein anderes Land an]({issue_url}).",
+        "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland wird derzeit unterstützt — [fordere ein anderes Land an]({issue_url}). Suchst du DHL in den Niederlanden? Das ist eine eigene Integration: [ha-dhl-nl](https://github.com/ha-parcel-integrations/ha-dhl-nl).",
         "data": {
           "country": "Land"
         }
       },
       "de": {
         "title": "DHL einrichten (Deutschland)",
-        "description": "Öffne diesen Link in einem Browser und melde dich mit deinem DHL Kundenkonto an: {authorize_url}\n\nDein Browser kann die abschließende `dhllogin://…`-Weiterleitung nicht öffnen — das ist normal. Kopiere die vollständige Adresse aus der Adressleiste und füge sie unten ein.",
+        "description": "Öffne diesen Link in einem Browser und melde dich mit deinem DHL Kundenkonto an: {authorize_url}\n\nDein Browser kann die abschließende `dhllogin://…`-Weiterleitung nicht öffnen — das ist normal. Diese Adresse erscheint nie in der Adressleiste; du findest sie stattdessen im Netzwerk-Tab der Entwicklertools deines Browsers — siehe [Schritt-für-Schritt-Anleitung](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md) (auf Englisch). Füge die vollständige Adresse unten ein.\n\nHinweis: DHLs Sendungsverfolgung antwortet nur auf Anfragen von einer deutschen IP-Adresse — diese Integration funktioniert nicht, wenn dein Home Assistant über eine IP-Adresse aus einem anderen Land ins Internet geht.",
         "data": {
           "redirect_url": "Weiterleitungs-URL"
         }
       },
       "reauth_confirm": {
         "title": "DHL-Anmeldung abgelaufen",
-        "description": "DHL akzeptiert die gespeicherte Sitzung nicht mehr. Öffne diesen Link, melde dich erneut an und füge dann die Weiterleitungs-URL ein: {authorize_url}",
+        "description": "DHL akzeptiert die gespeicherte Sitzung nicht mehr. Öffne diesen Link, melde dich erneut an und füge dann die Weiterleitungs-URL ein, die du im Netzwerk-Tab der Entwicklertools deines Browsers findest (siehe [Schritt-für-Schritt-Anleitung](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md), auf Englisch): {authorize_url}",
         "data": {
           "redirect_url": "Weiterleitungs-URL"
         }
@@ -61,15 +61,6 @@
             "data_description": {
               "include_history": "Fügt jeder Sendung ein Verlaufsattribut mit jeder Statusaktualisierung hinzu (Zeitpunkt, Status, Originaltext). Standardmäßig aus."
             }
-          },
-          "polling": {
-            "name": "Abfrage",
-            "data": {
-              "refresh_interval": "Aktualisieren alle"
-            },
-            "data_description": {
-              "refresh_interval": "Wie oft die Integration DHL auf Sendungsaktualisierungen prüft. Ein langsameres Intervall ist schonender für die API von DHL; der Standard von 30 Minuten reicht für die meisten Sendungen aus."
-            }
           }
         }
       }
@@ -79,15 +70,6 @@
     "country": {
       "options": {
         "de": "Deutschland"
-      }
-    },
-    "refresh_interval": {
-      "options": {
-        "15": "15 Minuten",
-        "30": "30 Minuten",
-        "60": "60 Minuten",
-        "120": "120 Minuten",
-        "240": "240 Minuten"
       }
     },
     "delivered_filter_type": {
