@@ -104,11 +104,6 @@ def in_transit_sample(code: str = ACTIVE_CODE) -> dict:
     )
 
 
-def rung_two_sample(code: str = ACTIVE_CODE) -> dict:
-    """A parcel at the contested rung 2."""
-    return element(code, fortschritt=2, status_text="In Vorbereitung.")
-
-
 def archived_sample(code: str = "ARCHIVED0001") -> dict:
     """An archived element — must be filtered out of the inbox by default."""
     return element(

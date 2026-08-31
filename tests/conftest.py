@@ -26,7 +26,6 @@ def reset_one_shot_warnings():
     de._unexpected_body_logged = False
     de._sendungsliste_values_logged.clear()
     de._unmapped_fortschritt_logged.clear()
-    de._rung_two_logged = False
     de._maximal_fortschritt_logged = False
     de._unexpected_keys_logged.clear()
     de._delivered_conflict_logged.clear()

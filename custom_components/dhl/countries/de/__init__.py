@@ -253,23 +253,25 @@ def is_not_found(element: dict) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Status mapping — the fortschritt ladder, rung 2 disputed (BUILD_PLAN.md §6)
+# Status mapping — the fortschritt ladder (BUILD_PLAN.md §6)
 # ---------------------------------------------------------------------------
 
 _LADDER: dict[int, ParcelStatus] = {
     0: ParcelStatus.REGISTERED,
     1: ParcelStatus.REGISTERED,
-    # Rung 2 is genuinely contested between two third-party sources
-    # (registered vs in_transit). Shipped conservative per BUILD_PLAN.md §6:
-    # reporting a parcel as moving when it has not is the worse error.
-    2: ParcelStatus.REGISTERED,
+    # Rung 2 ("Im Zustellzentrum") was contested between two third-party
+    # sources (registered vs in_transit); a third source settled it. Mapped
+    # IN_TRANSIT for consistency with ha-dhl-nl, where an equivalent
+    # depot/hub scan (PARCEL_ARRIVED_AT_LOCAL_DEPOT) also maps IN_TRANSIT —
+    # REGISTERED is reserved for before the carrier has physically scanned
+    # the parcel at all.
+    2: ParcelStatus.IN_TRANSIT,
     3: ParcelStatus.IN_TRANSIT,
     4: ParcelStatus.OUT_FOR_DELIVERY,
     5: ParcelStatus.DELIVERED,
 }
 
 _unmapped_fortschritt_logged: set[int] = set()
-_rung_two_logged = False
 _maximal_fortschritt_logged = False
 
 
@@ -287,22 +289,6 @@ def _warn_unmapped_fortschritt(value: int, maximal: int) -> None:
     )
 
 
-def _warn_rung_two(raw_status: str | None) -> None:
-    """One-shot: the first parcel observed at fortschritt==2 (§7a) — settles the dispute."""
-    global _rung_two_logged
-    if _rung_two_logged:
-        return
-    _rung_two_logged = True
-    _LOGGER.warning(
-        "DHL Germany parcel seen at fortschritt=2 for the first time — two "
-        "third-party sources disagree on what this means (registered vs "
-        "in transit). Please tell us what the DHL app showed. Open an "
-        "issue and paste this line: %s\n  raw_status=%r",
-        NEW_ISSUE_URL,
-        raw_status,
-    )
-
-
 def _warn_unexpected_maximal_fortschritt(value: int) -> None:
     global _maximal_fortschritt_logged
     if _maximal_fortschritt_logged:
@@ -316,15 +302,12 @@ def _warn_unexpected_maximal_fortschritt(value: int) -> None:
     )
 
 
-def map_parcel_status_de(
-    fortschritt: Any, maximal_fortschritt: Any, *, raw_status: str | None = None
-) -> ParcelStatus:
+def map_parcel_status_de(fortschritt: Any, maximal_fortschritt: Any) -> ParcelStatus:
     """Map ``sendungsverlauf.fortschritt`` to a canonical status.
 
     Bounded by ``maximalFortschritt`` rather than a literal ``5`` — all three
     reconstruction sources read it, and one defends against it being absent
     or non-positive by substituting 5, which is the behaviour copied here.
-    ``raw_status`` is only used to enrich the rung-2 one-shot WARNING.
     """
     try:
         maximal = int(maximal_fortschritt)
@@ -339,9 +322,6 @@ def map_parcel_status_de(
         value = int(fortschritt)
     except (TypeError, ValueError):
         return ParcelStatus.UNKNOWN
-
-    if value == 2:
-        _warn_rung_two(raw_status)
 
     if value == maximal:
         return ParcelStatus.DELIVERED
@@ -576,7 +556,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     if raw_status is None:
         raw_status = kurz_status
 
-    status = map_parcel_status_de(fortschritt, maximal_fortschritt, raw_status=raw_status)
+    status = map_parcel_status_de(fortschritt, maximal_fortschritt)
 
     # Contested: two sources read istZugestellt, one derives from the
     # ladder. Read the flag when present, else derive; warn once per parcel

@@ -1,8 +1,7 @@
 """Tests for DHL Germany transport, selection, status map and normalize_parcel_de.
 
 Fixtures come from ``tests/payloads.py``. Every still-contested field
-(raw_status, rung 2) is tested on both branches rather than just the
-preferred one.
+(raw_status) is tested on both branches rather than just the preferred one.
 """
 from __future__ import annotations
 
@@ -39,7 +38,6 @@ def _reset_one_shot_state():
     """Keep countries/de's one-shot WARNING dedup state isolated per test."""
     de_module._sendungsliste_values_logged.clear()
     de_module._unmapped_fortschritt_logged.clear()
-    de_module._rung_two_logged = False
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
     de_module._delivered_conflict_logged.clear()
@@ -49,7 +47,6 @@ def _reset_one_shot_state():
     yield
     de_module._sendungsliste_values_logged.clear()
     de_module._unmapped_fortschritt_logged.clear()
-    de_module._rung_two_logged = False
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
     de_module._delivered_conflict_logged.clear()
@@ -215,7 +212,7 @@ async def test_transport_converts_rejected_refresh_token_to_auth_error():
     [
         (0, ParcelStatus.REGISTERED),
         (1, ParcelStatus.REGISTERED),
-        (2, ParcelStatus.REGISTERED),  # disputed rung, shipped conservative
+        (2, ParcelStatus.IN_TRANSIT),  # settled: "Im Zustellzentrum"
         (3, ParcelStatus.IN_TRANSIT),
         (4, ParcelStatus.OUT_FOR_DELIVERY),
         (5, ParcelStatus.DELIVERED),
@@ -223,11 +220,6 @@ async def test_transport_converts_rejected_refresh_token_to_auth_error():
 )
 def test_status_ladder(fortschritt, expected):
     assert map_parcel_status_de(fortschritt, 5) == expected
-
-
-def test_rung_two_warns_once(caplog):
-    map_parcel_status_de(2, 5, raw_status="In Vorbereitung")
-    assert "fortschritt=2" in caplog.text
 
 
 def test_status_out_of_range_warns_and_returns_unknown(caplog):
@@ -532,12 +524,6 @@ def test_delivery_window_warning_fires_only_once(caplog):
     normalize_parcel_de(raw)
     normalize_parcel_de(raw)
     assert caplog.text.lower().count("delivery-window") == 1
-
-
-def test_rung_two_warning_fires_only_once(caplog):
-    map_parcel_status_de(2, 5)
-    map_parcel_status_de(2, 5)
-    assert caplog.text.lower().count("fortschritt=2") == 1
 
 
 def test_maximal_fortschritt_warning_fires_only_once(caplog):

@@ -141,13 +141,19 @@ inbox comes back populated.
   the same active/delivered split, sort and event-firing path.
 - **The status ladder is a progress bar, not a vocabulary.** `fortschritt`
   0-5, bounded by `maximalFortschritt` (defended against being absent/≤0).
-  Rung 2 is contested between two third-party sources (`registered` vs
-  `in_transit`); shipped as `registered` — the conservative reading — with a
-  one-shot WARNING the first time it is observed. **`at_pickup_point` and
+  Rung 2 ("Im Zustellzentrum") was contested between two third-party sources
+  (`registered` vs `in_transit`); a third source (Versand-HA, same
+  mechanism) settled it as `in_transit`, consistent with how `ha-dhl-nl`
+  maps an equivalent depot/hub scan — `REGISTERED` is reserved for before
+  the carrier has physically scanned the parcel at all. **`at_pickup_point` and
   `problem` have no known mechanism at all** — no source names a
   Packstation/Filiale field. The coordinator warns when a parcel stays at
   `out_for_delivery` across more than one poll, the best available proxy for
-  a silently-misreported pickup arrival.
+  a silently-misreported pickup arrival. **`AT_PICKUP_POINT` is therefore
+  unreachable in `_LADDER` and `sensor.py` deliberately has no
+  `awaiting_pickup` sensor** — this is the exemption `CONVENTIONS.md`'s
+  status-vocabulary section asks a carrier to state explicitly, not an
+  oversight.
 - **Every genuinely contested field codes both branches**, per the plan's
   own instruction, rather than picking one: the delivered flag (read
   `istZugestellt` if present, else derive from the ladder, warn on
