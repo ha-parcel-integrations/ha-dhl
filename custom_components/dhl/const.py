@@ -65,6 +65,13 @@ NEW_COUNTRY_ISSUE_URL = (
     "https://github.com/ha-parcel-integrations/.github/discussions/new/choose"
 )
 
+DHL_NL_REPO_URL = "https://github.com/ha-parcel-integrations/ha-dhl-nl"
+
+DHL_DE_REDIRECT_URL_DOCS_URL = (
+    "https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/"
+    "finding-the-redirect-url.md"
+)
+
 # ---------------------------------------------------------------------------
 # DHL Germany (Akamai CIAM OIDC + the www.dhl.de account-inbox endpoint)
 # ---------------------------------------------------------------------------

@@ -4,21 +4,21 @@
     "step": {
       "user": {
         "title": "Set up DHL",
-        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl](https://github.com/ha-parcel-integrations/ha-dhl-nl).",
+        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Country"
         }
       },
       "de": {
         "title": "Set up DHL (Germany)",
-        "description": "Open this link in a browser and log in with your DHL Kundenkonto: {authorize_url}\n\nYour browser will fail to open the final `dhllogin://…` redirect — that is expected. This address never appears in the address bar; you catch it in your browser's developer tools' Network tab instead — see [step-by-step instructions](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md). Paste the full address below.\n\nNote: DHL's tracking endpoint only responds correctly to a German IP address — this integration will not work if your Home Assistant reaches the internet from another country.",
+        "description": "Open this link in a browser and log in with your DHL Kundenkonto: {authorize_url}\n\nYour browser will fail to open the final `dhllogin://…` redirect — that is expected. This address never appears in the address bar; you catch it in your browser's developer tools' Network tab instead — see [step-by-step instructions]({docs_url}). Paste the full address below.\n\nNote: DHL's tracking endpoint only responds correctly to a German IP address — this integration will not work if your Home Assistant reaches the internet from another country.",
         "data": {
           "redirect_url": "Redirect URL"
         }
       },
       "reauth_confirm": {
         "title": "DHL sign-in expired",
-        "description": "DHL no longer accepts the stored session. Open this link, log in again, then paste the redirect URL you catch in your browser's developer tools' Network tab (see [step-by-step instructions](https://github.com/ha-parcel-integrations/ha-dhl/blob/main/docs/finding-the-redirect-url.md)): {authorize_url}",
+        "description": "DHL no longer accepts the stored session. Open this link, log in again, then paste the redirect URL you catch in your browser's developer tools' Network tab (see [step-by-step instructions]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Redirect URL"
         }

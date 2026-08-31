@@ -52,7 +52,6 @@ DHL's Netherlands business is a separate integration,
 
 ## Requirements
 
-- Home Assistant 2024.7 or newer
 - A DHL Kundenkonto (a free DHL account) — the same account you use on
   dhl.de or in the DHL Paket app
 - A browser to complete the one-time sign-in during setup

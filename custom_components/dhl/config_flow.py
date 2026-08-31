@@ -46,6 +46,8 @@ from .const import (
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
     DEFAULT_INCLUDE_HISTORY,
+    DHL_DE_REDIRECT_URL_DOCS_URL,
+    DHL_NL_REPO_URL,
     DOMAIN,
     NEW_COUNTRY_ISSUE_URL,
 )
@@ -193,7 +195,10 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_COUNTRY_SCHEMA,
-            description_placeholders={"issue_url": NEW_COUNTRY_ISSUE_URL},
+            description_placeholders={
+                "issue_url": NEW_COUNTRY_ISSUE_URL,
+                "dhl_nl_url": DHL_NL_REPO_URL,
+            },
         )
 
     async def async_step_de(
@@ -233,7 +238,10 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="de",
             data_schema=_REDIRECT_SCHEMA,
             errors=errors,
-            description_placeholders={"authorize_url": self._authorize_url or ""},
+            description_placeholders={
+                "authorize_url": self._authorize_url or "",
+                "docs_url": DHL_DE_REDIRECT_URL_DOCS_URL,
+            },
         )
 
     async def async_step_reauth(
@@ -279,7 +287,10 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=_REDIRECT_SCHEMA,
             errors=errors,
-            description_placeholders={"authorize_url": self._authorize_url or ""},
+            description_placeholders={
+                "authorize_url": self._authorize_url or "",
+                "docs_url": DHL_DE_REDIRECT_URL_DOCS_URL,
+            },
         )
 
 
