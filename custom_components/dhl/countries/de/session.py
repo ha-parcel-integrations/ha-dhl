@@ -1,8 +1,8 @@
 """The DHL Germany OIDC session: PKCE authorization, token exchange, refresh.
 
-Akamai CIAM at ``login.dhl.de``, Authorization Code + PKCE, a public native
-client (no secret) — see carrier-research/dhl/api/dhl-de/app-auth.md for the
-full teardown this is built from. This module owns the whole token lifecycle:
+Akamai CIAM at ``login.dhl.de``, Authorization Code + PKCE, client
+authenticated with an empty Basic-auth secret. This module owns the whole
+token lifecycle:
 
 - **Config-flow time**: :meth:`DHLDeSession.async_authorization_url` builds
   the one-time browser URL with a freshly generated PKCE verifier and
@@ -43,6 +43,7 @@ import aiohttp
 from ...const import (
     DHL_DE_CLIENT_ID,
     DHL_DE_DISCOVERY_URL,
+    DHL_DE_LOGIN_CLAIMS,
     DHL_DE_REDIRECT_URI,
     DHL_DE_REQUEST_TIMEOUT_SECONDS,
     DHL_DE_SCOPE,
@@ -242,6 +243,7 @@ class DHLDeSession:
             "client_id": DHL_DE_CLIENT_ID,
             "redirect_uri": DHL_DE_REDIRECT_URI,
             "scope": DHL_DE_SCOPE,
+            "claims": DHL_DE_LOGIN_CLAIMS,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
             "state": state,
@@ -306,7 +308,7 @@ class DHLDeSession:
         return self._id_token
 
     async def _async_refresh(self) -> None:
-        """``grant_type=refresh_token`` — no secret, ``client_id`` only."""
+        """``grant_type=refresh_token`` with an empty Basic-auth secret."""
         endpoints = await self._async_discover()
         body = {
             "grant_type": "refresh_token",
@@ -324,8 +326,9 @@ class DHLDeSession:
         self, url: str, body: dict[str, str]
     ) -> dict[str, Any]:
         """POST to the token endpoint; raises :class:`DHLDeAuthError` on rejection."""
+        headers = {"Authorization": aiohttp.encode_basic_auth(DHL_DE_CLIENT_ID, "")}
         async with self._session.post(
-            url, data=body, timeout=_REQUEST_TIMEOUT
+            url, data=body, headers=headers, timeout=_REQUEST_TIMEOUT
         ) as response:
             text = await response.text()
             try:

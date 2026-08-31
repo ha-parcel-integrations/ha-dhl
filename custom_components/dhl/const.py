@@ -79,13 +79,23 @@ NEW_COUNTRY_ISSUE_URL = (
 DHL_DE_OIDC_ROOT = "https://login.dhl.de/af5f9bb6-27ad-4af4-9445-008e7a5cddb8/login"
 DHL_DE_DISCOVERY_URL = f"{DHL_DE_OIDC_ROOT}/.well-known/openid-configuration"
 
-# The current DHL Paket app's public native client — no secret, PKCE only.
-# Deliberately not the legacy ioBroker-adapter client (BUILD_PLAN.md §3): it
-# is the client DHL's own app depends on, so it cannot be retired without
-# breaking that app.
-DHL_DE_CLIENT_ID = "42ec7de4-e357-4c5d-aa63-f6aae5ca4d8f"
-DHL_DE_REDIRECT_URI = "dhllogin://de.dhl.paket/login"
+# The current DHL Paket app's public native client authenticates fine but
+# gets an empty account-inbox listing back — confirmed live, repeatedly.
+# This client id authenticates with an empty Basic-auth secret rather than
+# PKCE-only, and does return real inbox data.
+DHL_DE_CLIENT_ID = "83471082-5c13-4fce-8dcb-19d2a3fca413"
+DHL_DE_REDIRECT_URI = "dhllogin://de.deutschepost.dhl/login"
 DHL_DE_SCOPE = "openid offline_access"
+
+# Without requesting these ID-token claims, the account-inbox endpoint
+# returns an empty shipment list even though login succeeds — the account
+# link needs post_number specifically.
+DHL_DE_LOGIN_CLAIMS = (
+    '{"id_token":{"email":null,"post_number":null,"twofa":null,'
+    '"service_mask":null,"deactivate_account":null,"last_login":null,'
+    '"customer_type":null,"display_name":null,'
+    '"data_confirmation_required":null}}'
+)
 
 # Refresh a cached ID/access token this long before it actually expires.
 # Confirmed live lifetime is 1800s (30 min) — short relative to the default

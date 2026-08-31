@@ -92,6 +92,18 @@ per-install stagger so installs don't all poll in sync. Recomputed at the
 end of every `_async_update_data()`. Account-based, so it never fully
 stops — there's always the next poll's new-shipment-detection value.
 
+**The OIDC client id, redirect URI and login `claims` all matter for whether
+the account-inbox call returns real data, not just for login itself.**
+Logging in with the wrong client id succeeds (tokens issued, no error
+anywhere) but silently gets an empty account inbox every poll — confirmed
+live, repeatedly, until the client id, redirect URI and `claims` request
+parameter (`DHL_DE_LOGIN_CLAIMS` — `post_number` specifically) all matched a
+known-working client. That client authenticates at the token endpoint with
+an empty Basic-auth secret, not PKCE-only. Don't change any of these four
+together without a live re-test against a real account with real parcels —
+a change that still logs in without error proves nothing about whether the
+inbox comes back populated.
+
 - **Login is a one-time browser hop, then headless.** `config_flow.py`
   builds its own PKCE authorization URL (`countries/de/session.py`), the
   user logs in in a real browser and pastes back the
