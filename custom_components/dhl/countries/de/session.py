@@ -327,7 +327,7 @@ class DHLDeSession:
         """POST to the token endpoint; raises :class:`DHLDeAuthError` on rejection."""
         headers = {
             **DHL_DE_TOKEN_HEADERS,
-            "Authorization": aiohttp.encode_basic_auth(DHL_DE_CLIENT_ID, ""),
+            "Authorization": aiohttp.BasicAuth(DHL_DE_CLIENT_ID, "").encode(),
         }
         async with self._session.post(
             url, data=body, headers=headers, timeout=_REQUEST_TIMEOUT
