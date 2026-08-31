@@ -15,6 +15,7 @@ unchanged.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -33,6 +34,8 @@ if TYPE_CHECKING:
     from .countries.de.session import DHLDeSession
 
 __all__ = ["DHLApiClient", "DHLApiError", "DHLAuthError"]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class DHLApiClient:
@@ -82,6 +85,11 @@ class DHLApiClient:
         elements = select_active_elements(sendungen if isinstance(sendungen, list) else [])
         elements = await self._enrich_stubs(elements)
         elements = [element for element in elements if not is_not_found(element)]
+        _LOGGER.debug(
+            "Account inbox: %d raw, %d active after filtering",
+            len(sendungen) if isinstance(sendungen, list) else 0,
+            len(elements),
+        )
         return elements, bool(envelope.get("rateLimited"))
 
     async def _enrich_stubs(self, elements: list[dict]) -> list[dict]:

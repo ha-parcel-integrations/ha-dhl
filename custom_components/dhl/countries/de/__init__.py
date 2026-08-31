@@ -168,12 +168,13 @@ async def async_get_by_number_envelope(
 # Element selection — the inbox is not a flat list (BUILD_PLAN.md §5a, §5b)
 # ---------------------------------------------------------------------------
 
+_KNOWN_SENDUNGSLISTE_VALUES = {DHL_DE_ARCHIVED_MARKER, "AKTUELL"}
 _sendungsliste_values_logged: set[str] = set()
 
 
 def _warn_sendungsliste_value(value: str) -> None:
-    """Log every distinct `sendungsliste` value once (§7a) — enumerates the vocabulary."""
-    if value in _sendungsliste_values_logged:
+    """Log a `sendungsliste` value outside the confirmed vocabulary, once each."""
+    if value in _KNOWN_SENDUNGSLISTE_VALUES or value in _sendungsliste_values_logged:
         return
     _sendungsliste_values_logged.add(value)
     _LOGGER.warning(
@@ -384,41 +385,10 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
 }
 
 _unexpected_keys_logged: set[str] = set()
-_payload_shape_logged = False
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
 _delivery_window_shape_logged = False
-_returning_keys_logged = False
 _timestamp_parse_failed_logged = False
-
-
-def _warn_payload_shape_once(element: dict) -> None:
-    """Log the shape (types, never values) of the first populated element (§7a/§7b)."""
-    global _payload_shape_logged
-    if _payload_shape_logged:
-        return
-    _payload_shape_logged = True
-
-    def _walk(node: Any, path: str, depth: int, lines: list[str]) -> None:
-        if depth > 4:
-            return
-        if isinstance(node, dict):
-            for key, value in node.items():
-                child_path = f"{path}.{key}" if path else key
-                lines.append(f"{child_path}: {type(value).__name__}")
-                _walk(value, child_path, depth + 1, lines)
-        elif isinstance(node, list) and node:
-            _walk(node[0], f"{path}[0]", depth + 1, lines)
-
-    lines: list[str] = []
-    _walk(element, "", 0, lines)
-    _LOGGER.warning(
-        "DHL Germany's first populated sendungen element — this shape (types "
-        "only, safe to paste publicly) is what normalize_parcel is finished "
-        "against. Please attach this to an issue: %s\n%s",
-        NEW_ISSUE_URL,
-        "\n".join(lines),
-    )
 
 
 def _warn_unexpected_sendungsdetails_keys(details: dict) -> None:
@@ -475,21 +445,6 @@ def _warn_delivery_window_shape_once(keys_present: list[str]) -> None:
         "time. Open an issue and paste this line: %s\n  keys=%s",
         NEW_ISSUE_URL,
         keys_present,
-    )
-
-
-def _warn_returning_keys_once(retoure: Any, ruecksendung: Any) -> None:
-    global _returning_keys_logged
-    if _returning_keys_logged:
-        return
-    _returning_keys_logged = True
-    _LOGGER.warning(
-        "DHL Germany response carried retoure/ruecksendung for the first "
-        "time — single-source candidate mechanism for ParcelStatus.returning. "
-        "Open an issue and paste this line: %s\n  retoure=%r ruecksendung=%r",
-        NEW_ISSUE_URL,
-        retoure,
-        ruecksendung,
     )
 
 
@@ -597,13 +552,10 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
 def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     """Return a carrier-agnostic parcel dict for one ``sendungen`` element.
 
-    ``payload: reconstructed`` (BUILD_PLAN.md front matter) — every key is
-    guarded and every contested field codes both branches per the plan's own
-    instruction, rather than picking a side. Rewrite this from a tester's
-    diagnostics export (§7c) the moment one lands.
+    Payload confirmed against a real account; every key is still guarded
+    since a genuinely unrecognised field remains possible on other accounts.
     """
     barcode = raw.get("id")
-    _warn_payload_shape_once(raw)
 
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
@@ -653,14 +605,11 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     zustellung = zustellung if isinstance(zustellung, dict) else {}
     planned_from, planned_to = (None, None) if delivered else _delivery_window(zustellung)
 
-    # Candidate mechanism for `returning`: shipment-level flags only,
-    # distinct from the per-event `events[].ruecksendung` (BUILD_PLAN.md §6).
-    # Single-source and untested — ORed, since the source that names them
-    # doesn't know which the API actually sends.
+    # Confirmed live: shipment-level `retoure`/`ruecksendung` flags, distinct
+    # from the per-event `events[].ruecksendung` — ORed since either can be
+    # the one actually set.
     retoure = details.get("retoure")
     ruecksendung = details.get("ruecksendung")
-    if retoure is not None or ruecksendung is not None:
-        _warn_returning_keys_once(retoure, ruecksendung)
     if bool(retoure) or bool(ruecksendung):
         status = ParcelStatus.RETURNING
 

@@ -1,10 +1,8 @@
 """Tests for DHL Germany transport, selection, status map and normalize_parcel_de.
 
-Fixtures come from ``tests/payloads.py``, itself built from BUILD_PLAN.md
-§5's reconstructed field list — **no populated element has ever been
-observed on the wire**. Every contested field (delivered flag, raw_status,
-delivery window, rung 2) is tested on both branches per the plan's own
-"code both" instruction, not just the preferred one.
+Fixtures come from ``tests/payloads.py``. Every still-contested field
+(raw_status, rung 2) is tested on both branches rather than just the
+preferred one.
 """
 from __future__ import annotations
 
@@ -44,11 +42,9 @@ def _reset_one_shot_state():
     de_module._rung_two_logged = False
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
-    de_module._payload_shape_logged = False
     de_module._delivered_conflict_logged.clear()
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_shape_logged = False
-    de_module._returning_keys_logged = False
     de_module._timestamp_parse_failed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
@@ -56,11 +52,9 @@ def _reset_one_shot_state():
     de_module._rung_two_logged = False
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
-    de_module._payload_shape_logged = False
     de_module._delivered_conflict_logged.clear()
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_shape_logged = False
-    de_module._returning_keys_logged = False
     de_module._timestamp_parse_failed_logged = False
 
 
@@ -86,9 +80,15 @@ def test_select_active_elements_ignores_non_dict_entries():
     ]
 
 
-def test_select_active_elements_warns_new_sendungsliste_value(caplog):
-    select_active_elements([archived_sample()])
+def test_select_active_elements_warns_unrecognised_sendungsliste_value(caplog):
+    unknown = element(ACTIVE_CODE, fortschritt=4, sendungsliste="WHATEVER")
+    select_active_elements([unknown])
     assert "sendungsliste" in caplog.text.lower()
+
+
+def test_select_active_elements_does_not_warn_on_known_sendungsliste_values(caplog):
+    select_active_elements([active_sample(), archived_sample()])
+    assert "sendungsliste" not in caplog.text.lower()
 
 
 def test_find_element_by_id_matches():
@@ -410,12 +410,6 @@ def test_ruecksendung_true_maps_to_returning():
     assert normalize_parcel_de(raw)["status"] == ParcelStatus.RETURNING
 
 
-def test_returning_keys_present_warns_once(caplog):
-    raw = element(ACTIVE_CODE, fortschritt=3, retoure=False, ruecksendung=False)
-    normalize_parcel_de(raw)
-    assert "retoure" in caplog.text.lower()
-
-
 # --- history: sorted defensively, status always None (§5) ---------------
 
 
@@ -484,15 +478,6 @@ def test_unexpected_sendungsdetails_key_warns_once(caplog):
     assert "neverseenbefore" in caplog.text.lower()
 
 
-def test_payload_shape_warns_only_on_first_populated_element(caplog):
-    normalize_parcel_de(active_sample())
-    first_len = len(caplog.text)
-    caplog.clear()
-    normalize_parcel_de(delivered_sample())
-    assert "first populated" not in caplog.text.lower()
-    assert first_len > 0
-
-
 # ---------------------------------------------------------------------------
 # every one-shot WARNING only fires once, even across many calls
 # ---------------------------------------------------------------------------
@@ -508,7 +493,9 @@ async def test_transport_generic_session_error_becomes_api_error():
 
 
 def test_sendungsliste_warning_fires_only_once(caplog):
-    select_active_elements([archived_sample("A"), archived_sample("B")])
+    unknown_a = element("A", fortschritt=4, sendungsliste="WHATEVER")
+    unknown_b = element("B", fortschritt=4, sendungsliste="WHATEVER")
+    select_active_elements([unknown_a, unknown_b])
     assert caplog.text.lower().count("sendungsliste") == 1
 
 
@@ -545,13 +532,6 @@ def test_delivery_window_warning_fires_only_once(caplog):
     normalize_parcel_de(raw)
     normalize_parcel_de(raw)
     assert caplog.text.lower().count("delivery-window") == 1
-
-
-def test_returning_keys_warning_fires_only_once(caplog):
-    raw = element(ACTIVE_CODE, fortschritt=3, retoure=False, ruecksendung=False)
-    normalize_parcel_de(raw)
-    normalize_parcel_de(raw)
-    assert caplog.text.lower().count("carried retoure/ruecksendung for the first time") == 1
 
 
 def test_rung_two_warning_fires_only_once(caplog):

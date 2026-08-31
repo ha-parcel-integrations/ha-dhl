@@ -29,11 +29,9 @@ def reset_one_shot_warnings():
     de._rung_two_logged = False
     de._maximal_fortschritt_logged = False
     de._unexpected_keys_logged.clear()
-    de._payload_shape_logged = False
     de._delivered_conflict_logged.clear()
     de._raw_status_kurz_status_logged = False
     de._delivery_window_shape_logged = False
-    de._returning_keys_logged = False
     de._timestamp_parse_failed_logged = False
     session._client_retirement_warned = False
     yield
