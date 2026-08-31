@@ -14,6 +14,7 @@ unchanged.
 """
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -24,6 +25,7 @@ from .countries.de import (
     async_get_inbox_envelope,
     find_element_by_id,
     is_not_found,
+    needs_enrichment,
     select_active_elements,
 )
 
@@ -64,10 +66,13 @@ class DHLApiClient:
     async def async_get_incoming(self) -> tuple[list[dict], bool]:
         """Return ``(active sendungen elements, rateLimited)`` for the account inbox.
 
-        Archived elements are filtered per BUILD_PLAN.md §5b (with the
-        empties-the-list fallback already applied); elements that are a
-        populated "not found" marker rather than a real parcel are dropped
-        too — the inbox should never surface those as parcels.
+        Archived elements are filtered (with the empties-the-list fallback
+        already applied); elements that are a populated "not found" marker
+        rather than a real parcel are dropped too — the inbox should never
+        surface those as parcels. The inbox listing can also return a bare
+        stub for a real, active shipment it hasn't detailed yet — those are
+        enriched with an individual by-number fetch before the not-found
+        check runs, or they would be misread as not-found instead.
         """
         if self._country != "DE":
             raise RuntimeError(f"unsupported country {self._country!r}")
@@ -75,15 +80,52 @@ class DHLApiClient:
         envelope = await async_get_inbox_envelope(self._session, de_session)
         sendungen = envelope.get("sendungen")
         elements = select_active_elements(sendungen if isinstance(sendungen, list) else [])
+        elements = await self._enrich_stubs(elements)
         elements = [element for element in elements if not is_not_found(element)]
         return elements, bool(envelope.get("rateLimited"))
+
+    async def _enrich_stubs(self, elements: list[dict]) -> list[dict]:
+        """Replace a bare inbox stub with its by-number equivalent, where possible.
+
+        One bad enrichment fetch falls back to the original stub rather than
+        failing the whole inbox fetch — the not-found check downstream then
+        drops it the same way it would a genuinely unavailable parcel.
+        """
+        de_session = self._require_de_session()
+        stubs = [
+            (index, element)
+            for index, element in enumerate(elements)
+            if element.get("id") and needs_enrichment(element)
+        ]
+        if not stubs:
+            return elements
+
+        async def _fetch(barcode: str) -> dict | None:
+            envelope = await async_get_by_number_envelope(
+                self._session, de_session, barcode
+            )
+            sendungen = envelope.get("sendungen")
+            candidates = select_active_elements(
+                sendungen if isinstance(sendungen, list) else []
+            )
+            return find_element_by_id(candidates, barcode)
+
+        results = await asyncio.gather(
+            *(_fetch(element["id"]) for _, element in stubs),
+            return_exceptions=True,
+        )
+        enriched = list(elements)
+        for (index, original), result in zip(stubs, results):
+            if isinstance(result, dict):
+                enriched[index] = result
+        return enriched
 
     async def async_get_by_number(self, piece_code: str) -> dict | None:
         """Fetch one manually-tracked parcel by its piece code (`track_parcel`).
 
         Returns ``None`` when the number resolves to nothing, or to a
-        populated "not found" marker (BUILD_PLAN.md §5a) — the caller treats
-        both the same way a not-yet-scanned number would be treated.
+        populated "not found" marker — the caller treats both the same way
+        a not-yet-scanned number would be treated.
         """
         if self._country != "DE":
             raise RuntimeError(f"unsupported country {self._country!r}")

@@ -119,3 +119,16 @@ def archived_sample(code: str = "ARCHIVED0001") -> dict:
 def not_found_sample(code: str = "UNKNOWN00001") -> dict:
     """A populated element that is not a real parcel (§5a)."""
     return {"id": code, "sendungNichtGefunden": {"keineDatenVerfuegbar": True}}
+
+
+def stub_sample(code: str = ACTIVE_CODE) -> dict:
+    """A bare inbox element the account listing hasn't detailed yet.
+
+    No `sendungsverlauf` at all and no not-found marker — needs a by-number
+    fetch to fill in.
+    """
+    return {
+        "id": code,
+        "sendungsinfo": {"sendungsliste": "AKTUELL"},
+        "sendungsdetails": {"istZugestellt": False},
+    }

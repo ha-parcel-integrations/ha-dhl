@@ -213,6 +213,24 @@ def find_element_by_id(elements: list[dict], piece_code: str) -> dict | None:
     return elements[0] if elements else None
 
 
+def needs_enrichment(element: dict) -> bool:
+    """Whether an inbox element is a bare stub the account listing hasn't detailed yet.
+
+    Distinct from :func:`is_not_found`: a genuine not-found element still
+    carries a `sendungsverlauf` (with zero progress) alongside its
+    `sendungNichtGefunden` marker — a stub has neither and needs a
+    by-number fetch to fill in.
+    """
+    if isinstance(element.get("sendungNichtGefunden"), dict):
+        return False
+    details = element.get("sendungsdetails")
+    if not isinstance(details, dict) or isinstance(
+        details.get("sendungNichtGefunden"), dict
+    ):
+        return False
+    return not isinstance(details.get("sendungsverlauf"), dict)
+
+
 def is_not_found(element: dict) -> bool:
     """Whether a populated element is *not* a real parcel (§5a's three failure modes).
 
@@ -685,6 +703,7 @@ __all__ = [
     "async_get_inbox_envelope",
     "find_element_by_id",
     "is_not_found",
+    "needs_enrichment",
     "map_parcel_status_de",
     "normalize_parcel_de",
     "select_active_elements",
