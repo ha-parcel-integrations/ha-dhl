@@ -82,7 +82,7 @@ class DHLDeAuthError(DHLDeSessionError):
 
 
 def _warn_client_retirement_once(detail: str) -> None:
-    """One-shot WARNING: a 401/invalid_client at the token endpoint (§7a).
+    """One-shot WARNING: a 401/invalid_client at the token endpoint.
 
     This is how the app's public client being switched off would present —
     worth a distinct, loud log line rather than blending into "reauth
@@ -104,8 +104,8 @@ def _warn_client_retirement_once(detail: str) -> None:
 def generate_pkce() -> tuple[str, str]:
     """Return a fresh ``(code_verifier, code_challenge)`` pair (S256).
 
-    Generated per login, never reused — BUILD_PLAN.md §3 calls out the
-    ioBroker adapter's hardcoded verifier by name as the thing not to copy.
+    Generated per login, never reused — a hardcoded verifier, as one OSS
+    client ships, is exactly what not to copy.
     """
     verifier = secrets.token_urlsafe(64)
     digest = hashlib.sha256(verifier.encode("ascii")).digest()

@@ -41,7 +41,7 @@ _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=DHL_DE_REQUEST_TIMEOUT_SECONDS)
 
 
 # ---------------------------------------------------------------------------
-# Transport — GET, dhli cookie, one 401 retry (BUILD_PLAN.md §3, §4)
+# Transport — GET, dhli cookie, one 401 retry
 # ---------------------------------------------------------------------------
 
 
@@ -109,10 +109,10 @@ async def _async_request(
 ) -> dict[str, Any]:
     """Request with the session's ID token, refreshing once on a 401.
 
-    Never loops: one retry, then whatever the retry returned is final
-    (BUILD_PLAN.md §3's session.py contract). A rejected refresh token
-    surfaces as :class:`~.session.DHLDeAuthError`, converted here to
-    :class:`DHLAuthError` so the coordinator's existing auth handling (and
+    Never loops: one retry, then whatever the retry returned is final. A
+    rejected refresh token surfaces as :class:`~.session.DHLDeAuthError`,
+    converted here to :class:`DHLAuthError` so the coordinator's existing
+    auth handling (and
     HA's reauth flow) picks it up without knowing anything about OIDC.
     """
     try:
@@ -165,7 +165,7 @@ async def async_get_by_number_envelope(
 
 
 # ---------------------------------------------------------------------------
-# Element selection — the inbox is not a flat list (BUILD_PLAN.md §5a, §5b)
+# Element selection — the inbox is not a flat list
 # ---------------------------------------------------------------------------
 
 _KNOWN_SENDUNGSLISTE_VALUES = {DHL_DE_ARCHIVED_MARKER, "AKTUELL"}
@@ -189,8 +189,8 @@ def select_active_elements(sendungen: list[Any]) -> list[dict]:
     """Drop archived elements from the inbox, falling back if that empties it.
 
     Single-source (one of three OSS clients), high cost if wrong (every
-    parcel the user has ever received, surfaced forever), cheap to check —
-    BUILD_PLAN.md §5b. Filters on ``sendungsinfo.sendungsliste`` (uppercased)
+    parcel the user has ever received, surfaced forever), cheap to check.
+    Filters on ``sendungsinfo.sendungsliste`` (uppercased)
     equal to ``"ARCHIVIERT"``, the only value any source names.
     """
     elements = [item for item in sendungen if isinstance(item, dict)]
@@ -207,7 +207,7 @@ def select_active_elements(sendungen: list[Any]) -> list[dict]:
 
 
 def find_element_by_id(elements: list[dict], piece_code: str) -> dict | None:
-    """Match an element on ``.id``, falling back to the first one (§5b step 3)."""
+    """Match an element on ``.id``, falling back to the first one."""
     for element in elements:
         if element.get("id") == piece_code:
             return element
@@ -233,7 +233,7 @@ def needs_enrichment(element: dict) -> bool:
 
 
 def is_not_found(element: dict) -> bool:
-    """Whether a populated element is *not* a real parcel (§5a's three failure modes).
+    """Whether a populated element is *not* a real parcel — three failure modes.
 
     Checks the explicit ``sendungNichtGefunden.keineDatenVerfuegbar`` marker
     first, then falls back to the structural test (no events, no
@@ -253,7 +253,7 @@ def is_not_found(element: dict) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Status mapping — the fortschritt ladder (BUILD_PLAN.md §6)
+# Status mapping — the fortschritt ladder
 # ---------------------------------------------------------------------------
 
 _LADDER: dict[int, ParcelStatus] = {
@@ -333,7 +333,7 @@ def map_parcel_status_de(fortschritt: Any, maximal_fortschritt: Any) -> ParcelSt
 
 
 # ---------------------------------------------------------------------------
-# Payload mapping (BUILD_PLAN.md §5)
+# Payload mapping
 # ---------------------------------------------------------------------------
 
 _KNOWN_SENDUNGSDETAILS_KEYS = {
@@ -372,7 +372,7 @@ _timestamp_parse_failed_logged = False
 
 
 def _warn_unexpected_sendungsdetails_keys(details: dict) -> None:
-    """One-shot-per-key: an unrecognised sendungsdetails key (§7a) — likely the pickup-point field."""
+    """One-shot-per-key: an unrecognised sendungsdetails key — likely the pickup-point field."""
     for key, value in details.items():
         if key in _KNOWN_SENDUNGSDETAILS_KEYS or key in _unexpected_keys_logged:
             continue
@@ -445,7 +445,7 @@ def _warn_timestamp_parse_failed_once(value: Any) -> None:
 def _parse_de_timestamp(value: Any) -> str | None:
     """Parse a DHL DE timestamp permissively; naive values assume Europe/Berlin.
 
-    No source ever supplied an example (BUILD_PLAN.md §5), so this accepts
+    No source ever supplied an example, so this accepts
     ISO 8601 with or without an offset/`Z`, and logs+gives up on anything
     else rather than crashing.
     """
@@ -468,11 +468,10 @@ def _build_history_de(
     """Build canonical ``history`` from ``sendungsverlauf.events[]``.
 
     Sorted defensively — the three reconstruction sources hold *incompatible*
-    assumptions about wire order (BUILD_PLAN.md §5), so nothing here relies
+    assumptions about wire order, so nothing here relies
     on it. ``status`` stays ``None`` on every entry: the free-text
     ``events[].status`` is an open, localised vocabulary no source
-    enumerates, and BUILD_PLAN.md §6 is explicit that it must never be keyed
-    off for logic.
+    enumerates, and it must never be keyed off for logic.
     """
     parseable: list[tuple[datetime, dict]] = []
     for event in events:
@@ -496,7 +495,7 @@ def _build_history_de(
 
 
 def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
-    """Probe all four contested delivery-window keys (BUILD_PLAN.md §5).
+    """Probe all four contested delivery-window keys.
 
     Prefers the ``Von``/``Bis`` pair when present (canonical wants two
     timestamps, not a display string), falling back to the singular
@@ -548,7 +547,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     maximal_fortschritt = verlauf.get("maximalFortschritt")
 
     # Contested: raw_status prefers sendungsverlauf.status (2/3 sources);
-    # kurzStatus is logged but not used as the primary text (§5).
+    # kurzStatus is logged but not used as the primary text.
     raw_status = verlauf.get("status") or None
     kurz_status = verlauf.get("kurzStatus")
     if kurz_status:
@@ -560,7 +559,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
 
     # Contested: two sources read istZugestellt, one derives from the
     # ladder. Read the flag when present, else derive; warn once per parcel
-    # if they ever disagree (BUILD_PLAN.md §5/§7a).
+    # if they ever disagree.
     delivered_flag = details.get("istZugestellt")
     try:
         derived_delivered = int(fortschritt) >= int(maximal_fortschritt or 5)
@@ -605,7 +604,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         # `.zustellung.empfaenger.name` is "who took the parcel", not
         # necessarily the addressee (Packstation/Filiale/neighbour) — single
         # source, so it stays out of `receiver` until a tester export
-        # confirms the semantics (BUILD_PLAN.md §5). It is still present,
+        # confirms the semantics. It is still present,
         # redacted, inside `raw`.
         "sender": None,
         "receiver": None,
@@ -616,8 +615,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         "planned_from": planned_from,
         "planned_to": planned_to,
         "pickup": status is ParcelStatus.AT_PICKUP_POINT,
-        # No source names a Packstation/Filiale field — the largest known gap
-        # (BUILD_PLAN.md §6/§7c).
+        # No source names a Packstation/Filiale field — the largest known gap.
         "pickup_point": None,
         "url": tracking_url,
         "weight": None,

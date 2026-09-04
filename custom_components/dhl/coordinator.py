@@ -2,7 +2,7 @@
 
 Fetching and event firing only — the parcel mapping lives in :mod:`.parcels`
 (which dispatches into :mod:`.countries.de`). One endpoint serves both
-models (BUILD_PLAN.md §4): the account inbox is fetched unconditionally,
+models: the account inbox is fetched unconditionally,
 and any manually-tracked code (`dhl.track_parcel`) not already present in the
 inbox is fetched by number and merged in.
 """
@@ -127,13 +127,12 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._cached_device_id: str | None = None
         # Timestamp of the last successful poll (diagnostic sensor).
         self.last_success_time: datetime | None = None
-        # rateLimited is in-band on every response (BUILD_PLAN.md §5) — warn
+        # rateLimited is in-band on every response — warn
         # only on the false->true flip, not on every poll it stays true.
         self._rate_limited_last = False
         # Consecutive-poll streak at OUT_FOR_DELIVERY per barcode, and which
         # barcodes have already been warned about — the suspected
-        # Packstation-arrival case the fortschritt ladder can't express
-        # (BUILD_PLAN.md §6/§7a).
+        # Packstation-arrival case the fortschritt ladder can't express.
         self._out_for_delivery_streak: dict[str, int] = {}
         self._stall_warned: set[str] = set()
 
@@ -194,7 +193,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         return extra
 
     def _warn_rate_limited(self, rate_limited: bool) -> None:
-        """Log a WARNING on the false->true flip only (BUILD_PLAN.md §5)."""
+        """Log a WARNING on the false->true flip only."""
         if rate_limited and not self._rate_limited_last:
             _LOGGER.warning(
                 "DHL Germany reported rateLimited=true — the integration "
@@ -206,9 +205,9 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
     def _track_out_for_delivery_stall(self, parcels: list[dict]) -> None:
         """Warn once per barcode stuck at OUT_FOR_DELIVERY across polls.
 
-        The fortschritt ladder cannot express `at_pickup_point` at all
-        (BUILD_PLAN.md §6) — a parcel that arrived at a Packstation is the
-        most likely thing hiding behind a status that never advances past
+        The fortschritt ladder cannot express `at_pickup_point` at all — a
+        parcel that arrived at a Packstation is the most likely thing hiding
+        behind a status that never advances past
         "out for delivery".
         """
         seen = set()

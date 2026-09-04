@@ -42,7 +42,7 @@ KNOWN_CAPABILITIES = frozenset(
 # DHL DE never exposes weight or dimensions (no source names either field).
 # ``pickup_point`` stays out too: none of the three OSS clients the payload was
 # reconstructed from names a Packstation/Filiale field, and that is the single
-# largest known gap in this carrier's mapping (BUILD_PLAN.md §6/§7c). The
+# largest known gap in this carrier's mapping. The
 # delivery window is contested between two shapes but both are implemented, so
 # it counts.
 CAPABILITIES = frozenset({"delivery_window", "url", "history"})
@@ -75,14 +75,10 @@ DHL_DE_REDIRECT_URL_DOCS_URL = (
 # ---------------------------------------------------------------------------
 # DHL Germany (Akamai CIAM OIDC + the www.dhl.de account-inbox endpoint)
 # ---------------------------------------------------------------------------
-#
-# See carrier-research/dhl/api/dhl-de/ (private) for the full mechanics this
-# is built from — app-auth.md's live-verified login round trip and the
-# payload reconstruction BUILD_PLAN.md §5/§6 are written against.
 
 # OIDC root ends in `/login` — the bare tenant root is display-only and 404s
 # on a discovery fetch. Authorization/token endpoints are read from the
-# discovery document at runtime, never hardcoded, per the build plan.
+# discovery document at runtime, never hardcoded.
 DHL_DE_OIDC_ROOT = "https://login.dhl.de/af5f9bb6-27ad-4af4-9445-008e7a5cddb8/login"
 DHL_DE_DISCOVERY_URL = f"{DHL_DE_OIDC_ROOT}/.well-known/openid-configuration"
 
@@ -132,7 +128,7 @@ DHL_DE_REQUEST_TIMEOUT_SECONDS = 30
 
 # One JSON endpoint serves both models: `piececode` omitted is the account
 # inbox, `piececode=<code>&cid=app` is the by-number lookup the `track_parcel`
-# service drives. `noRedirect=true` is required (BUILD_PLAN.md §4) — without
+# service drives. `noRedirect=true` is required — without
 # it the endpoint has been observed to answer 303.
 DHL_DE_TRACKING_URL = "https://www.dhl.de/int-verfolgen/data/search"
 DHL_DE_PUBLIC_TRACKING_URL = (
@@ -158,7 +154,7 @@ DHL_DE_TRACKING_HEADERS = {
 }
 
 # `sendungsinfo.sendungsliste` value that excludes an element from the inbox
-# unless it would empty the list (BUILD_PLAN.md §5b) — the only value any
+# unless it would empty the list — the only value any
 # source names.
 DHL_DE_ARCHIVED_MARKER = "ARCHIVIERT"
 
@@ -195,7 +191,7 @@ CONF_ACCOUNT_SUBJECT = "account_subject"
 CONF_TRACKED_CODES = "tracked_codes"
 
 # DHL DE parcel numbers are commonly 12-20 digits, but `JVGL…`-style
-# alphanumerics also resolve (BUILD_PLAN.md §4). Do not tighten to
+# alphanumerics also resolve. Do not tighten to
 # digits-only.
 TRACKING_CODE_REGEX = r"^[A-Za-z0-9]{8,25}$"
 CONF_TRACKING_CODE = "tracking_code"

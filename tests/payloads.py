@@ -1,9 +1,9 @@
 """Synthetic DHL Germany ``sendungen`` element samples.
 
-Built from BUILD_PLAN.md §5's reconstructed field list — **no populated
+Built from a reconstructed field list — **no populated
 element has ever been observed on the wire** by anyone in this suite
 (`payload: reconstructed`). Kept in one module, mirroring the rest of the
-suite's convention, so the eventual tester capture (§7c) only needs to
+suite's convention, so the eventual tester capture only needs to
 change values here rather than scattered test bodies.
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ def element(
     retoure: bool | None = None,
     ruecksendung: bool | None = None,
 ) -> dict:
-    """Build one ``sendungen[i]`` element from the §5 field inventory."""
+    """Build one ``sendungen[i]`` element from the reconstructed field inventory."""
     sendungsverlauf: dict = {
         "fortschritt": fortschritt,
         "maximalFortschritt": maximal_fortschritt,
@@ -112,7 +112,7 @@ def archived_sample(code: str = "ARCHIVED0001") -> dict:
 
 
 def not_found_sample(code: str = "UNKNOWN00001") -> dict:
-    """A populated element that is not a real parcel (§5a)."""
+    """A populated element that is not a real parcel."""
     return {"id": code, "sendungNichtGefunden": {"keineDatenVerfuegbar": True}}
 
 

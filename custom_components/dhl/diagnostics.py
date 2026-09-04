@@ -1,13 +1,13 @@
 """Diagnostics support for the DHL parcel tracker integration.
 
-This export is not only a support tool here — per BUILD_PLAN.md §7b/§7c it is
-the instrument the payload mapping gets *finished* with: nobody in this
-suite has ever seen a populated ``sendungen`` element, so a tester's
-diagnostics download is what corrects §5/§6 (see countries/de/__init__.py's
-module docstring). **Redact values, never structure** — a redacted string
-stays a string, a redacted number stays a number, and no key is ever
-dropped. See ``tests/countries/test_de.py``'s redaction test, which asserts
-the key set survives untouched.
+This export is not only a support tool here — it is the instrument the
+payload mapping gets *finished* with: nobody in this suite has ever seen a
+populated ``sendungen`` element, so a tester's diagnostics download is what
+corrects that mapping (see countries/de/__init__.py's module docstring).
+**Redact values, never structure** — a redacted string stays a string, a
+redacted number stays a number, and no key is ever dropped. See
+``tests/countries/test_de.py``'s redaction test, which asserts the key set
+survives untouched.
 """
 from __future__ import annotations
 
@@ -21,14 +21,14 @@ from .const import CONF_TRACKED_CODES
 
 # Redact values, keep every key — a missing key would be indistinguishable
 # from a key the API never sent, which is exactly the ambiguity this export
-# exists to remove (BUILD_PLAN.md §7b).
+# exists to remove.
 #
 # Deliberately does NOT include "zustellung" or "empfaenger": those are
 # objects, and async_redact_data replaces a redacted key's whole value —
 # blanket-redacting the container would collapse
 # sendungsdetails.zustellung.empfaenger.name's nesting into a string, which
-# is precisely the "a naive top-level redactor misses this" trap
-# BUILD_PLAN.md §7b calls out by name. Redacting the leaf "name" key reaches
+# is precisely the trap a naive top-level redactor falls into. Redacting the
+# leaf "name" key reaches
 # it without losing the structure around it.
 TO_REDACT = {
     # canonical fields we publish ourselves

@@ -1,11 +1,10 @@
 """Services for the DHL parcel tracker integration.
 
 `dhl.track_parcel` / `dhl.untrack_parcel` add or remove a manually-tracked
-tracking number — the by-number half of the account inbox
-(BUILD_PLAN.md §4), for a parcel that is not (or not yet) in the logged-in
-account's own inbox. Unlike an account-less carrier's `track_parcel`, this
-never replaces the account's auto-import; it only adds numbers the account
-would not otherwise surface.
+tracking number — the by-number half of the account inbox, for a parcel that
+is not (or not yet) in the logged-in account's own inbox. Unlike an
+account-less carrier's `track_parcel`, this never replaces the account's
+auto-import; it only adds numbers the account would not otherwise surface.
 """
 from __future__ import annotations
 
@@ -39,7 +38,7 @@ def normalize_tracking_code(value: str) -> str:
 
 
 def valid_tracking_code(value: str) -> bool:
-    """DHL DE numbers are 8-25 alphanumeric chars (BUILD_PLAN.md §4) — not digits-only."""
+    """DHL DE numbers are 8-25 alphanumeric chars — not digits-only."""
     return bool(_CODE_RE.match(value))
 
 

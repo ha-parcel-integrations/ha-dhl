@@ -1,9 +1,8 @@
 """Tests for DHL diagnostics.
 
-Includes the structure-preserving redaction test BUILD_PLAN.md §7b calls
-for explicitly: a synthetic populated body run through the redactor must
-keep the exact same key set, at every depth, before and after — the thing a
-naive top-level redactor misses on
+Includes the structure-preserving redaction test: a synthetic populated body
+run through the redactor must keep the exact same key set, at every depth,
+before and after — the thing a naive top-level redactor misses on
 ``sendungsdetails.zustellung.empfaenger.name``.
 """
 from __future__ import annotations

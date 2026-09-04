@@ -56,7 +56,7 @@ def _reset_one_shot_state():
 
 
 # ---------------------------------------------------------------------------
-# element selection (§5a, §5b)
+# element selection
 # ---------------------------------------------------------------------------
 
 
@@ -203,7 +203,7 @@ async def test_transport_converts_rejected_refresh_token_to_auth_error():
 
 
 # ---------------------------------------------------------------------------
-# status map — the fortschritt ladder (§6)
+# status map — the fortschritt ladder
 # ---------------------------------------------------------------------------
 
 
@@ -249,7 +249,7 @@ def test_value_equal_to_maximal_is_always_delivered():
 
 
 # ---------------------------------------------------------------------------
-# normalize_parcel_de (§5)
+# normalize_parcel_de
 # ---------------------------------------------------------------------------
 
 
@@ -293,7 +293,7 @@ def test_normalize_missing_barcode_url_is_bare():
     )
 
 
-# --- the delivered flag: contested (§5) --------------------------------
+# --- the delivered flag: contested -------------------------------------
 
 
 def test_delivered_flag_read_when_present_and_true():
@@ -314,7 +314,7 @@ def test_delivered_conflict_between_flag_and_derivation_warns_once(caplog):
     assert "disagrees" in caplog.text.lower()
 
 
-# --- raw_status: contested (§5) -----------------------------------------
+# --- raw_status: contested ----------------------------------------------
 
 
 def test_raw_status_prefers_status_over_kurz_status():
@@ -333,7 +333,7 @@ def test_kurz_status_presence_warns_once(caplog):
     assert "kurzstatus" in caplog.text.lower()
 
 
-# --- delivery window: contested (§5) -------------------------------------
+# --- delivery window: contested ------------------------------------------
 
 
 def test_delivery_window_prefers_von_bis_pair():
@@ -389,7 +389,7 @@ def test_delivery_window_shape_warns_once(caplog):
     assert "delivery-window" in caplog.text.lower()
 
 
-# --- returning: candidate mechanism (§6) ---------------------------------
+# --- returning: candidate mechanism --------------------------------------
 
 
 def test_retoure_true_maps_to_returning():
@@ -402,7 +402,7 @@ def test_ruecksendung_true_maps_to_returning():
     assert normalize_parcel_de(raw)["status"] == ParcelStatus.RETURNING
 
 
-# --- history: sorted defensively, status always None (§5) ---------------
+# --- history: sorted defensively, status always None --------------------
 
 
 def test_history_sorted_oldest_to_newest_regardless_of_wire_order():
@@ -460,7 +460,7 @@ def test_naive_event_timestamp_assumed_berlin():
     assert history[0]["timestamp"] == "2026-06-15T10:00:00+00:00"
 
 
-# --- unexpected keys / payload shape (§7a) -------------------------------
+# --- unexpected keys / payload shape -------------------------------------
 
 
 def test_unexpected_sendungsdetails_key_warns_once(caplog):
