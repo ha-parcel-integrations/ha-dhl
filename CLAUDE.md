@@ -160,11 +160,15 @@ inbox comes back populated.
   disagreement), `raw_status` (prefer `.status`, log `.kurzStatus`), and the
   delivery window (prefer the `Von`/`Bis` pair, fall back to the singular
   `zustellzeitfenster`/`zustelldatum`).
-- **`receiver` stays `None`.** `.zustellung.empfaenger.name` is single-source
-  and means "who physically took the parcel" (Packstation/Filiale/neighbour),
-  not necessarily the addressee — it is not mapped to `receiver` until a
-  tester export confirms the semantics. It is still present, redacted, in
-  `raw`.
+- **`sender`/`receiver` come from `sendungsinfo.sendungsname`, keyed on
+  `sendungsrichtung`** (issue #2, reported live): `ANKOMMEND` (incoming) means
+  the name is the sender, `AUSGEHEND` (outgoing) means it's the recipient. An
+  unrecognised direction warns once and leaves both `None` rather than
+  guessing. `.zustellung.empfaenger.name` stays a separate, unused source —
+  single-source and means "who physically took the parcel"
+  (Packstation/Filiale/neighbour), not necessarily the addressee — it is not
+  mapped to `receiver` until a tester export confirms the semantics. It is
+  still present, redacted, in `raw`.
 - **`weight`/`dimensions`/`pickup_point` are always `None`** — no source
   names any of the three. Keep `CAPABILITIES` in `const.py` in sync if that
   ever changes.

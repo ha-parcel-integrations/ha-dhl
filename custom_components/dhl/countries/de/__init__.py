@@ -364,6 +364,47 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "twoManHandling",
 }
 
+_KNOWN_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "AUSGEHEND"}
+_sendungsrichtung_values_logged: set[str] = set()
+
+
+def _warn_sendungsrichtung_value(value: str) -> None:
+    """Log a `sendungsrichtung` value outside the confirmed vocabulary, once each."""
+    if value in _KNOWN_SENDUNGSRICHTUNG_VALUES or value in _sendungsrichtung_values_logged:
+        return
+    _sendungsrichtung_values_logged.add(value)
+    _LOGGER.warning(
+        "DHL Germany reported a new sendungsinfo.sendungsrichtung value — "
+        "help us enumerate it. Open an issue and paste this line: %s\n"
+        "  value=%s",
+        NEW_ISSUE_URL,
+        value,
+    )
+
+
+def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
+    """Map ``sendungsinfo.sendungsname`` to `sender` or `receiver` by direction.
+
+    Single confirmed field (issue #2): for an incoming shipment
+    (``sendungsrichtung: ANKOMMEND``) `sendungsname` names the sender; for an
+    outgoing one (``AUSGEHEND``) it names the recipient instead. An
+    unrecognised/missing direction leaves both `None` rather than guessing.
+    """
+    name = sendungsinfo.get("sendungsname")
+    if not isinstance(name, str) or not name:
+        return None, None
+    richtung = sendungsinfo.get("sendungsrichtung")
+    if not isinstance(richtung, str):
+        return None, None
+    richtung = richtung.upper()
+    if richtung == "ANKOMMEND":
+        return name, None
+    if richtung == "AUSGEHEND":
+        return None, name
+    _warn_sendungsrichtung_value(richtung)
+    return None, None
+
+
 _unexpected_keys_logged: set[str] = set()
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
@@ -536,6 +577,10 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     """
     barcode = raw.get("id")
 
+    sendungsinfo = raw.get("sendungsinfo")
+    sendungsinfo = sendungsinfo if isinstance(sendungsinfo, dict) else {}
+    sender, receiver = _sender_receiver(sendungsinfo)
+
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
     _warn_unexpected_sendungsdetails_keys(details)
@@ -606,8 +651,8 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         # source, so it stays out of `receiver` until a tester export
         # confirms the semantics. It is still present,
         # redacted, inside `raw`.
-        "sender": None,
-        "receiver": None,
+        "sender": sender,
+        "receiver": receiver,
         "status": status,
         "raw_status": raw_status,
         "delivered": delivered,

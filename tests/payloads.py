@@ -29,6 +29,8 @@ def element(
     events: list[dict] | None = None,
     zustellung: dict | None = None,
     sendungsliste: str | None = None,
+    sendungsname: str | None = None,
+    sendungsrichtung: str | None = None,
     retoure: bool | None = None,
     ruecksendung: bool | None = None,
 ) -> dict:
@@ -55,8 +57,15 @@ def element(
         sendungsdetails["ruecksendung"] = ruecksendung
 
     built: dict = {"id": code, "sendungsdetails": sendungsdetails}
+    sendungsinfo: dict = {}
     if sendungsliste is not None:
-        built["sendungsinfo"] = {"sendungsliste": sendungsliste}
+        sendungsinfo["sendungsliste"] = sendungsliste
+    if sendungsname is not None:
+        sendungsinfo["sendungsname"] = sendungsname
+    if sendungsrichtung is not None:
+        sendungsinfo["sendungsrichtung"] = sendungsrichtung
+    if sendungsinfo:
+        built["sendungsinfo"] = sendungsinfo
     return built
 
 

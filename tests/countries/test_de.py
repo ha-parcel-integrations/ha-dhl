@@ -37,6 +37,7 @@ from ..payloads import (
 def _reset_one_shot_state():
     """Keep countries/de's one-shot WARNING dedup state isolated per test."""
     de_module._sendungsliste_values_logged.clear()
+    de_module._sendungsrichtung_values_logged.clear()
     de_module._unmapped_fortschritt_logged.clear()
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
@@ -46,6 +47,7 @@ def _reset_one_shot_state():
     de_module._timestamp_parse_failed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
+    de_module._sendungsrichtung_values_logged.clear()
     de_module._unmapped_fortschritt_logged.clear()
     de_module._maximal_fortschritt_logged = False
     de_module._unexpected_keys_logged.clear()
@@ -282,6 +284,43 @@ def test_normalize_delivered_parcel_clears_eta():
     assert parcel["delivered_at"] == "2026-04-29T11:12:42+00:00"
     assert parcel["planned_from"] is None
     assert parcel["planned_to"] is None
+
+
+def test_normalize_incoming_maps_sendungsname_to_sender():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Example Shop GmbH",
+        sendungsrichtung="ANKOMMEND",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] == "Example Shop GmbH"
+    assert parcel["receiver"] is None
+
+
+def test_normalize_outgoing_maps_sendungsname_to_receiver():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] is None
+    assert parcel["receiver"] == "Jane Doe"
+
+
+def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Example Shop GmbH",
+        sendungsrichtung="WHATEVER",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] is None
+    assert parcel["receiver"] is None
+    assert "sendungsrichtung" in caplog.text.lower()
 
 
 def test_normalize_missing_barcode_url_is_bare():
