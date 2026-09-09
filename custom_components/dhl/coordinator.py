@@ -37,7 +37,12 @@ from .const import (
     ParcelStatus,
 )
 from .countries.de.session import DHLDeSession
-from .parcels import apply_delivered_filter, normalize_parcel, sort_parcels_by_ts
+from .parcels import (
+    apply_delivered_filter,
+    is_outgoing,
+    normalize_parcel,
+    sort_parcels_by_ts,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -114,6 +119,12 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._client = client
         self._de_session = de_session
         self.delivered: list[dict] = []
+        # Outgoing (sendungsrichtung: AUSGEHEND) elements, split out of the
+        # same account-inbox list as incoming ones — mirrors ha-dhl-nl's
+        # `data`/`delivered_outgoing` pair, just sourced from one endpoint
+        # instead of two.
+        self.outgoing: list[dict] = []
+        self.delivered_outgoing: list[dict] = []
         # barcode -> last seen ParcelStatus / (planned_from, planned_to).
         # ``None`` on the first refresh so events are suppressed for parcels
         # that already existed when the integration started — otherwise every
@@ -122,6 +133,13 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._known_delivery_times: (
             dict[str, tuple[str | None, str | None]] | None
         ) = None
+        # Same suppression, for the outgoing bucket — see
+        # `_fire_outgoing_change_events`. Keyed on (status, delivered) rather
+        # than status alone: status is force-``UNKNOWN`` for every outgoing
+        # parcel (the fortschritt ladder is unconfirmed for that direction),
+        # so it can never actually reach ``DELIVERED`` — the terminal hop is
+        # detected from the independently-derived `delivered` bool instead.
+        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = None
         # Cached device id, attached to every fired event so device-trigger
         # automations can filter to this account's device.
         self._cached_device_id: str | None = None
@@ -283,9 +301,12 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             self._persist_refresh_token_if_rotated()
 
         include_history = self._include_history
+        incoming_elements = [e for e in elements if not is_outgoing(e, country="DE")]
+        outgoing_elements = [e for e in elements if is_outgoing(e, country="DE")]
+
         normalized = [
             normalize_parcel(raw, country="DE", include_history=include_history)
-            for raw in elements
+            for raw in incoming_elements
         ]
         active = [parcel for parcel in normalized if not parcel["delivered"]]
         delivered = [parcel for parcel in normalized if parcel["delivered"]]
@@ -312,11 +333,74 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel.get("barcode")
         }
 
+        normalized_outgoing = [
+            normalize_parcel(raw, country="DE", include_history=include_history)
+            for raw in outgoing_elements
+        ]
+        active_outgoing = [p for p in normalized_outgoing if not p["delivered"]]
+        delivered_outgoing = [p for p in normalized_outgoing if p["delivered"]]
+
+        self.delivered_outgoing = apply_delivered_filter(
+            sort_parcels_by_ts(delivered_outgoing, "delivered_at", descending=True),
+            self.config_entry,
+        )
+        self.outgoing = sort_parcels_by_ts(active_outgoing, "planned_from")
+
+        outgoing = self.outgoing + self.delivered_outgoing
+        self._fire_outgoing_change_events(outgoing)
+        self._known_outgoing_state = {
+            parcel["barcode"]: (parcel["status"], parcel["delivered"])
+            for parcel in outgoing
+            if parcel.get("barcode")
+        }
+
         self.last_success_time = datetime.now(timezone.utc)
         self.update_interval = compute_poll_interval(
             self.config_entry.entry_id, normalized_active
         )
         return normalized_active
+
+    def _fire_outgoing_change_events(self, parcels: list[dict]) -> None:
+        """Fire status/delivered events for outgoing (AUSGEHEND) parcels.
+
+        Mirrors ha-dhl-nl's outgoing event contract: silent on the very
+        first refresh, the hop **to** delivered fires only
+        ``_outgoing_parcel_delivered`` (never also
+        ``_outgoing_parcel_status_changed``), and there is no outgoing
+        ``registered`` or ``delivery_time_changed``. The terminal hop is
+        read off the `delivered` bool rather than `status == DELIVERED` —
+        `status` is force-``UNKNOWN`` for every outgoing parcel (the
+        fortschritt ladder is unconfirmed for that direction, see
+        countries/de/__init__.py), so it can never actually reach
+        ``DELIVERED`` on its own.
+        """
+        if self._known_outgoing_state is None:
+            return
+
+        device_id = self._device_id()
+
+        for parcel in parcels:
+            barcode = parcel.get("barcode")
+            if not barcode or barcode not in self._known_outgoing_state:
+                continue
+            old_status, old_delivered = self._known_outgoing_state[barcode]
+            new_status = parcel["status"]
+            new_delivered = parcel["delivered"]
+            if new_delivered and not old_delivered:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_outgoing_parcel_delivered",
+                    {**parcel, "device_id": device_id},
+                )
+            elif old_status != new_status:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_outgoing_parcel_status_changed",
+                    {
+                        **parcel,
+                        "device_id": device_id,
+                        "old_status": old_status,
+                        "new_status": new_status,
+                    },
+                )
 
     def _fire_change_events(self, parcels: list[dict]) -> None:
         """Fire registered / status-changed / delivered / delivery-time events.

@@ -16,6 +16,7 @@ from custom_components.dhl.countries.de import (
     async_get_inbox_envelope,
     find_element_by_id,
     is_not_found,
+    is_outgoing_element,
     map_parcel_status_de,
     normalize_parcel_de,
     select_active_elements,
@@ -45,6 +46,7 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_shape_logged = False
     de_module._timestamp_parse_failed_logged = False
+    de_module._outgoing_status_unconfirmed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
     de_module._sendungsrichtung_values_logged.clear()
@@ -55,6 +57,7 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_shape_logged = False
     de_module._timestamp_parse_failed_logged = False
+    de_module._outgoing_status_unconfirmed_logged = False
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +336,57 @@ def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
     assert parcel["sender"] is None
     assert parcel["receiver"] is None
     assert "sendungsrichtung" in caplog.text.lower()
+
+
+def test_normalize_outgoing_status_is_unknown_and_warns_once(caplog):
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["status"] == ParcelStatus.UNKNOWN
+    assert "outgoing" in caplog.text.lower()
+
+
+def test_normalize_outgoing_status_warning_fires_only_once(caplog):
+    a = element(
+        "A", fortschritt=4, sendungsname="Jane Doe", sendungsrichtung="AUSGEHEND"
+    )
+    b = element(
+        "B", fortschritt=4, sendungsname="John Doe", sendungsrichtung="AUSGEHEND"
+    )
+    normalize_parcel_de(a)
+    normalize_parcel_de(b)
+    assert caplog.text.lower().count("fortschritt ladder was only ever confirmed") == 1
+
+
+def test_normalize_outgoing_retoure_still_wins_over_unknown():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+        retoure=True,
+    )
+    assert normalize_parcel_de(raw)["status"] == ParcelStatus.RETURNING
+
+
+def test_is_outgoing_element_true_for_ausgehend():
+    raw = element(
+        ACTIVE_CODE, fortschritt=4, sendungsname="Jane Doe", sendungsrichtung="AUSGEHEND"
+    )
+    assert is_outgoing_element(raw) is True
+
+
+def test_is_outgoing_element_false_for_incoming_and_unknown():
+    incoming = element(
+        ACTIVE_CODE, fortschritt=4, sendungsname="Shop", sendungsrichtung="ANKOMMEND"
+    )
+    no_direction = element(ACTIVE_CODE, fortschritt=4)
+    assert is_outgoing_element(incoming) is False
+    assert is_outgoing_element(no_direction) is False
 
 
 def test_normalize_missing_barcode_url_is_bare():

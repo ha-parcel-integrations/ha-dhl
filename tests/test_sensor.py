@@ -8,6 +8,8 @@ from custom_components.dhl.sensor import (
     DHLIncomingParcelsSensor,
     DHLLastUpdateSensor,
     DHLNextDeliverySensor,
+    DHLOutgoingDeliveredSensor,
+    DHLOutgoingParcelsSensor,
     DHLParcelSensor,
 )
 
@@ -18,10 +20,19 @@ def _entry(entry_id: str = "e1") -> MagicMock:
     return entry
 
 
-def _coordinator(data: list[dict], delivered: list[dict] | None = None) -> MagicMock:
+def _coordinator(
+    data: list[dict],
+    delivered: list[dict] | None = None,
+    outgoing: list[dict] | None = None,
+    delivered_outgoing: list[dict] | None = None,
+) -> MagicMock:
     coordinator = MagicMock()
     coordinator.data = data
     coordinator.delivered = delivered if delivered is not None else []
+    coordinator.outgoing = outgoing if outgoing is not None else []
+    coordinator.delivered_outgoing = (
+        delivered_outgoing if delivered_outgoing is not None else []
+    )
     return coordinator
 
 
@@ -92,6 +103,22 @@ def test_delivered_sensor():
     sensor = DHLDeliveredParcelsSensor(coordinator, _entry())
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "D"
+
+
+def test_outgoing_parcels_sensor():
+    coordinator = _coordinator([], outgoing=[_parcel("O", status=ParcelStatus.UNKNOWN)])
+    sensor = DHLOutgoingParcelsSensor(coordinator, _entry())
+    assert sensor.native_value == 1
+    assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "O"
+
+
+def test_outgoing_delivered_sensor():
+    coordinator = _coordinator(
+        [], delivered_outgoing=[_parcel("O", status=ParcelStatus.UNKNOWN)]
+    )
+    sensor = DHLOutgoingDeliveredSensor(coordinator, _entry())
+    assert sensor.native_value == 1
+    assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "O"
 
 
 def test_last_update_sensor():

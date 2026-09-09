@@ -44,7 +44,7 @@ DHL's Netherlands business is a separate integration,
 - Automatic parcel import from your DHL Kundenkonto — no tracking codes to enter for your own parcels
 - `dhl.track_parcel` / `dhl.untrack_parcel` services to also track a parcel that is not (yet) in your account's inbox
 - Per-parcel sensor with the canonical status (`registered` / `in_transit` / `out_for_delivery` / `delivered` / …), DHL's own status text, the expected delivery window and a tracking deep-link
-- Summary sensors: incoming parcels, next delivery, recently delivered parcels
+- Summary sensors: incoming parcels, next delivery, recently delivered parcels, outgoing parcels
 - Read-only **Deliveries** calendar with the expected delivery windows
 - Events + device triggers for no-code automations (parcel registered, status changed, delivered, delivery time changed)
 - Opt-in per-parcel status history
@@ -122,9 +122,13 @@ Standard HA removal applies: **Settings → Devices & Services → DHL → ⋮ �
 | `sensor.dhl_<account>_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.dhl_<account>_next_delivery` | Earliest expected delivery moment across all active parcels |
 | `sensor.dhl_<account>_delivered_parcels` | Recently delivered parcels (see the retention option) |
+| `sensor.dhl_<account>_outgoing_parcels` | Number of active outgoing (`AUSGEHEND`) parcels, full list under the `parcels` attribute |
+| `sensor.dhl_<account>_outgoing_delivered_parcels` | Recently delivered outgoing parcels (see the retention option) |
 | `sensor.dhl_<account>_last_successful_update` | Diagnostic: when DHL was last polled successfully |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
+
+Outgoing parcels are shipments DHL reports as sent *by* your account rather than to it — DHL exposes this as a `sendungsrichtung` field (`ANKOMMEND`/`EINGEHEND` incoming, `AUSGEHEND` outgoing) on the same account-inbox listing incoming parcels come from, no separate endpoint. Their canonical `status` always reports `unknown`: the 0-5 progress ladder below was only ever confirmed against incoming shipments, so guessing what it means for an outgoing one isn't done — the raw DHL status text is still available as `raw_status`. This is also genuinely unconfirmed data: no known source (including a second open-source DHL client) has ever observed a populated `AUSGEHEND` element on the wire, so this sensor may simply stay at 0 until a real export proves otherwise — [please open an issue](https://github.com/ha-parcel-integrations/ha-dhl/issues/new) if yours doesn't.
 
 ## Parcel status reference
 
@@ -153,8 +157,10 @@ The integration fires these on the event bus (also available as device triggers 
 | `dhl_parcel_status_changed` | A parcel's canonical status changes (`old_status` / `new_status` in the payload), except the final hop to delivered |
 | `dhl_parcel_delivered` | A parcel is delivered |
 | `dhl_parcel_delivery_time_changed` | The expected delivery window changes |
+| `dhl_outgoing_parcel_status_changed` | An outgoing parcel's canonical status changes (`old_status` / `new_status` in the payload), except the final hop to delivered |
+| `dhl_outgoing_parcel_delivered` | An outgoing parcel is delivered |
 
-Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up.
+Every payload is the full normalised parcel plus the hub's `device_id`. Events are suppressed on the first refresh after start-up. There is no outgoing `registered` or `delivery_time_changed` event.
 
 ## Services
 

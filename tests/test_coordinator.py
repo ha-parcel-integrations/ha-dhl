@@ -18,7 +18,24 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.coordinator import DHLCoordinator, compute_poll_interval
 
-from .payloads import ACTIVE_CODE, active_sample, delivered_sample, in_transit_sample
+from .payloads import (
+    ACTIVE_CODE,
+    active_sample,
+    delivered_sample,
+    element,
+    in_transit_sample,
+)
+
+
+def outgoing_sample(code: str = "OUT0000000001", *, delivered: bool = False) -> dict:
+    """An outgoing (AUSGEHEND) element, active or delivered."""
+    return element(
+        code,
+        fortschritt=5 if delivered else 3,
+        ist_zugestellt=delivered,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+    )
 
 
 def _entry(**options) -> MockConfigEntry:
@@ -67,6 +84,24 @@ async def test_update_splits_active_and_delivered(hass):
     assert [parcel["barcode"] for parcel in data] == [ACTIVE_CODE]
     assert len(coordinator.delivered) == 1
     assert coordinator.last_success_time is not None
+
+
+async def test_update_splits_outgoing_from_incoming(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client(
+        [active_sample(), outgoing_sample("OUT1", delivered=False), outgoing_sample("OUT2", delivered=True)]
+    )
+    coordinator = _coordinator(hass, entry, client)
+
+    data = await coordinator._async_update_data()
+
+    assert [parcel["barcode"] for parcel in data] == [ACTIVE_CODE]
+    assert coordinator.delivered == []
+    assert [parcel["barcode"] for parcel in coordinator.outgoing] == ["OUT1"]
+    assert [parcel["barcode"] for parcel in coordinator.delivered_outgoing] == ["OUT2"]
+    assert coordinator.outgoing[0]["status"] == ParcelStatus.UNKNOWN
+    assert coordinator.outgoing[0]["receiver"] == "Jane Doe"
 
 
 async def test_update_handles_an_empty_inbox(hass):
@@ -428,6 +463,77 @@ async def test_fires_delivery_time_changed_event(hass):
 
     assert len(events) == 1
     assert events[0].data["new_planned_from"] == "2026-04-29T14:00:00+00:00"
+
+
+async def test_outgoing_first_refresh_fires_nothing(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry, _client([outgoing_sample("OUT1")]))
+
+    fired = []
+    for suffix in ("outgoing_parcel_status_changed", "outgoing_parcel_delivered"):
+        hass.bus.async_listen(f"{DOMAIN}_{suffix}", lambda e: fired.append(e))
+
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert fired == []
+
+
+async def test_outgoing_delivered_fires_delivered_not_status_changed(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client([outgoing_sample("OUT1", delivered=False)])
+    coordinator = _coordinator(hass, entry, client)
+
+    delivered = []
+    changed = []
+    hass.bus.async_listen(
+        f"{DOMAIN}_outgoing_parcel_delivered", lambda e: delivered.append(e)
+    )
+    hass.bus.async_listen(
+        f"{DOMAIN}_outgoing_parcel_status_changed", lambda e: changed.append(e)
+    )
+
+    await coordinator._async_update_data()  # first refresh: suppressed
+    client.async_get_incoming.return_value = (
+        [outgoing_sample("OUT1", delivered=True)],
+        False,
+    )
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert changed == []
+    assert len(delivered) == 1
+    assert delivered[0].data["barcode"] == "OUT1"
+
+
+async def test_outgoing_status_change_fires_status_changed(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    returning = element(
+        "OUT1",
+        fortschritt=3,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+        retoure=True,
+    )
+    client = _client([outgoing_sample("OUT1", delivered=False)])
+    coordinator = _coordinator(hass, entry, client)
+
+    events = []
+    hass.bus.async_listen(
+        f"{DOMAIN}_outgoing_parcel_status_changed", lambda e: events.append(e)
+    )
+
+    await coordinator._async_update_data()  # first refresh: suppressed
+    client.async_get_incoming.return_value = ([returning], False)
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert len(events) == 1
+    assert events[0].data["old_status"] == ParcelStatus.UNKNOWN
+    assert events[0].data["new_status"] == ParcelStatus.RETURNING
 
 
 async def test_event_carries_device_id(hass):

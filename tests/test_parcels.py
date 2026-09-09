@@ -20,12 +20,13 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.parcels import (
     apply_delivered_filter,
+    is_outgoing,
     normalize_parcel,
     parse_iso,
     sort_parcels_by_ts,
 )
 
-from .payloads import active_sample, delivered_sample
+from .payloads import active_sample, delivered_sample, element
 
 # ---------------------------------------------------------------------------
 # timestamp helper
@@ -74,6 +75,14 @@ def test_normalize_dispatches_to_de():
     parcel = normalize_parcel(delivered_sample(), country="DE")
     assert parcel["carrier"] == "DHL"
     assert parcel["status"] == ParcelStatus.DELIVERED
+
+
+def test_is_outgoing_dispatches_to_de():
+    outgoing = element(
+        "X", fortschritt=3, sendungsname="Jane Doe", sendungsrichtung="AUSGEHEND"
+    )
+    assert is_outgoing(outgoing, country="DE") is True
+    assert is_outgoing(active_sample(), country="DE") is False
 
 
 def test_capabilities_are_known_values():

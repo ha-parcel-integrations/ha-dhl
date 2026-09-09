@@ -19,10 +19,14 @@ from .const import (
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
 )
-from .countries.de import normalize_parcel_de
+from .countries.de import is_outgoing_element, normalize_parcel_de
 
 _NORMALIZERS = {
     "DE": normalize_parcel_de,
+}
+
+_OUTGOING_CLASSIFIERS = {
+    "DE": is_outgoing_element,
 }
 
 
@@ -32,6 +36,12 @@ def normalize_parcel(
     """Dispatch to the right country's ``normalize_parcel_<code>``."""
     normalizer = _NORMALIZERS[country]
     return normalizer(raw, include_history=include_history)
+
+
+def is_outgoing(raw: dict, *, country: str = DEFAULT_COUNTRY) -> bool:
+    """Dispatch to the right country's outgoing-element classifier."""
+    classifier = _OUTGOING_CLASSIFIERS[country]
+    return classifier(raw)
 
 
 def parse_iso(value: str | None) -> datetime | None:

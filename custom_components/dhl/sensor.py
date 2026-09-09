@@ -56,6 +56,8 @@ async def async_setup_entry(
         f"{entry_id}_incoming_parcels",
         f"{entry_id}_next_delivery",
         f"{entry_id}_delivered_parcels",
+        f"{entry_id}_outgoing_parcels",
+        f"{entry_id}_outgoing_delivered_parcels",
         f"{entry_id}_last_update",
     }
     for entity_entry in er.async_entries_for_config_entry(registry, entry_id):
@@ -79,6 +81,8 @@ async def async_setup_entry(
         )
     entities.append(DHLNextDeliverySensor(coordinator, entry))
     entities.append(DHLDeliveredParcelsSensor(coordinator, entry))
+    entities.append(DHLOutgoingParcelsSensor(coordinator, entry))
+    entities.append(DHLOutgoingDeliveredSensor(coordinator, entry))
     entities.append(DHLLastUpdateSensor(coordinator, entry))
 
     async_add_entities(entities)
@@ -268,6 +272,72 @@ class DHLDeliveredParcelsSensor(
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the extra state attributes."""
         return {"parcels": self.coordinator.delivered}
+
+
+class DHLOutgoingParcelsSensor(
+    CoordinatorEntity[DHLCoordinator], SensorEntity
+):
+    """Summary sensor: count of active outgoing (AUSGEHEND) DHL parcels.
+
+    No per-parcel sensors — same single-entity-with-a-list shape as
+    ``DHLDeliveredParcelsSensor``. See ``countries/de/__init__.py`` for why
+    this may realistically stay empty: no known source has ever observed a
+    populated ``AUSGEHEND`` element on the wire.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "outgoing_parcels"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_attribution = ATTRIBUTION
+    _unrecorded_attributes = frozenset({"parcels"})
+
+    def __init__(
+        self, coordinator: DHLCoordinator, entry: ConfigEntry
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_outgoing_parcels"
+        self._attr_device_info = build_device_info(entry)
+
+    @property
+    def native_value(self) -> int:
+        """Return the native value of the sensor."""
+        return len(self.coordinator.outgoing or [])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
+        return {"parcels": self.coordinator.outgoing or []}
+
+
+class DHLOutgoingDeliveredSensor(
+    CoordinatorEntity[DHLCoordinator], SensorEntity
+):
+    """Summary sensor: count of delivered outgoing (AUSGEHEND) DHL parcels."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "outgoing_delivered_parcels"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_attribution = ATTRIBUTION
+    _unrecorded_attributes = frozenset({"parcels"})
+
+    def __init__(
+        self, coordinator: DHLCoordinator, entry: ConfigEntry
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_outgoing_delivered_parcels"
+        self._attr_device_info = build_device_info(entry)
+
+    @property
+    def native_value(self) -> int:
+        """Return the native value of the sensor."""
+        return len(self.coordinator.delivered_outgoing or [])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the extra state attributes."""
+        return {"parcels": self.coordinator.delivered_outgoing or []}
 
 
 class DHLLastUpdateSensor(

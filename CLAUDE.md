@@ -180,6 +180,41 @@ inbox comes back populated.
   (Packstation/Filiale/neighbour), not necessarily the addressee — it is not
   mapped to `receiver` until a tester export confirms the semantics. It is
   still present, redacted, in `raw`.
+- **Outgoing parcels are split out of the same account-inbox list, not a
+  separate endpoint** — unlike `ha-dhl-nl`'s `DhlSentShipmentsCoordinator`
+  (genuinely separate API), DE has one endpoint and `sendungsrichtung`
+  splits it: `is_outgoing_element()` (`countries/de/__init__.py`) classifies
+  each raw `sendungen[]` element *before* normalization, `parcels.is_outgoing()`
+  dispatches it per-country, and `coordinator.py` partitions `elements` into
+  incoming/outgoing before calling `normalize_parcel` on each half — no new
+  canonical parcel-dict key, matching the suite contract
+  (`CONVENTIONS.md`'s parcel contract doesn't list a `type`/`direction`
+  field; ha-dhl-nl's own `isReturn`/`type` split works the same way, on the
+  raw payload, not the normalized one). `coordinator.outgoing` /
+  `.delivered_outgoing` mirror `.data`/`.delivered`, feeding
+  `DHLOutgoingParcelsSensor`/`DHLOutgoingDeliveredSensor` (`sensor.py`) — no
+  per-parcel outgoing sensors, same as ha-dhl-nl's summary-only pattern.
+  **`status` is force-`UNKNOWN` for every outgoing parcel** (one-shot
+  `_warn_outgoing_status_unconfirmed_once`): the fortschritt ladder was
+  calibrated purely against incoming reconstruction sources, so applying it
+  to an `AUSGEHEND` element would be a guess; `retoure`/`ruecksendung` can
+  still override to `RETURNING` since that's a separate, direction-agnostic
+  flag. Because `status` can never reach `DELIVERED` for outgoing parcels,
+  `_fire_outgoing_change_events` detects the terminal hop from the
+  independently-derived `delivered` bool instead of `status ==
+  DELIVERED` — do not "simplify" this back to mirroring
+  `_fire_change_events` exactly, the two coordinators key delivery
+  detection differently on purpose. Outgoing events
+  (`dhl_outgoing_parcel_status_changed`/`_delivered`, `device_trigger.py`)
+  have no `registered`/`delivery_time_changed` counterpart, matching
+  ha-dhl-nl. **Doubly unconfirmed data, may ship inert:** neither issue #2
+  nor Versand-HA (a second OSS DHL client) has ever actually observed a
+  populated `AUSGEHEND` element — Versand-HA's own by-piececode search
+  (same `piececode`/`noRedirect`/`language`/`cid=app` params as our
+  `async_get_by_number_envelope`, just anonymous) returns `ANKOMMEND`
+  unconditionally. The outgoing sensors may legitimately read 0 forever
+  until a real export proves otherwise; this is a deliberate decision to
+  ship the pipeline pre-guarded rather than wait, not an oversight.
 - **`weight`/`dimensions`/`pickup_point` are always `None`** — no source
   names any of the three. Keep `CAPABILITIES` in `const.py` in sync if that
   ever changes.
@@ -225,7 +260,7 @@ polling option at all.
 |---|---|
 | `api.py` (transport dispatcher; error types live in `const.py`) | no — dispatches into `countries/de/` |
 | `const.py` (domain, URLs, `ParcelStatus`, option keys) | partly (DE-specific URLs/OIDC constants) |
-| `parcels.py` (`normalize_parcel` country dispatch, sort, delivered-filter — pure, no I/O) | no — dispatches into `countries/de/` |
+| `parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter — pure, no I/O) | no — dispatches into `countries/de/` |
 | `coordinator.py` (fetch, tracked-code merge, cache, event firing) | partly (tracked-code merge, rate-limit/stall WARNINGs) |
 | `config_flow.py` (browser-paste OIDC flow) | **yes** — no precedent elsewhere in the suite |
 | `sensor.py` / `button.py` / `calendar.py` / `device_trigger.py` | no |

@@ -382,6 +382,29 @@ def _warn_sendungsrichtung_value(value: str) -> None:
     )
 
 
+def _direction(sendungsinfo: dict) -> str | None:
+    """Return ``sendungsinfo.sendungsrichtung``, uppercased, or ``None``."""
+    richtung = sendungsinfo.get("sendungsrichtung")
+    return richtung.upper() if isinstance(richtung, str) else None
+
+
+def is_outgoing_element(raw: dict) -> bool:
+    """Whether a ``sendungen[]`` element is outgoing (``sendungsrichtung: AUSGEHEND``).
+
+    A missing/unrecognised direction defaults to incoming (mirrors
+    ha-dhl-nl's ``_is_return`` default-safe behaviour) so an element with no
+    known direction still surfaces somewhere rather than vanishing from every
+    sensor. Neither confirmed OSS source (issue #2, Versand-HA) has ever
+    actually observed a populated ``AUSGEHEND`` element on the wire —
+    Versand-HA's own comment notes its anonymous by-piececode search returns
+    ``ANKOMMEND`` unconditionally — so this may simply never fire in
+    practice until a real export proves otherwise.
+    """
+    sendungsinfo = raw.get("sendungsinfo")
+    sendungsinfo = sendungsinfo if isinstance(sendungsinfo, dict) else {}
+    return _direction(sendungsinfo) == "AUSGEHEND"
+
+
 def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     """Map ``sendungsinfo.sendungsname`` to `sender` or `receiver` by direction.
 
@@ -394,10 +417,9 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     name = sendungsinfo.get("sendungsname")
     if not isinstance(name, str) or not name:
         return None, None
-    richtung = sendungsinfo.get("sendungsrichtung")
-    if not isinstance(richtung, str):
+    richtung = _direction(sendungsinfo)
+    if richtung is None:
         return None, None
-    richtung = richtung.upper()
     if richtung in ("ANKOMMEND", "EINGEHEND"):
         return name, None
     if richtung == "AUSGEHEND":
@@ -411,6 +433,27 @@ _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
 _delivery_window_shape_logged = False
 _timestamp_parse_failed_logged = False
+_outgoing_status_unconfirmed_logged = False
+
+
+def _warn_outgoing_status_unconfirmed_once() -> None:
+    """One-shot warning for the first outgoing (AUSGEHEND) parcel seen.
+
+    The fortschritt ladder has only ever been confirmed against incoming
+    shipments — reporting it for an outgoing one would be a guess, so
+    `status` stays UNKNOWN instead.
+    """
+    global _outgoing_status_unconfirmed_logged
+    if _outgoing_status_unconfirmed_logged:
+        return
+    _outgoing_status_unconfirmed_logged = True
+    _LOGGER.warning(
+        "DHL Germany reported an outgoing (AUSGEHEND) parcel — its "
+        "fortschritt ladder was only ever confirmed against incoming "
+        "shipments, so status is reported as 'unknown' rather than guessed. "
+        "Open an issue with a real outgoing sendungsverlauf export: %s",
+        NEW_ISSUE_URL,
+    )
 
 
 def _warn_unexpected_sendungsdetails_keys(details: dict) -> None:
@@ -581,6 +624,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     sendungsinfo = raw.get("sendungsinfo")
     sendungsinfo = sendungsinfo if isinstance(sendungsinfo, dict) else {}
     sender, receiver = _sender_receiver(sendungsinfo)
+    is_outgoing = _direction(sendungsinfo) == "AUSGEHEND"
 
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
@@ -601,7 +645,11 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     if raw_status is None:
         raw_status = kurz_status
 
-    status = map_parcel_status_de(fortschritt, maximal_fortschritt)
+    if is_outgoing:
+        _warn_outgoing_status_unconfirmed_once()
+        status = ParcelStatus.UNKNOWN
+    else:
+        status = map_parcel_status_de(fortschritt, maximal_fortschritt)
 
     # Contested: two sources read istZugestellt, one derives from the
     # ladder. Read the flag when present, else derive; warn once per parcel
@@ -676,6 +724,7 @@ __all__ = [
     "async_get_inbox_envelope",
     "find_element_by_id",
     "is_not_found",
+    "is_outgoing_element",
     "needs_enrichment",
     "map_parcel_status_de",
     "normalize_parcel_de",
