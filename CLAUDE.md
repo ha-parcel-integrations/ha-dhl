@@ -161,11 +161,22 @@ inbox comes back populated.
   delivery window (prefer the `Von`/`Bis` pair, fall back to the singular
   `zustellzeitfenster`/`zustelldatum`).
 - **`sender`/`receiver` come from `sendungsinfo.sendungsname`, keyed on
-  `sendungsrichtung`** (issue #2, reported live): `ANKOMMEND` (incoming) means
-  the name is the sender, `AUSGEHEND` (outgoing) means it's the recipient. An
-  unrecognised direction warns once and leaves both `None` rather than
-  guessing. `.zustellung.empfaenger.name` stays a separate, unused source —
-  single-source and means "who physically took the parcel"
+  `sendungsrichtung`** (issue #2, reported live): `ANKOMMEND`/`EINGEHEND`
+  (incoming — a second OSS source, Versand-HA, names `EINGEHEND` alongside
+  `ANKOMMEND`) means the name is the sender, `AUSGEHEND` (outgoing) means
+  it's the recipient. An unrecognised direction warns once and leaves both
+  `None` rather than guessing. **Open risk, unconfirmed either way:**
+  Versand-HA's own comment on this mapping says DHL's *anonymous*
+  by-piececode search returns `ANKOMMEND` for every parcel regardless of true
+  direction, sender's own shipments included — bad enough that they ship a
+  manual per-shipment override option. Our by-number path
+  (`async_get_by_number_envelope`, used by `dhl.track_parcel`) hits the same
+  `piececode`-keyed endpoint, but authenticated with the `dhli` cookie unlike
+  their anonymous call — issue #2's confirmed export was from the
+  **account-inbox** path only, not by-number, so whether the authenticated
+  by-number call shares this quirk is still open. `.zustellung.empfaenger.name`
+  stays a separate, unused source — single-source and means "who physically
+  took the parcel"
   (Packstation/Filiale/neighbour), not necessarily the addressee — it is not
   mapped to `receiver` until a tester export confirms the semantics. It is
   still present, redacted, in `raw`.

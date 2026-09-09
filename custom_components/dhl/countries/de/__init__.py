@@ -364,7 +364,7 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "twoManHandling",
 }
 
-_KNOWN_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "AUSGEHEND"}
+_KNOWN_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND", "AUSGEHEND"}
 _sendungsrichtung_values_logged: set[str] = set()
 
 
@@ -386,7 +386,8 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     """Map ``sendungsinfo.sendungsname`` to `sender` or `receiver` by direction.
 
     Single confirmed field (issue #2): for an incoming shipment
-    (``sendungsrichtung: ANKOMMEND``) `sendungsname` names the sender; for an
+    (``sendungsrichtung: ANKOMMEND``/``EINGEHEND`` — a second OSS source names
+    the latter alongside the former) `sendungsname` names the sender; for an
     outgoing one (``AUSGEHEND``) it names the recipient instead. An
     unrecognised/missing direction leaves both `None` rather than guessing.
     """
@@ -397,7 +398,7 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     if not isinstance(richtung, str):
         return None, None
     richtung = richtung.upper()
-    if richtung == "ANKOMMEND":
+    if richtung in ("ANKOMMEND", "EINGEHEND"):
         return name, None
     if richtung == "AUSGEHEND":
         return None, name

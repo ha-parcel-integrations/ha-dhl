@@ -298,6 +298,18 @@ def test_normalize_incoming_maps_sendungsname_to_sender():
     assert parcel["receiver"] is None
 
 
+def test_normalize_eingehend_also_maps_sendungsname_to_sender():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Example Shop GmbH",
+        sendungsrichtung="EINGEHEND",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] == "Example Shop GmbH"
+    assert parcel["receiver"] is None
+
+
 def test_normalize_outgoing_maps_sendungsname_to_receiver():
     raw = element(
         ACTIVE_CODE,
