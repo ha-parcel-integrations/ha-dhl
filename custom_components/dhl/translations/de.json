@@ -114,7 +114,9 @@
       "parcel_registered": "Eine Sendung wurde registriert",
       "parcel_status_changed": "Der Status einer Sendung hat sich geändert",
       "parcel_delivered": "Eine Sendung wurde zugestellt",
-      "parcel_delivery_time_changed": "Die voraussichtliche Zustellzeit einer Sendung hat sich geändert"
+      "parcel_delivery_time_changed": "Die voraussichtliche Zustellzeit einer Sendung hat sich geändert",
+      "outgoing_parcel_status_changed": "Der Status einer ausgehenden Sendung hat sich geändert",
+      "outgoing_parcel_delivered": "Eine ausgehende Sendung wurde zugestellt"
     }
   },
   "entity": {
@@ -138,6 +140,14 @@
       },
       "delivered_parcels": {
         "name": "Zugestellte Sendungen",
+        "unit_of_measurement": "Sendungen"
+      },
+      "outgoing_parcels": {
+        "name": "Ausgehende Sendungen",
+        "unit_of_measurement": "Sendungen"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Zugestellte ausgehende Sendungen",
         "unit_of_measurement": "Sendungen"
       },
       "last_update": {
