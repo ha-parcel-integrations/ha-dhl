@@ -145,6 +145,16 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         self._pl_device_id: str | None = None
         self._pl_reauth_entry: ConfigEntry | None = None
 
+    @callback
+    def async_remove(self) -> None:
+        """Close the throwaway PL session if the flow is abandoned mid-way.
+
+        A completed flow already closes it itself (`async_step_pl_sms`); this
+        only catches the user quitting between the phone and SMS steps.
+        """
+        if self._pl_session is not None:
+            self.hass.async_create_task(self._pl_session.aclose())
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -266,6 +276,12 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 _LOGGER.debug("Mój DHL SMS verification failed", exc_info=True)
                 errors["sms_code"] = "invalid_sms_code"
             else:
+                # The cookie jar is only needed to reach this point — capture
+                # it and close the throwaway session before either return
+                # path below (an abort raised by the uniqueness checks must
+                # not skip this).
+                cookies = session.export_cookies()
+                await session.aclose()
                 unique_id = f"PL:{self._pl_phone}"
                 await self.async_set_unique_id(unique_id)
                 if self._pl_reauth_entry is not None:
@@ -273,7 +289,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                     return self.async_update_reload_and_abort(
                         self._pl_reauth_entry,
                         data_updates={
-                            CONF_DHL_PL_COOKIES: session.export_cookies(),
+                            CONF_DHL_PL_COOKIES: cookies,
                             CONF_DHL_PL_PHONE: self._pl_phone,
                             CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
                         },
@@ -281,7 +297,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=_entry_title("PL", ""), data={
                     CONF_COUNTRY: "PL", CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
-                    CONF_DHL_PL_PHONE: self._pl_phone, CONF_DHL_PL_COOKIES: session.export_cookies(),
+                    CONF_DHL_PL_PHONE: self._pl_phone, CONF_DHL_PL_COOKIES: cookies,
                 }, options={CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
                             CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
                             CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY, CONF_TRACKED_CODES: []})

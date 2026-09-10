@@ -143,6 +143,17 @@ generic API error.** Both branches in `async_get_incoming` raise
 calls in ways the refresh call itself won't catch — so the coordinator starts
 reauth instead of retrying a call that will never succeed.
 
+**The config flow's throwaway session must be closed, not just discarded.**
+`_get_pl_session()` opens its own `aiohttp.ClientSession` (a dedicated cookie
+jar is why — DE never needs one, since it reuses HA's shared session).
+`async_step_pl_sms` calls `session.aclose()` itself once the cookie jar has
+been exported; `DHLConfigFlow.async_remove()` covers the abandoned-flow case
+(the user quits between the phone and SMS steps). Dropping either leaves an
+unclosed `ClientSession`, which `pytest_homeassistant_custom_component`'s
+cleanup check turns into a flaky test failure under `--cov` — it will not
+reliably reproduce without coverage instrumentation, so don't dismiss it as a
+one-off if it resurfaces.
+
 ## Divergences from the scaffold
 
 Everything not listed here follows the scaffold exactly.

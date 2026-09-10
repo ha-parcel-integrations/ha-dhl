@@ -181,3 +181,14 @@ async def test_export_cookies_only_returns_mojdhl_domain():
     domains = {c["domain"] for c in pl_session.export_cookies()}
 
     assert domains == {"mojdhl.pl"}
+
+
+async def test_aclose_closes_the_underlying_session():
+    session = MagicMock()
+    session.cookie_jar = aiohttp.CookieJar()
+    session.close = AsyncMock()
+    pl_session = DHLPlSession(session)
+
+    await pl_session.aclose()
+
+    session.close.assert_awaited_once()

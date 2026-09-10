@@ -137,6 +137,16 @@ class DHLPlSession:
             raise DHLAuthError("Mój DHL rejected the SMS code")
         self._adopt_access_token(token)
 
+    async def aclose(self) -> None:
+        """Close the underlying session — only for a config-flow-owned instance.
+
+        The runtime session (owned by ``__init__.py``'s ``DHLData``) is closed
+        by Home Assistant's own connector teardown and must never be closed
+        here; this is only for the throwaway session a config flow creates to
+        carry cookies across its phone/SMS steps.
+        """
+        await self._session.close()
+
     async def async_refresh(self, device_id: str) -> str:
         """Mint a fresh bearer token from the stored cookie jar before a poll."""
         status, response = await self._json("GET", "/auth/refresh", params={"deviceId": device_id, "deviceName": "Home Assistant"})
