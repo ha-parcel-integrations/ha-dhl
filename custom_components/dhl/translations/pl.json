@@ -1,0 +1,174 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Skonfiguruj DHL",
+        "description": "Które konto DHL chcesz dodać? Obsługiwane są Niemcy i Polska. [Poproś o inny kraj]({issue_url}). Szukasz DHL w Holandii? To osobna integracja: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Kraj"
+        }
+      },
+      "de": {
+        "title": "Skonfiguruj DHL (Niemcy)",
+        "description": "Otwórz ten link w przeglądarce i zaloguj się swoim kontem DHL Kundenkonto: {authorize_url}\n\nPrzeglądarka nie otworzy końcowego przekierowania `dhllogin://…` — tak ma być. Ten adres nigdy nie pojawia się w pasku adresu; przechwytujesz go w karcie Sieć narzędzi deweloperskich przeglądarki — zobacz [instrukcję krok po kroku]({docs_url}). Wklej poniżej pełny adres.\n\nUwaga: punkt śledzenia DHL odpowiada poprawnie tylko na niemiecki adres IP — ta integracja nie zadziała, jeśli Twój Home Assistant łączy się z internetem z innego kraju.",
+        "data": {
+          "redirect_url": "Adres URL przekierowania"
+        }
+      },
+      "pl": {
+        "title": "Skonfiguruj DHL Parcel Polska",
+        "description": "Wpisz polski numer telefonu zarejestrowany w Mój DHL. Akceptowane są dziewięć cyfr, +48 i 0048; DHL otrzymuje dziewięć cyfr krajowych i wysyła jeden kod SMS. Ta integracja nigdy nie wysyła go ponownie automatycznie.",
+        "data": {"phone": "Polski numer telefonu"}
+      },
+      "pl_sms": {
+        "title": "Zweryfikuj DHL Parcel Polska",
+        "description": "Wpisz kod SMS wysłany przez Mój DHL.",
+        "data": {"sms_code": "Kod SMS"}
+      },
+      "reauth_confirm": {
+        "title": "Logowanie DHL wygasło",
+        "description": "DHL nie akceptuje już zapisanej sesji. Otwórz ten link, zaloguj się ponownie, a następnie wklej adres URL przekierowania przechwycony w karcie Sieć narzędzi deweloperskich przeglądarki (zobacz [instrukcję krok po kroku]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Adres URL przekierowania"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "To nie wygląda na adres przekierowania DHL — upewnij się, że skopiowałeś pełny adres po zalogowaniu.",
+      "invalid_auth": "DHL odrzuciło to logowanie.",
+      "invalid_phone": "Wpisz prawidłowy polski numer telefonu (dziewięć cyfr, opcjonalnie z prefiksem +48 lub 0048).",
+      "invalid_sms_code": "Nieprawidłowy lub wygasły kod SMS.",
+      "cannot_connect": "Nie można połączyć się z DHL. Spróbuj ponownie."
+    },
+    "abort": {
+      "already_configured": "To konto DHL jest już skonfigurowane.",
+      "cannot_connect": "Nie można połączyć się z DHL. Spróbuj ponownie.",
+      "reauth_successful": "Ponowne uwierzytelnienie DHL zakończone powodzeniem.",
+      "wrong_account": "To logowanie dotyczy innego konta DHL. Zaloguj się na konto, dla którego utworzono ten wpis.",
+      "unsupported_country": "Ten kraj nie jest jeszcze obsługiwany."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje DHL",
+        "sections": {
+          "delivered": {
+            "name": "Doręczone przesyłki",
+            "data": {
+              "delivered_filter_type": "Filtruj według",
+              "delivered_filter_amount": "Liczba"
+            },
+            "data_description": {
+              "delivered_filter_type": "Pokaż doręczone przesyłki z ostatnich X dni lub ogranicz do X najnowszych.",
+              "delivered_filter_amount": "Liczba dni lub przesyłek do pokazania."
+            }
+          },
+          "history": {
+            "name": "Historia przesyłki",
+            "data": {
+              "include_history": "Uwzględnij historię statusów"
+            },
+            "data_description": {
+              "include_history": "Dodaje do każdej przesyłki atrybut historii z każdą aktualizacją statusu (znacznik czasu, status, oryginalny tekst). Domyślnie wyłączone."
+            }
+          }
+        }
+      }
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Niemcy",
+        "pl": "Polska"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dni",
+        "parcels": "Liczba przesyłek"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Śledź przesyłkę",
+      "description": "Rozpocznij śledzenie przesyłki po numerze przesyłki DHL, oprócz tego, co pokazuje już Twoje konto DHL.",
+      "fields": {
+        "tracking_code": {
+          "name": "Numer przesyłki",
+          "description": "Numer przesyłki DHL."
+        },
+        "config_entry_id": {
+          "name": "Konto DHL",
+          "description": "Do którego skonfigurowanego konta DHL dodać tę przesyłkę. Potrzebne tylko, gdy skonfigurowano więcej niż jedno konto."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Przestań śledzić przesyłkę",
+      "description": "Zatrzymaj śledzenie ręcznie dodanej przesyłki DHL po numerze przesyłki.",
+      "fields": {
+        "tracking_code": {
+          "name": "Numer przesyłki",
+          "description": "Numer przesyłki DHL, której śledzenie ma zostać zatrzymane."
+        },
+        "config_entry_id": {
+          "name": "Konto DHL",
+          "description": "Z którego skonfigurowanego konta DHL usunąć tę przesyłkę. Potrzebne tylko, gdy skonfigurowano więcej niż jedno konto."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Przesyłka została zarejestrowana",
+      "parcel_status_changed": "Status przesyłki się zmienił",
+      "parcel_delivered": "Przesyłka została doręczona",
+      "parcel_delivery_time_changed": "Przewidywany czas doręczenia przesyłki się zmienił",
+      "outgoing_parcel_status_changed": "Status wysyłanej przesyłki się zmienił",
+      "outgoing_parcel_delivered": "Wysyłana przesyłka została doręczona"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Odśwież"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Dostawy"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Nadchodzące przesyłki",
+        "unit_of_measurement": "przesyłki"
+      },
+      "next_delivery": {
+        "name": "Następna dostawa"
+      },
+      "delivered_parcels": {
+        "name": "Doręczone przesyłki",
+        "unit_of_measurement": "przesyłki"
+      },
+      "outgoing_parcels": {
+        "name": "Wysyłane przesyłki",
+        "unit_of_measurement": "przesyłki"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Wysłane przesyłki doręczone",
+        "unit_of_measurement": "przesyłki"
+      },
+      "last_update": {
+        "name": "Ostatnia udana aktualizacja"
+      },
+      "parcel": {
+        "name": "Przesyłka {barcode}"
+      }
+    }
+  }
+}
