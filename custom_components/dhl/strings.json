@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up DHL",
-        "description": "Which DHL account do you want to add? Germany is supported today — [request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl]({dhl_nl_url}).",
+        "description": "Which DHL account do you want to add? Germany and Poland are supported. [Request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Country"
         }
@@ -15,6 +15,16 @@
         "data": {
           "redirect_url": "Redirect URL"
         }
+      },
+      "pl": {
+        "title": "Set up DHL Parcel Polska",
+        "description": "Enter the Polish mobile number registered with Mój DHL. Nine digits, +48, and 0048 are accepted; DHL receives the nine local digits and sends one SMS code. This integration never resends it automatically.",
+        "data": {"phone": "Polish mobile number"}
+      },
+      "pl_sms": {
+        "title": "Verify DHL Parcel Polska",
+        "description": "Enter the SMS code sent by Mój DHL.",
+        "data": {"sms_code": "SMS code"}
       },
       "reauth_confirm": {
         "title": "DHL sign-in expired",
@@ -27,6 +37,8 @@
     "error": {
       "invalid_redirect": "That does not look like the DHL redirect URL — make sure you copied the full address after logging in.",
       "invalid_auth": "DHL rejected this sign-in.",
+      "invalid_phone": "Enter a valid Polish mobile number (nine digits, optionally prefixed with +48 or 0048).",
+      "invalid_sms_code": "Invalid or expired SMS code.",
       "cannot_connect": "Could not reach DHL. Please try again."
     },
     "abort": {
@@ -69,7 +81,8 @@
   "selector": {
     "country": {
       "options": {
-        "de": "Germany"
+        "de": "Germany",
+        "pl": "Poland"
       }
     },
     "delivered_filter_type": {

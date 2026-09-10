@@ -22,6 +22,8 @@ from homeassistant.util import dt as dt_util
 
 from .api import DHLApiClient, DHLApiError, DHLAuthError
 from .const import (
+    CONF_COUNTRY,
+    CONF_DHL_PL_COOKIES,
     CONF_INCLUDE_HISTORY,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
@@ -104,7 +106,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         client: DHLApiClient,
         entry: ConfigEntry,
         *,
-        de_session: DHLDeSession,
+        de_session: DHLDeSession | None,
     ) -> None:
         """Initialise the coordinator."""
         super().__init__(
@@ -255,7 +257,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
 
     def _persist_refresh_token_if_rotated(self) -> None:
         """Persist a rotated refresh token, if the last refresh changed it."""
-        if not self._de_session.pop_refresh_token_changed():
+        if self._de_session is None or not self._de_session.pop_refresh_token_changed():
             return
         self.hass.config_entries.async_update_entry(
             self.config_entry,
@@ -289,10 +291,14 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
 
         self._warn_rate_limited(rate_limited)
 
+        country = self.config_entry.data.get(CONF_COUNTRY, "DE")
+        if country == "PL":
+            pl_session = self._client.pl_session
+            cookies = pl_session.export_cookies() if pl_session else []
+            if cookies and cookies != self.config_entry.data.get(CONF_DHL_PL_COOKIES):
+                self.hass.config_entries.async_update_entry(self.config_entry, data={**self.config_entry.data, CONF_DHL_PL_COOKIES: cookies})
         inbox_barcodes = {element.get("id") for element in elements if element.get("id")}
-        missing = [
-            code for code in self._tracked_codes() if code not in inbox_barcodes
-        ]
+        missing = [code for code in self._tracked_codes() if code not in inbox_barcodes] if country == "DE" else []
         try:
             elements.extend(await self._async_fetch_missing_tracked(missing))
         except DHLAuthError as err:
@@ -301,11 +307,11 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             self._persist_refresh_token_if_rotated()
 
         include_history = self._include_history
-        incoming_elements = [e for e in elements if not is_outgoing(e, country="DE")]
-        outgoing_elements = [e for e in elements if is_outgoing(e, country="DE")]
+        incoming_elements = [e for e in elements if not is_outgoing(e, country=country)]
+        outgoing_elements = [e for e in elements if is_outgoing(e, country=country)]
 
         normalized = [
-            normalize_parcel(raw, country="DE", include_history=include_history)
+            normalize_parcel(raw, country=country, include_history=include_history)
             for raw in incoming_elements
         ]
         active = [parcel for parcel in normalized if not parcel["delivered"]]
@@ -334,7 +340,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         }
 
         normalized_outgoing = [
-            normalize_parcel(raw, country="DE", include_history=include_history)
+            normalize_parcel(raw, country=country, include_history=include_history)
             for raw in outgoing_elements
         ]
         active_outgoing = [p for p in normalized_outgoing if not p["delivered"]]

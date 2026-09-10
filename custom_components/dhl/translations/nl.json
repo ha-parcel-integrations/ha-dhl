@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "DHL instellen",
-        "description": "Welk DHL-account wil je toevoegen? Duitsland wordt momenteel ondersteund — [vraag een ander land aan]({issue_url}). Op zoek naar DHL in Nederland? Dat is een aparte integratie: [ha-dhl-nl]({dhl_nl_url}).",
+        "description": "Welk DHL-account wil je toevoegen? Duitsland en Polen worden ondersteund. [Vraag een ander land aan]({issue_url}). Op zoek naar DHL in Nederland? Dat is een aparte integratie: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Land"
         }
@@ -15,6 +15,16 @@
         "data": {
           "redirect_url": "Omleidings-URL"
         }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska instellen",
+        "description": "Voer het Poolse mobiele nummer in dat bij Mój DHL hoort. Negen cijfers, +48 en 0048 worden geaccepteerd; DHL ontvangt de negen lokale cijfers en stuurt één sms-code. Deze integratie verstuurt die nooit automatisch opnieuw.",
+        "data": {"phone": "Pools mobiel nummer"}
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska verifiëren",
+        "description": "Voer de sms-code in die Mój DHL heeft verstuurd.",
+        "data": {"sms_code": "Sms-code"}
       },
       "reauth_confirm": {
         "title": "Aanmelding bij DHL verlopen",
@@ -27,6 +37,8 @@
     "error": {
       "invalid_redirect": "Dit lijkt niet op de omleidings-URL van DHL — controleer of je het volledige adres na het aanmelden hebt gekopieerd.",
       "invalid_auth": "DHL heeft deze aanmelding geweigerd.",
+      "invalid_phone": "Voer een geldig Pools mobiel nummer in (negen cijfers, eventueel met +48 of 0048 ervoor).",
+      "invalid_sms_code": "Ongeldige of verlopen sms-code.",
       "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw."
     },
     "abort": {
@@ -69,7 +81,8 @@
   "selector": {
     "country": {
       "options": {
-        "de": "Duitsland"
+        "de": "Duitsland",
+        "pl": "Polen"
       }
     },
     "delivered_filter_type": {

@@ -7,15 +7,17 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-A custom Home Assistant integration that tracks your **DHL Paket** (Germany)
-parcels. Log in once with your DHL Kundenkonto and your parcels are imported
-automatically — no tracking codes to copy in by hand. You can also add a
-parcel that is not in your account's own inbox by its tracking number.
+A custom Home Assistant integration that tracks **DHL Paket** (Germany) and
+**DHL Parcel Polska** parcels. Log in once with your own carrier account and
+your parcels are imported automatically. Germany also supports manually added
+tracking codes; Poland uses its Mój DHL phone/SMS account inbox.
 
 Part of the [ha-parcel-integrations](https://github.com/ha-parcel-integrations) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
-**Country support:** Germany only, today. Country requests go through the
-[organisation discussion](https://github.com/ha-parcel-integrations/.github/discussions/new/choose).
+**Country support:** Germany and Poland. DHL's Polish account setup uses a
+nine-digit Polish mobile number and a one-time SMS code; the renewable session
+cookie jar is stored locally, never the SMS code or a bearer token. Country
+requests go through the [organisation discussion](https://github.com/ha-parcel-integrations/.github/discussions/new/choose).
 DHL's Netherlands business is a separate integration,
 [**ha-dhl-nl**](https://github.com/ha-parcel-integrations/ha-dhl-nl).
 
@@ -78,7 +80,8 @@ Copy `custom_components/dhl` into your `config/custom_components/` folder and re
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration → DHL**.
-2. Pick a country — only Germany is supported today.
+2. Pick a country. For Poland, enter the Mój DHL mobile number and then the
+   single SMS code DHL sends; the integration never resends it automatically.
 3. The next form shows a sign-in link. Open it in a browser and log in with
    your DHL Kundenkonto.
 4. Your browser will fail to open the final `dhllogin://…` redirect it lands

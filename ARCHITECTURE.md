@@ -7,9 +7,10 @@ behind it. API mechanics — the OIDC discovery/token endpoints, the
 contested field — live in the private `carrier-research/dhl/api/dhl-de/` and
 are never copied here.
 
-Three things shape this repo. It is **country-split from day one**, with only
-DE built. Its auth is a **one-time browser hop** producing a refresh token, not
-a password. And a large share of its payload mapping is **inferred from
+Three things shape this repo. It is **country-split from day one**, with DE and
+PL backends. DE auth is a **one-time browser hop** producing a refresh token;
+PL auth is a phone/SMS flow whose rotating cookie jar is its credential. And a
+large share of its payload mapping is **inferred from
 third-party sources** rather than observed, so nearly every decision codes both
 branches and warns.
 
@@ -24,7 +25,7 @@ intent is to eventually fold it in as `countries/nl/`, but that is a
 repo-consolidation decision for later — **do not design toward it here.**
 
 **The config flow is a country router**, mirroring the module layout.
-`async_step_user` shows only a country picker (`COUNTRIES` — today just DE) and
+`async_step_user` shows a country picker (`COUNTRIES` — DE and PL) and
 dispatches to `async_step_<code>`; `async_step_de` holds the entire
 browser-paste OIDC dance. NL's auth model (email/password, like `ha-dhl-nl`)
 has nothing in common with DE's OAuth flow, so its step will look nothing like

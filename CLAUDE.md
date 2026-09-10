@@ -3,8 +3,8 @@
 Home Assistant custom integration for **DHL Paket (Germany)** parcel tracking.
 Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
-**generated from ha-carrier-template**. Country-split from day one — DE only so
-far. No DTO layer.
+**generated from ha-carrier-template**. Country-split from day one — DE and PL
+are implemented. No DTO layer.
 
 Three places hold the knowledge, and they do not overlap:
 
@@ -110,6 +110,39 @@ on a different backend. Folding it in as `countries/nl/` is a later
 repo-consolidation decision, and NL's auth model shares nothing with DE's — no
 shared config-flow base class is worth building for two data points.
 
+## Load-bearing PL decisions — do not refactor away
+
+**`menuTimelineLabel.status` and the raw `status` (`TT_*`/`SP_*`) code are two
+different, both-closed enums — never conflate them.** `_RAW` in
+`countries/pl/__init__.py` is the primary source for canonical `status`; the
+9-value coarse ladder (`_LADDER`) is only a fallback for a raw code that isn't
+in `_RAW` yet (`carrier-research/dhl/api/dhl-pl/tracking.md`, "the coarse ladder").
+The 22-name `ShipmentStatusName` timeline (`DeliveredToLocker`,
+`RetrievedFromPoint`, …) is a **third**, closed enum whose field in the wire
+payload was never confirmed by research — do not key `_LADDER` on those names;
+a past version of this file did, and `menuTimelineLabel.status` never actually
+carries them, so that mapping silently never fired.
+
+**The access token is split across two cookies on purpose.**
+`DHLPlSession._adopt_access_token` writes a minted JWT's `header.payload` into
+`access-token` and its signature into `access-signature` — exactly how DHL's
+own `Set-Cookie` does it. `/auth/refresh` authenticates via this pair and never
+re-issues it itself; writing the whole JWT into one cookie does not
+reconstitute a valid credential, and the 30-minute session window only slides
+because this method puts the minted token back into the jar every time.
+
+**Refresh runs before every poll, not just after a failure.**
+`async_get_incoming` always calls `pl_session.async_refresh()` first — the
+cookie jar, not the short-lived bearer token, is the durable credential, and
+persisting the rotated jar after every successful poll (`coordinator.py`) is
+what survives a restart.
+
+**A 401/403 from the inbox or observed-list call is a session death, not a
+generic API error.** Both branches in `async_get_incoming` raise
+`DHLAuthError` on 401/403 — a refreshed token can still be rejected by these
+calls in ways the refresh call itself won't catch — so the coordinator starts
+reauth instead of retrying a call that will never succeed.
+
 ## Divergences from the scaffold
 
 Everything not listed here follows the scaffold exactly.
@@ -131,14 +164,16 @@ implementing:
 
 | File | Carrier-specific? |
 |---|---|
-| `api.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `countries/de/` |
-| `const.py` | partly (DE-specific URLs/OIDC constants) |
-| `parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `countries/de/` |
-| `coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs) |
-| `config_flow.py` (country router + browser-paste OIDC flow) | **yes** — no precedent elsewhere in the suite |
+| `api.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `countries/de/` and `countries/pl/` |
+| `const.py` | partly (DE-specific URLs/OIDC constants, PL-specific Mój DHL constants) |
+| `parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `countries/de/` and `countries/pl/` |
+| `coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |
+| `config_flow.py` (country router + browser-paste OIDC flow + PL phone/SMS flow) | **yes** — no precedent elsewhere in the suite |
 | `services.py` | no — but present on an account-based carrier, unlike the rest of the suite |
 | `countries/de/__init__.py` (transport, ladder, `normalize_parcel_de`) | **yes** |
 | `countries/de/session.py` (OIDC token lifecycle) | **yes** |
+| `countries/pl/__init__.py` (transport, status maps, `normalize_parcel_pl`) | **yes** |
+| `countries/pl/session.py` (Altcha solver, SMS auth, cookie-pair session lifecycle) | **yes** |
 
 ## Running tests
 

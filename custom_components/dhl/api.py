@@ -29,9 +29,11 @@ from .countries.de import (
     needs_enrichment,
     select_active_elements,
 )
+from .countries.pl import async_get_incoming as async_get_pl_incoming
 
 if TYPE_CHECKING:
     from .countries.de.session import DHLDeSession
+    from .countries.pl.session import DHLPlSession
 
 __all__ = ["DHLApiClient", "DHLApiError", "DHLAuthError"]
 
@@ -53,11 +55,20 @@ class DHLApiClient:
         *,
         country: str = DEFAULT_COUNTRY,
         de_session: "DHLDeSession | None" = None,
+        pl_session: "DHLPlSession | None" = None,
+        pl_device_id: str | None = None,
     ) -> None:
         """Initialise the client for one hub's country."""
         self._session = session
         self._country = country
         self._de_session = de_session
+        self._pl_session = pl_session
+        self._pl_device_id = pl_device_id
+
+    @property
+    def pl_session(self):
+        """The Mój DHL session, for the coordinator to persist its rotated cookie jar."""
+        return self._pl_session
 
     def _require_de_session(self) -> "DHLDeSession":
         if self._de_session is None:
@@ -78,6 +89,8 @@ class DHLApiClient:
         check runs, or they would be misread as not-found instead.
         """
         if self._country != "DE":
+            if self._country == "PL" and self._pl_session and self._pl_device_id:
+                return await async_get_pl_incoming(self._session, self._pl_session, self._pl_device_id), False
             raise RuntimeError(f"unsupported country {self._country!r}")
         de_session = self._require_de_session()
         envelope = await async_get_inbox_envelope(self._session, de_session)

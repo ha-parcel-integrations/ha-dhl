@@ -16,6 +16,7 @@ coordinator, the abstraction is wrong.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -38,6 +39,9 @@ from .const import (
     CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
+    CONF_DHL_PL_COOKIES,
+    CONF_DHL_PL_DEVICE_ID,
+    CONF_DHL_PL_PHONE,
     CONF_INCLUDE_HISTORY,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
@@ -57,10 +61,13 @@ from .countries.de.session import (
     DHLDeSessionError,
     decode_id_token_subject,
 )
+from .countries.pl.session import DHLPlSession, new_device_id
 
 _LOGGER = logging.getLogger(__name__)
 
 _REDIRECT_SCHEMA = vol.Schema({vol.Required("redirect_url"): str})
+_PL_PHONE_SCHEMA = vol.Schema({vol.Required("phone"): str})
+_PL_SMS_SCHEMA = vol.Schema({vol.Required("sms_code"): str})
 
 # First-run form: pick which DHL country to set up. Mirrors ha-gls's
 # _COUNTRY_SELECTOR — selector option values double as translation keys
@@ -106,6 +113,21 @@ def _entry_title(country: str, subject: str) -> str:
     return country_name
 
 
+def normalize_polish_phone(value: str) -> str | None:
+    """Accept local, ``+48`` and ``0048`` Polish numbers; send nine digits.
+
+    Mój DHL wants the country prefix separately as the literal ``"48"``.
+    Keeping the same input behaviour as the DPD Polska flow avoids rejecting
+    the international form users normally copy from their contacts.
+    """
+    phone = re.sub(r"\D", "", value)
+    if phone.startswith("0048"):
+        phone = phone[4:]
+    elif len(phone) > 9 and phone.startswith("48"):
+        phone = phone[2:]
+    return phone if len(phone) == 9 and phone.isdigit() else None
+
+
 class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the browser-paste OIDC flow for the DHL integration."""
 
@@ -118,6 +140,10 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         self._authorize_url: str | None = None
         self._code_verifier: str | None = None
         self._state: str | None = None
+        self._pl_session: DHLPlSession | None = None
+        self._pl_phone: str | None = None
+        self._pl_device_id: str | None = None
+        self._pl_reauth_entry: ConfigEntry | None = None
 
     @staticmethod
     @callback
@@ -178,18 +204,15 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Pick which DHL country to set up, then dispatch to its own flow.
 
-        Only Germany exists today, but the dispatch is in place from day
-        one — mirrors countries/__init__.py's transport dispatch — so NL
-        (once ha-dhl-nl folds in) plugs in as its own async_step_<code>
-        without reshaping this one. NL's auth model (email/password) has
-        nothing in common with DE's OAuth dance, so its step will look
-        nothing like async_step_de below; no shared base is worth building
-        for two data points.
+        Each supported country owns its own flow: DE's browser-paste OIDC
+        dance and PL's phone/SMS flow have no useful common auth base.
         """
         if user_input is not None:
             self._country = user_input[CONF_COUNTRY].upper()
             if self._country == "DE":
                 return await self.async_step_de()
+            if self._country == "PL":
+                return await self.async_step_pl()
             return self.async_abort(reason="unsupported_country")
 
         return self.async_show_form(
@@ -200,6 +223,69 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                 "dhl_nl_url": DHL_NL_REPO_URL,
             },
         )
+
+    def _get_pl_session(self) -> DHLPlSession:
+        if self._pl_session is None:
+            session = aiohttp.ClientSession(
+                connector=async_get_clientsession(self.hass).connector,
+                connector_owner=False,
+                cookie_jar=aiohttp.CookieJar(),
+            )
+            self._pl_session = DHLPlSession(session)
+        return self._pl_session
+
+    async def async_step_pl(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Ask for a Polish mobile number and explicitly send one SMS."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            phone = normalize_polish_phone(user_input["phone"])
+            if phone is None:
+                errors["phone"] = "invalid_phone"
+            else:
+                try:
+                    await self._get_pl_session().async_send_sms(phone)
+                except (aiohttp.ClientError, TimeoutError):
+                    errors["base"] = "cannot_connect"
+                except Exception:
+                    _LOGGER.debug("Mój DHL SMS request failed", exc_info=True)
+                    errors["base"] = "cannot_connect"
+                else:
+                    self._pl_phone = phone
+                    self._pl_device_id = self._pl_device_id or new_device_id()
+                    return await self.async_step_pl_sms()
+        return self.async_show_form(step_id="pl", data_schema=_PL_PHONE_SCHEMA, errors=errors)
+
+    async def async_step_pl_sms(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Verify the user-entered code; this flow never retries or resends it."""
+        errors: dict[str, str] = {}
+        if user_input is not None and self._pl_phone and self._pl_device_id:
+            try:
+                session = self._get_pl_session()
+                await session.async_verify_sms(self._pl_phone, user_input["sms_code"], self._pl_device_id)
+            except Exception:
+                _LOGGER.debug("Mój DHL SMS verification failed", exc_info=True)
+                errors["sms_code"] = "invalid_sms_code"
+            else:
+                unique_id = f"PL:{self._pl_phone}"
+                await self.async_set_unique_id(unique_id)
+                if self._pl_reauth_entry is not None:
+                    self._abort_if_unique_id_mismatch(reason="wrong_account")
+                    return self.async_update_reload_and_abort(
+                        self._pl_reauth_entry,
+                        data_updates={
+                            CONF_DHL_PL_COOKIES: session.export_cookies(),
+                            CONF_DHL_PL_PHONE: self._pl_phone,
+                            CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
+                        },
+                    )
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title=_entry_title("PL", ""), data={
+                    CONF_COUNTRY: "PL", CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
+                    CONF_DHL_PL_PHONE: self._pl_phone, CONF_DHL_PL_COOKIES: session.export_cookies(),
+                }, options={CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+                            CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
+                            CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY, CONF_TRACKED_CODES: []})
+        return self.async_show_form(step_id="pl_sms", data_schema=_PL_SMS_SCHEMA, errors=errors)
 
     async def async_step_de(
         self, user_input: dict[str, Any] | None = None
@@ -253,6 +339,10 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         async_step_user's dispatch) — reauth never needs to ask again.
         """
         self._country = entry_data[CONF_COUNTRY]
+        if self._country == "PL":
+            self._pl_reauth_entry = self._get_reauth_entry()
+            self._pl_device_id = entry_data.get(CONF_DHL_PL_DEVICE_ID)
+            return await self.async_step_pl()
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(

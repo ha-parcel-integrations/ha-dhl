@@ -47,15 +47,13 @@ KNOWN_CAPABILITIES = frozenset(
 # it counts.
 CAPABILITIES = frozenset({"delivery_window", "url", "history"})
 
-# The country a hub talks to (CONF_COUNTRY -> entry.data). Only DE is mapped
-# today — dispatch is in place from day one (countries/__init__.py) so a
-# second country never forces a unique_id migration the way a late split did
-# elsewhere in the suite. A country without a session lifecycle of its own
-# (unlike DE) would not need the extra countries/<code>/session.py submodule.
+# The country a hub talks to (CONF_COUNTRY -> entry.data). Both countries own
+# a separate session lifecycle, so each has a country package.
 CONF_COUNTRY = "country"
 DEFAULT_COUNTRY = "DE"
 COUNTRIES: dict[str, dict[str, str]] = {
     "DE": {"name": "Germany"},
+    "PL": {"name": "Poland"},
 }
 
 # Linked from the setup form and README so users can ask for a country we
@@ -183,6 +181,16 @@ CONF_REFRESH_TOKEN = "refresh_token"
 # The `sub` claim of the first ID token, read once at config-flow time purely
 # to key `unique_id` — never re-decoded afterwards, never displayed.
 CONF_ACCOUNT_SUBJECT = "account_subject"
+
+# Poland stores a durable, rotating cookie jar and an installation-neutral
+# device id.  The JWT returned by Mój DHL is deliberately not stored: it is
+# short lived and is recreated from the cookie pair before every poll.
+CONF_DHL_PL_COOKIES = "pl_cookies"
+CONF_DHL_PL_DEVICE_ID = "pl_device_id"
+CONF_DHL_PL_PHONE = "pl_phone"
+DHL_PL_BASE_URL = "https://mojdhl.pl/api/dhl/public"
+DHL_PL_REQUEST_TIMEOUT_SECONDS = 30
+DHL_PL_HEADERS = {"accept": "application/json", "accept-language": "pl-PL"}
 
 # Manually-tracked piece codes (the `track_parcel` service / by-number mode),
 # stored in entry.options as a plain list of strings — separate from the

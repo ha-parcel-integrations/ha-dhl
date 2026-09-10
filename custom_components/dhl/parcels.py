@@ -20,13 +20,17 @@ from .const import (
     DEFAULT_DELIVERED_FILTER_TYPE,
 )
 from .countries.de import is_outgoing_element, normalize_parcel_de
+from .countries.pl import is_outgoing_element as is_outgoing_element_pl
+from .countries.pl import normalize_parcel_pl
 
 _NORMALIZERS = {
     "DE": normalize_parcel_de,
+    "PL": normalize_parcel_pl,
 }
 
 _OUTGOING_CLASSIFIERS = {
     "DE": is_outgoing_element,
+    "PL": is_outgoing_element_pl,
 }
 
 

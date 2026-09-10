@@ -44,6 +44,14 @@ TO_REDACT = {
     "sendungsnummer",
     # the account holder's own email address, present on every element
     "email",
+    "phone",
+    "sms_code",
+    "pl_phone",
+    "pl_device_id",
+    "pl_cookies",
+    "access-token",
+    "access-signature",
+    "token",
 }
 
 

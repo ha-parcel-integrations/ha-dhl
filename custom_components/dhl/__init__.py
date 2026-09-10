@@ -10,9 +10,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import DHLApiClient
-from .const import CONF_COUNTRY, CONF_REFRESH_TOKEN, DEFAULT_COUNTRY, PLATFORMS
+from .const import (
+    CONF_COUNTRY,
+    CONF_DHL_PL_COOKIES,
+    CONF_DHL_PL_DEVICE_ID,
+    CONF_REFRESH_TOKEN,
+    DEFAULT_COUNTRY,
+    PLATFORMS,
+)
 from .coordinator import DHLCoordinator
 from .countries.de.session import DHLDeSession
+from .countries.pl.session import DHLPlSession
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,7 +32,8 @@ class DHLData:
 
     client: DHLApiClient
     coordinator: DHLCoordinator
-    de_session: DHLDeSession
+    de_session: DHLDeSession | None
+    pl_session: DHLPlSession | None
     session: aiohttp.ClientSession
 
 
@@ -34,8 +43,7 @@ type DHLConfigEntry = ConfigEntry[DHLData]
 async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     """Set up DHL from a config entry.
 
-    Only DE is dispatched today — see countries/__init__.py for the shape a
-    second country would add to.
+    DE and PL dispatch to their own country-local session and transport code.
     """
     country = entry.data.get(CONF_COUNTRY, DEFAULT_COUNTRY)
 
@@ -47,8 +55,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         connector_owner=False,
         cookie_jar=aiohttp.CookieJar(),
     )
-    de_session = DHLDeSession(session, refresh_token=entry.data.get(CONF_REFRESH_TOKEN))
-    client = DHLApiClient(session, country=country, de_session=de_session)
+    de_session = DHLDeSession(session, refresh_token=entry.data.get(CONF_REFRESH_TOKEN)) if country == "DE" else None
+    pl_session = DHLPlSession(session, entry.data.get(CONF_DHL_PL_COOKIES)) if country == "PL" else None
+    client = DHLApiClient(session, country=country, de_session=de_session,
+                          pl_session=pl_session, pl_device_id=entry.data.get(CONF_DHL_PL_DEVICE_ID))
     coordinator = DHLCoordinator(hass, client, entry, de_session=de_session)
 
     try:
@@ -65,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         raise
 
     entry.runtime_data = DHLData(
-        client=client, coordinator=coordinator, de_session=de_session, session=session
+        client=client, coordinator=coordinator, de_session=de_session, pl_session=pl_session, session=session
     )
 
     try:

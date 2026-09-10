@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "DHL einrichten",
-        "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland wird derzeit unterstützt — [fordere ein anderes Land an]({issue_url}). Suchst du DHL in den Niederlanden? Das ist eine eigene Integration: [ha-dhl-nl]({dhl_nl_url}).",
+        "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland und Polen werden unterstützt. [Fordere ein anderes Land an]({issue_url}). Suchst du DHL in den Niederlanden? Das ist eine eigene Integration: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Land"
         }
@@ -15,6 +15,16 @@
         "data": {
           "redirect_url": "Weiterleitungs-URL"
         }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska einrichten",
+        "description": "Gib die bei Mój DHL hinterlegte polnische Mobilnummer ein. Neun Ziffern, +48 und 0048 werden akzeptiert; DHL erhält die neun lokalen Ziffern und sendet einen SMS-Code. Diese Integration sendet ihn niemals automatisch erneut.",
+        "data": {"phone": "Polnische Mobilnummer"}
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska bestätigen",
+        "description": "Gib den von Mój DHL gesendeten SMS-Code ein.",
+        "data": {"sms_code": "SMS-Code"}
       },
       "reauth_confirm": {
         "title": "DHL-Anmeldung abgelaufen",
@@ -27,6 +37,8 @@
     "error": {
       "invalid_redirect": "Das sieht nicht nach der DHL-Weiterleitungs-URL aus — stelle sicher, dass du die vollständige Adresse nach der Anmeldung kopiert hast.",
       "invalid_auth": "DHL hat diese Anmeldung abgelehnt.",
+      "invalid_phone": "Gib eine gültige polnische Mobilnummer ein (neun Ziffern, optional mit +48 oder 0048).",
+      "invalid_sms_code": "Ungültiger oder abgelaufener SMS-Code.",
       "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen."
     },
     "abort": {
@@ -69,7 +81,8 @@
   "selector": {
     "country": {
       "options": {
-        "de": "Deutschland"
+        "de": "Deutschland",
+        "pl": "Polen"
       }
     },
     "delivered_filter_type": {
