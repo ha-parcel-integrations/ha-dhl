@@ -145,12 +145,56 @@ async def test_refresh_adopts_a_fresh_token_and_returns_it():
     assert exported["access-signature"] == "s2"
 
 
-async def test_refresh_raises_dhl_auth_error_on_401():
-    session = _session(_response(401, {}))
+async def test_refresh_recovers_from_an_expired_token():
+    """HA down longer than the 30-minute window: refresh 401s, recover saves it."""
+    session = _session(
+        _response(401, {}),
+        _response(200, {"token": _jwt("h3", "p3", "s3"), "expires": "2026-09-11T23:36:36Z"}),
+    )
+    pl_session = DHLPlSession(session)
+
+    token = await pl_session.async_refresh("device-1")
+
+    assert token == "h3.p3.s3"
+    exported = {c["name"]: c["value"] for c in pl_session.export_cookies()}
+    assert exported["access-token"] == "h3.p3"
+    assert exported["access-signature"] == "s3"
+
+
+async def test_refresh_raises_dhl_auth_error_when_recovery_is_also_rejected():
+    session = _session(_response(401, {}), _response(401, {}))
     pl_session = DHLPlSession(session)
 
     with pytest.raises(DHLAuthError):
         await pl_session.async_refresh("device-1")
+
+
+async def test_recovery_without_a_remember_cookie_is_an_auth_error():
+    """`400 Brak tokenu.` means the credential is gone, not a transport blip."""
+    session = _session(_response(401, {}), _response(400, {"message": "Brak tokenu."}))
+    pl_session = DHLPlSession(session)
+
+    with pytest.raises(DHLAuthError):
+        await pl_session.async_refresh("device-1")
+
+
+async def test_recovery_outage_does_not_force_a_reauth():
+    """A 5xx on recover must not push the user into an SMS flow."""
+    session = _session(_response(401, {}), _response(503, {}))
+    pl_session = DHLPlSession(session)
+
+    with pytest.raises(DHLApiError) as err:
+        await pl_session.async_refresh("device-1")
+    assert not isinstance(err.value, DHLAuthError)
+
+
+async def test_refresh_does_not_call_recover_when_the_token_is_still_alive():
+    session = _session(_response(200, {"token": _jwt()}))
+    pl_session = DHLPlSession(session)
+
+    await pl_session.async_refresh("device-1")
+
+    assert session.request.call_count == 1
 
 
 async def test_refresh_raises_dhl_api_error_on_other_failure():

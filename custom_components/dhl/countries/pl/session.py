@@ -20,6 +20,11 @@ from ...const import (
 
 _TIMEOUT = aiohttp.ClientTimeout(total=DHL_PL_REQUEST_TIMEOUT_SECONDS)
 
+# Sent at login and on every refresh/recover. Must stay stable for the life of
+# a config entry: DHL binds the remember-me credential to the device pair, and
+# it identifies the integration rather than the user's installation.
+DEVICE_NAME = "Home Assistant"
+
 
 def new_device_id() -> str:
     """Return a stable opaque device id for one config entry."""
@@ -128,8 +133,10 @@ class DHLPlSession:
 
     async def async_verify_sms(self, phone: str, sms_code: str, device_id: str) -> None:
         """Redeem the user-entered SMS code and adopt the returned access token."""
+        # rememberMe buys the durable `access-remember` cookie that
+        # `_async_recover` later trades for a fresh token.
         body = {"phoneNumber": phone, "prefix": "48", "smsCode": sms_code,
-                "deviceId": device_id, "deviceName": "Home Assistant",
+                "deviceId": device_id, "deviceName": DEVICE_NAME,
                 "rememberMe": True, "captcha-payload": await self._captcha()}
         status, response = await self._json("POST", "/auth/validate-code", json=body)
         token = response.get("token", {}).get("token") if isinstance(response, dict) else None
@@ -147,11 +154,35 @@ class DHLPlSession:
         """
         await self._session.close()
 
+    async def _async_recover(self, device_id: str) -> str:
+        """Restore a session whose access token already expired.
+
+        ``/auth/refresh`` authenticates *with* the access-token cookie pair,
+        so it cannot help once that token is past its 30-minute life — which
+        is every time Home Assistant is down longer than that. ``/auth/recover``
+        takes the long-lived ``access-remember`` cookie instead (issued by
+        ``rememberMe: true`` at login) and needs no Altcha, so only a revoked
+        or expired remember cookie sends the user back through SMS.
+
+        A transport failure must not be mistaken for a dead credential: only
+        an outright rejection raises :class:`DHLAuthError`.
+        """
+        status, response = await self._json(
+            "POST", "/auth/recover", json={"deviceId": device_id, "deviceName": DEVICE_NAME}
+        )
+        token = response.get("token") if isinstance(response, dict) else None
+        if status in (400, 401, 403):
+            raise DHLAuthError("Mój DHL session expired and could not be recovered")
+        if status != 200 or not isinstance(token, str):
+            raise DHLApiError(f"Mój DHL recover failed: HTTP {status}")
+        self._adopt_access_token(token)
+        return token
+
     async def async_refresh(self, device_id: str) -> str:
         """Mint a fresh bearer token from the stored cookie jar before a poll."""
-        status, response = await self._json("GET", "/auth/refresh", params={"deviceId": device_id, "deviceName": "Home Assistant"})
+        status, response = await self._json("GET", "/auth/refresh", params={"deviceId": device_id, "deviceName": DEVICE_NAME})
         if status in (401, 403):
-            raise DHLAuthError("Mój DHL session expired")
+            return await self._async_recover(device_id)
         token = response.get("token") if isinstance(response, dict) else None
         if status != 200 or not isinstance(token, str):
             raise DHLApiError(f"Mój DHL refresh failed: HTTP {status}")

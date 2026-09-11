@@ -137,6 +137,19 @@ cookie jar, not the short-lived bearer token, is the durable credential, and
 persisting the rotated jar after every successful poll (`coordinator.py`) is
 what survives a restart.
 
+**`/auth/refresh` is useless once the access token has actually expired — that
+is what `/auth/recover` is for.** Refresh authenticates *with* the access-token
+cookie pair, so a token past its 30-minute life gets `401 invalid_token` and no
+amount of retrying helps. Any HA downtime longer than that window therefore
+used to cost the user a fresh SMS login. `_async_recover` trades the durable
+`access-remember` cookie (the `rememberMe: true` artifact, verified live
+2026-09-12 against a session that had been dead for 36 minutes) for a new
+token, with no Altcha and no SMS. **Do not "simplify" the 401 branch of
+`async_refresh` back into raising `DHLAuthError` directly** — that reintroduces
+an SMS prompt after every restart that takes more than half an hour. Only an
+outright `400`/`401`/`403` from recover means the credential is really gone; a
+5xx stays a `DHLApiError` so an outage can't push the user into a reauth flow.
+
 **A 401/403 from the inbox or observed-list call is a session death, not a
 generic API error.** Both branches in `async_get_incoming` raise
 `DHLAuthError` on 401/403 — a refreshed token can still be rejected by these
