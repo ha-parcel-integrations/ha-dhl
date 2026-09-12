@@ -217,8 +217,8 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         if rate_limited and not self._rate_limited_last:
             _LOGGER.warning(
                 "DHL Germany reported rateLimited=true — the integration "
-                "will keep polling at the configured interval; consider "
-                "lengthening it if this repeats."
+                "keeps polling on its dynamic schedule; please report this "
+                "if it repeats."
             )
         self._rate_limited_last = rate_limited
 

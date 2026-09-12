@@ -111,7 +111,11 @@ Click **Configure** on the integration entry:
 |---|---|---|---|
 | Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
-| Polling | Refresh every | 30 min | How often DHL is checked. Slower is gentler on DHL's API. |
+
+Polling isn't one of these settings: the integration polls on a dynamic,
+status-driven schedule (quiet overnight window, faster when a parcel is out
+for delivery) with nothing to configure. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for the details.
 
 ## Removal
 
