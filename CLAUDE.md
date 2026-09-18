@@ -71,9 +71,11 @@ refresh on a 401, **never a retry loop**. A rotated refresh token must be
 persisted (`pop_refresh_token_changed` → written back to `entry.data` after
 every poll) or a restart resumes with a dead token.
 
-**`AT_PICKUP_POINT` is unreachable in `_LADDER`, so there is deliberately no
-`awaiting_pickup` sensor.** No source names a Packstation/Filiale field. This is
-the exemption `CONVENTIONS.md` asks for explicitly, **not an oversight**.
+**`AT_PICKUP_POINT` is not in `_LADDER`; it is derived.** A Packstation arrival
+is `fortschritt` 4 with `zustellung.packageStationType == "PACKAGE_STATION"` and
+`abholcodeAvailable` true (issue #7, one real parcel). Filiale is **not**
+mapped — no structured field was captured for it. Whether those two fields
+already appear while the parcel is still on the vehicle is unverified.
 
 **Contested fields code both branches and warn — don't collapse them to one.**
 The delivered flag (`istZugestellt` else derive from the ladder, warn on
@@ -102,8 +104,9 @@ replaces a redacted key's whole value, collapsing the nesting a tester's export
 needs. `CONF_TRACKED_CODES` is redacted by hand (a bare string list has no key
 to match).
 
-**`weight`/`dimensions`/`pickup_point` are always `None`** — no source names
-any of them. Keep `const.py`'s `CAPABILITIES` in sync if that changes.
+**`weight`/`dimensions` are always `None`; `pickup_point` is set for Packstation
+arrivals only** (parsed from the latest event's link text). Keep `const.py`'s
+`CAPABILITIES` in sync if that changes.
 
 **Do not design toward folding in `ha-dhl-nl`.** It is a separate released repo
 on a different backend. Folding it in as `countries/nl/` is a later

@@ -144,14 +144,21 @@ same mechanism) settled it as `in_transit`, consistent with how `ha-dhl-nl` maps
 an equivalent depot/hub scan: `REGISTERED` is reserved for before the carrier
 has physically scanned the parcel at all.
 
-**`at_pickup_point` and `problem` have no known mechanism at all** — no source
-names a Packstation/Filiale field. The coordinator warns when a parcel stays at
+**`problem` has no known mechanism at all.** `at_pickup_point` is derived, not
+laddered: a parcel at `fortschritt` 4 whose `zustellung` carries
+`packageStationType: PACKAGE_STATION` **and** `abholcodeAvailable: true` is
+ready to collect in a Packstation (issue #7 — both appeared together while it
+waited and both cleared once it was collected; `directlyAddressed` stays set
+afterwards, so it is not a signal). Unverified: whether either field is already
+set while the parcel is still on the vehicle, which would report pickup too
+early. **Filiale is not mapped** — only its event text was captured, no
+structured field. The coordinator warns when a parcel stays at
 `out_for_delivery` across more than one poll, the best available proxy for a
 silently-misreported pickup arrival.
 
-**`AT_PICKUP_POINT` is therefore unreachable in `_LADDER`, and `sensor.py`
-deliberately has no `awaiting_pickup` sensor.** This is the exemption
-`CONVENTIONS.md` asks a carrier to state explicitly, not an oversight.
+`pickup_point` is read from the anchor text of the latest event's status
+(`<a …>Packstation 216, …</a>`) — the link text is language-independent, the
+sentence around it is not. If it does not parse it stays `None`.
 
 ### Contested fields code both branches
 
@@ -260,6 +267,6 @@ export needs.
 
 ## Fields
 
-`weight`, `dimensions` and `pickup_point` are always `None` — no source names
-any of the three. Keep `CAPABILITIES` in `const.py` in sync if that ever
+`weight` and `dimensions` are always `None`; `pickup_point` is populated for
+Packstation arrivals only. Keep `CAPABILITIES` in `const.py` in sync if that ever
 changes.

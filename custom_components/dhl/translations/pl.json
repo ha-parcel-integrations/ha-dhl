@@ -151,6 +151,10 @@
       "next_delivery": {
         "name": "Następna dostawa"
       },
+      "awaiting_pickup": {
+        "name": "Do odbioru",
+        "unit_of_measurement": "przesyłki"
+      },
       "delivered_parcels": {
         "name": "Doręczone przesyłki",
         "unit_of_measurement": "przesyłki"

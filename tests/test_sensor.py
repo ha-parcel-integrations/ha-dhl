@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from custom_components.dhl.const import ParcelStatus
 from custom_components.dhl.sensor import (
+    DHLAwaitingPickupSensor,
     DHLDeliveredParcelsSensor,
     DHLIncomingParcelsSensor,
     DHLLastUpdateSensor,
@@ -103,6 +104,14 @@ def test_delivered_sensor():
     sensor = DHLDeliveredParcelsSensor(coordinator, _entry())
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "D"
+
+
+def test_awaiting_pickup_sensor_counts_only_parcels_at_a_pickup_point():
+    waiting = _parcel("P", status=ParcelStatus.AT_PICKUP_POINT, pickup=True)
+    coordinator = _coordinator([waiting, _parcel("A", status=ParcelStatus.OUT_FOR_DELIVERY)])
+    sensor = DHLAwaitingPickupSensor(coordinator, _entry())
+    assert sensor.native_value == 1
+    assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "P"
 
 
 def test_outgoing_parcels_sensor():

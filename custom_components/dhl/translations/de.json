@@ -151,6 +151,10 @@
       "next_delivery": {
         "name": "Nächste Zustellung"
       },
+      "awaiting_pickup": {
+        "name": "Zur Abholung bereit",
+        "unit_of_measurement": "Sendungen"
+      },
       "delivered_parcels": {
         "name": "Zugestellte Sendungen",
         "unit_of_measurement": "Sendungen"

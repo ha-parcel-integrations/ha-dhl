@@ -40,12 +40,11 @@ KNOWN_CAPABILITIES = frozenset(
 # as a literal ``None`` from normalize_parcel_de() in countries/de/__init__.py.
 #
 # DHL DE never exposes weight or dimensions (no source names either field).
-# ``pickup_point`` stays out too: none of the three OSS clients the payload was
-# reconstructed from names a Packstation/Filiale field, and that is the single
-# largest known gap in this carrier's mapping. The
+# ``pickup_point`` counts for Packstations only — it is read from the latest
+# event's link text, so a Filiale arrival still comes back ``None``. The
 # delivery window is contested between two shapes but both are implemented, so
 # it counts.
-CAPABILITIES = frozenset({"delivery_window", "url", "history"})
+CAPABILITIES = frozenset({"delivery_window", "pickup_point", "url", "history"})
 
 # The country a hub talks to (CONF_COUNTRY -> entry.data). Both countries own
 # a separate session lifecycle, so each has a country package.

@@ -152,7 +152,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._rate_limited_last = False
         # Consecutive-poll streak at OUT_FOR_DELIVERY per barcode, and which
         # barcodes have already been warned about — the suspected
-        # Packstation-arrival case the fortschritt ladder can't express.
+        # Filiale-arrival case nothing maps yet.
         self._out_for_delivery_streak: dict[str, int] = {}
         self._stall_warned: set[str] = set()
 
@@ -225,10 +225,9 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
     def _track_out_for_delivery_stall(self, parcels: list[dict]) -> None:
         """Warn once per barcode stuck at OUT_FOR_DELIVERY across polls.
 
-        The fortschritt ladder cannot express `at_pickup_point` at all — a
-        parcel that arrived at a Packstation is the most likely thing hiding
-        behind a status that never advances past
-        "out for delivery".
+        A Packstation arrival is recognised from `zustellung`, but a Filiale
+        arrival is not — it is the most likely thing hiding behind a status
+        that never advances past "out for delivery".
         """
         seen = set()
         for parcel in parcels:
@@ -244,7 +243,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
                 self._stall_warned.add(barcode)
                 _LOGGER.warning(
                     "DHL parcel %s has stayed 'out for delivery' across "
-                    "more than one poll — this may be a Packstation/Filiale "
+                    "more than one poll — this may be a Filiale "
                     "arrival the status ladder cannot express. Open an "
                     "issue: %s",
                     barcode,

@@ -96,6 +96,76 @@ def test_sender_and_receiver_names_are_html_unescaped():
     assert normalize_parcel(outgoing, country="DE")["receiver"] == "Jane & Co"
 
 
+PACKSTATION_EVENT = (
+    "Die Sendung liegt in der <a href='https://www.dhl.de/x?preferPackstation=true' "
+    "class='arrowLink' target='_blank'><span class='arrow'></span>Packstation 216, "
+    "Hauptstr. 1, 12345 Berlin</a> zur Abholung bereit."
+)
+PACKSTATION_ZUSTELLUNG = {
+    "packageStationType": "PACKAGE_STATION",
+    "directlyAddressed": True,
+    "abholcodeAvailable": True,
+}
+
+
+def _at_packstation(**overrides):
+    kwargs = {
+        "fortschritt": 4,
+        "ist_zugestellt": False,
+        "zustellung": PACKSTATION_ZUSTELLUNG,
+        "events": [
+            {"datum": "2026-09-16T10:26:44+02:00", "status": "Die Sendung befindet sich auf dem Weg zur Packstation."},
+            {"datum": "2026-09-16T15:05:08+02:00", "status": PACKSTATION_EVENT},
+        ],
+    }
+    kwargs.update(overrides)
+    return element("X", **kwargs)
+
+
+def test_packstation_arrival_is_at_pickup_point_with_the_station_named():
+    parcel = normalize_parcel(_at_packstation(), country="DE")
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Packstation 216, Hauptstr. 1, 12345 Berlin"
+
+
+def test_pickup_point_is_unescaped_plain_text():
+    event = "Bereit in <a href='x'><span class='arrow'></span>Packstation &amp; Co, 1</a> zur Abholung."
+    parcel = normalize_parcel(
+        _at_packstation(events=[{"datum": "d", "status": event}]), country="DE"
+    )
+    assert parcel["pickup_point"] == "Packstation & Co, 1"
+
+
+def test_packstation_arrival_without_a_parsable_link_keeps_status_but_no_point():
+    parcel = normalize_parcel(
+        _at_packstation(events=[{"datum": "d", "status": "Bereit zur Abholung."}]),
+        country="DE",
+    )
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup_point"] is None
+
+
+def test_out_for_delivery_needs_both_packstation_signals():
+    for zustellung in (
+        {"packageStationType": "PACKAGE_STATION", "abholcodeAvailable": False},
+        {"abholcodeAvailable": True},
+        {"directlyAddressed": True},
+    ):
+        parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
+        assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
+        assert parcel["pickup"] is False
+        assert parcel["pickup_point"] is None
+
+
+def test_collected_packstation_parcel_is_delivered_not_at_pickup_point():
+    parcel = normalize_parcel(
+        _at_packstation(fortschritt=5, ist_zugestellt=True), country="DE"
+    )
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert parcel["pickup_point"] is None
+
+
 def test_capabilities_are_known_values():
     """A typo here would silently misreport this carrier on the docs site."""
     assert CAPABILITIES <= KNOWN_CAPABILITIES
@@ -114,7 +184,8 @@ def test_capabilities_match_what_normalize_parcel_actually_returns():
     if "delivery_window" in CAPABILITIES:
         assert active["planned_from"] is not None or active["planned_to"] is not None
     if "pickup_point" in CAPABILITIES:
-        assert delivered["pickup_point"] is not None
+        at_packstation = normalize_parcel(_at_packstation(), country="DE")
+        assert at_packstation["pickup_point"] is not None
     if "url" in CAPABILITIES:
         assert delivered["url"] is not None
     if "history" in CAPABILITIES:

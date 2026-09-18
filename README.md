@@ -139,14 +139,14 @@ Outgoing parcels are shipments DHL reports as sent *by* your account rather than
 
 ## Parcel status reference
 
-The `status` field is the carrier-agnostic enum shared by the whole integration family. DHL Germany reports a coarse 0-5 progress ladder rather than a status vocabulary, so the mapping below is what that ladder can express — it cannot currently distinguish a Packstation/Filiale arrival from an ordinary "out for delivery" (see [Troubleshooting](#troubleshooting)).
+The `status` field is the carrier-agnostic enum shared by the whole integration family. DHL Germany reports a coarse 0-5 progress ladder rather than a status vocabulary, so the mapping below is what that ladder can express, plus a Packstation arrival read from the parcel's delivery details. A Filiale arrival cannot currently be told apart from an ordinary "out for delivery" (see [Troubleshooting](#troubleshooting)).
 
 | Status | Meaning |
 |---|---|
 | `registered` | Label created / picked up by DHL |
 | `in_transit` | In DHL's network |
 | `out_for_delivery` | On a delivery vehicle today |
-| `at_pickup_point` | Not currently distinguishable — see Troubleshooting |
+| `at_pickup_point` | Ready to collect in a Packstation (Filiale not distinguishable — see Troubleshooting) |
 | `delivered` | Delivered |
 | `returning` | DHL reports the shipment as a return |
 | `problem` | Not currently distinguishable — see Troubleshooting |
@@ -209,10 +209,10 @@ finished, since nobody building it has a DHL parcel of their own.
 - **A parcel shows `unknown`** — DHL has not scanned it yet, or its progress
   value is one this integration has not mapped. Check the logs for a
   ready-to-paste issue link.
-- **A parcel seems stuck on "out for delivery"** — this is the known gap:
-  DHL's progress ladder has no value for "waiting at a Packstation/Filiale",
-  so a pickup-point arrival may look identical to a parcel still on the
-  delivery vehicle. If this happens to you, please
+- **A parcel seems stuck on "out for delivery"** — this is the known gap for
+  Filiale: DHL's progress ladder has no value for "waiting at a Filiale", so
+  that arrival may look identical to a parcel still on the delivery vehicle.
+  (Packstation arrivals are recognised.) If this happens to you, please
   [open an issue](https://github.com/ha-parcel-integrations/ha-dhl/issues/new)
   or attach a diagnostics export — this is the single most useful thing a
   tester can confirm right now.

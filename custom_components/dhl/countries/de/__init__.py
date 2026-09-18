@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import html
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
@@ -431,6 +432,40 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+_ANCHOR_RE = re.compile(r"<a\b[^>]*>(.*?)</a>", re.IGNORECASE | re.DOTALL)
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _is_ready_at_packstation(zustellung: dict) -> bool:
+    """Both fields were seen together while a parcel waited in a Packstation.
+
+    Both cleared once it was collected (issue #7).
+    """
+    return (
+        zustellung.get("packageStationType") == "PACKAGE_STATION"
+        and zustellung.get("abholcodeAvailable") is True
+    )
+
+
+def _pickup_point_from_events(events: list) -> str | None:
+    """Return the location named by the link in the latest event's status text.
+
+    The "ready for pickup" event embeds the location as an anchor
+    (``<a …>Packstation 216, street, zip city</a>``); the anchor text is
+    language-independent, unlike the sentence around it.
+    """
+    for event in reversed(events):
+        status = event.get("status") if isinstance(event, dict) else None
+        if not isinstance(status, str):
+            continue
+        match = _ANCHOR_RE.search(status)
+        if match is None:
+            return None
+        text = html.unescape(_TAG_RE.sub("", match.group(1)))
+        return " ".join(text.split()) or None
+    return None
+
+
 _unexpected_keys_logged: set[str] = set()
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
@@ -681,6 +716,15 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     zustellung = zustellung if isinstance(zustellung, dict) else {}
     planned_from, planned_to = (None, None) if delivered else _delivery_window(zustellung)
 
+    pickup_point = None
+    if (
+        status is ParcelStatus.OUT_FOR_DELIVERY
+        and not delivered
+        and _is_ready_at_packstation(zustellung)
+    ):
+        status = ParcelStatus.AT_PICKUP_POINT
+        pickup_point = _pickup_point_from_events(events)
+
     # Confirmed live: shipment-level `retoure`/`ruecksendung` flags, distinct
     # from the per-event `events[].ruecksendung` — ORed since either can be
     # the one actually set.
@@ -712,8 +756,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         "planned_from": planned_from,
         "planned_to": planned_to,
         "pickup": status is ParcelStatus.AT_PICKUP_POINT,
-        # No source names a Packstation/Filiale field — the largest known gap.
-        "pickup_point": None,
+        "pickup_point": pickup_point,
         "url": tracking_url,
         "weight": None,
         "dimensions": None,
