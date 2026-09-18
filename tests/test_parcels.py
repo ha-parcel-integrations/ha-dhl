@@ -85,6 +85,17 @@ def test_is_outgoing_dispatches_to_de():
     assert is_outgoing(active_sample(), country="DE") is False
 
 
+def test_sender_and_receiver_names_are_html_unescaped():
+    incoming = element(
+        "X", fortschritt=3, sendungsname="S &amp; T Logistik", sendungsrichtung="ANKOMMEND"
+    )
+    outgoing = element(
+        "X", fortschritt=3, sendungsname="Jane &amp; Co", sendungsrichtung="AUSGEHEND"
+    )
+    assert normalize_parcel(incoming, country="DE")["sender"] == "S & T Logistik"
+    assert normalize_parcel(outgoing, country="DE")["receiver"] == "Jane & Co"
+
+
 def test_capabilities_are_known_values():
     """A typo here would silently misreport this carrier on the docs site."""
     assert CAPABILITIES <= KNOWN_CAPABILITIES

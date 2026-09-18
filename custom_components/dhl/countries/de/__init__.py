@@ -11,6 +11,7 @@ equivalent — see :mod:`.session`.
 """
 from __future__ import annotations
 
+import html
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -417,6 +418,8 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     name = sendungsinfo.get("sendungsname")
     if not isinstance(name, str) or not name:
         return None, None
+    # DHL returns the name HTML-escaped ("S &amp; T Logistik").
+    name = html.unescape(name)
     richtung = _direction(sendungsinfo)
     if richtung is None:
         return None, None
