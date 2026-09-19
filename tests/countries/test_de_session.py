@@ -368,7 +368,7 @@ async def test_refresh_with_an_unparseable_exp_claim_reports_no_expiry():
     session = _session()
     session.post = MagicMock(
         return_value=_ctx(
-            _response(200, _token_body(id_token=_jwt("abc", exp="soon")))
+            _response(200, _token_body(id_token=_jwt("abc", exp="soon", post_number="1")))
         )
     )
     de_session = DHLDeSession(session, refresh_token="stored-refresh")
@@ -376,6 +376,101 @@ async def test_refresh_with_an_unparseable_exp_claim_reports_no_expiry():
     await de_session.async_get_id_token()
 
     assert de_session.id_token_expires_at is None
+
+
+async def test_refresh_without_the_account_claim_demands_reauth(caplog):
+    """An inbox that answers 200-with-nothing is the only other signal there is.
+
+    Without the account claim the session still authenticates, so nothing
+    downstream fails — the reauth has to be raised here or not at all.
+    """
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(_response(200, _token_body(id_token=_jwt("abc"))))
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    with caplog.at_level("WARNING"), pytest.raises(DHLDeAuthError):
+        await de_session.async_get_id_token()
+
+    assert de_session.account_claim_missing is True
+    assert "post_number" in caplog.text
+
+
+async def test_refresh_with_the_account_claim_is_accepted():
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(
+            _response(200, _token_body(id_token=_jwt("abc", post_number="1")))
+        )
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    await de_session.async_get_id_token()
+
+    assert de_session.account_claim_missing is False
+
+
+async def test_a_rotated_refresh_token_survives_the_reauth_demand():
+    """The rotation happens server-side regardless, so dropping it here would
+    burn the stored token as well as the new one."""
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(
+            _response(
+                200, _token_body(id_token=_jwt("abc"), refresh_token="rotated")
+            )
+        )
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    with pytest.raises(DHLDeAuthError):
+        await de_session.async_get_id_token()
+
+    assert de_session.refresh_token == "rotated"
+    assert de_session.pop_refresh_token_changed() is True
+
+
+async def test_an_undecodable_id_token_does_not_demand_reauth():
+    """DHL accepted the token, so an unreadable payload is our problem."""
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(_response(200, _token_body(id_token="not-a-jwt")))
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    await de_session.async_get_id_token()
+
+    assert de_session.account_claim_missing is False
+
+
+async def test_refresh_logs_session_age_claims(caplog):
+    """auth_time/iat date the session; sid is fingerprinted, never logged raw."""
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(
+            _response(
+                200,
+                _token_body(
+                    id_token=_jwt(
+                        "abc",
+                        post_number="1",
+                        auth_time=1_700_000_000,
+                        iat=1_700_003_600,
+                        sid="secret-session-id",
+                    )
+                ),
+            )
+        )
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    with caplog.at_level("DEBUG"):
+        await de_session.async_get_id_token()
+
+    assert "2023-11-14T22:13:20+00:00" in caplog.text
+    assert "secret-session-id" not in caplog.text
+    assert hashlib.sha256(b"secret-session-id").hexdigest()[:8] in caplog.text
 
 
 def test_decode_id_token_claims_returns_the_whole_payload():

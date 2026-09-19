@@ -580,3 +580,65 @@ async def test_last_element_count_tracks_the_latest_poll(hass):
     client.async_get_incoming.return_value = ([], False)
     await coordinator._async_update_data()
     assert coordinator.last_element_count == 0
+
+
+# ---------------------------------------------------------------------------
+# a token that lost its account link
+# ---------------------------------------------------------------------------
+
+
+async def test_a_claimless_refresh_reaches_the_user_as_a_reauth_request(hass):
+    """The whole point of the fix: no account link, no silently empty list.
+
+    Exercises the real chain — the session raising on a refreshed token
+    without `post_number`, the DE transport converting that, and the
+    coordinator turning it into the request Home Assistant shows the user.
+    """
+    import base64
+    import json
+
+    from custom_components.dhl.api import DHLApiClient
+    from custom_components.dhl.countries.de.session import DHLDeSession
+
+    def _ctx(response):
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(return_value=response)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return ctx
+
+    def _response(body):
+        response = AsyncMock()
+        response.status = 200
+        response.json = AsyncMock(return_value=body)
+        response.text = AsyncMock(return_value=json.dumps(body))
+        return response
+
+    claims = base64.urlsafe_b64encode(json.dumps({"sub": "abc"}).encode()).rstrip(b"=")
+    http = MagicMock()
+    http.post = MagicMock(
+        return_value=_ctx(
+            _response(
+                {
+                    "access_token": "access",
+                    "expires_in": 1800,
+                    "id_token": f"header.{claims.decode()}.sig",
+                    "refresh_token": "rotated",
+                }
+            )
+        )
+    )
+    http.get = MagicMock(return_value=_ctx(_response({"sendungen": []})))
+
+    entry = _entry()
+    entry.add_to_hass(hass)
+    de_session = DHLDeSession(http, refresh_token="stored-refresh")
+    de_session._endpoints = {"token_endpoint": "https://login.dhl.de/x/token"}
+    client = DHLApiClient(http, country="DE", de_session=de_session)
+    coordinator = DHLCoordinator(hass, client, entry, de_session=de_session)
+
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coordinator._async_update_data()
+
+    # The rotated token must have been persisted on the way out, or the next
+    # sign-in starts from a refresh token DHL has already invalidated.
+    assert entry.data[CONF_REFRESH_TOKEN] == "rotated"

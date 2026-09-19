@@ -40,6 +40,7 @@ from urllib.parse import quote
 import aiohttp
 
 from ...const import (
+    DHL_DE_ACCOUNT_CLAIM,
     DHL_DE_CLIENT_ID,
     DHL_DE_DISCOVERY_URL,
     DHL_DE_LOGIN_CLAIMS,
@@ -99,6 +100,21 @@ def _warn_client_retirement_once(detail: str) -> None:
         NEW_ISSUE_URL,
         detail,
     )
+
+
+def _as_timestamp(value: Any) -> str | None:
+    """Render a numeric claim as an ISO timestamp, or ``None`` if it is not one."""
+    try:
+        return datetime.fromtimestamp(float(value), timezone.utc).isoformat()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
+def _fingerprint(value: Any) -> str | None:
+    """Short, stable digest of a claim — enough to see it change, not to read it."""
+    if not value:
+        return None
+    return hashlib.sha256(str(value).encode()).hexdigest()[:8]
 
 
 def generate_pkce() -> tuple[str, str]:
@@ -179,6 +195,9 @@ class DHLDeSession:
         self.id_token_claim_names: list[str] = []
         self.id_token_expires_at: datetime | None = None
         self.last_refresh_at: datetime | None = None
+        # True once a token came back without the account claim. The session
+        # still authenticates in that state, which is exactly the problem.
+        self.account_claim_missing = False
         # Set when a refresh response carries a *different* refresh token
         # than the one we sent — some OIDC providers rotate it silently.
         # Cleared by `pop_refresh_token_changed()`, the coordinator's signal
@@ -333,6 +352,22 @@ class DHLDeSession:
         if new_refresh_token and new_refresh_token != self.refresh_token:
             self.refresh_token = new_refresh_token
             self._refresh_token_changed = True
+        if self.account_claim_missing:
+            # Raised last, so a rotated refresh token is still recorded for
+            # the coordinator to persist — the reauth that follows replaces
+            # it, but losing it on the way out would burn the old one too.
+            _LOGGER.warning(
+                "DHL's refreshed ID token no longer carries the %s claim that "
+                "links it to your account, so the parcel list will stay empty "
+                "until you sign in again. Please report this, including the "
+                "claim list below: %s\n  claims=%s",
+                DHL_DE_ACCOUNT_CLAIM,
+                NEW_ISSUE_URL,
+                self.id_token_claim_names,
+            )
+            raise DHLDeAuthError(
+                f"refreshed ID token has no {DHL_DE_ACCOUNT_CLAIM} claim"
+            )
 
     async def _async_post_token(
         self, url: str, body: dict[str, str]
@@ -397,6 +432,9 @@ class DHLDeSession:
         if claims is None:
             self.id_token_claim_names = []
             self.id_token_expires_at = None
+            # DHL accepted this token, so an unreadable payload is our
+            # problem, not a lost account link — never force a reauth on it.
+            self.account_claim_missing = False
             _LOGGER.debug("ID token could not be decoded for claim reporting")
             return
         self.id_token_claim_names = sorted(str(name) for name in claims)
@@ -407,11 +445,16 @@ class DHLDeSession:
         except (KeyError, TypeError, ValueError, OSError, OverflowError):
             self.id_token_expires_at = None
         _LOGGER.debug(
-            "ID token refreshed: claims=%s id_token_exp=%s access_token_exp=%s",
+            "ID token refreshed: claims=%s id_token_exp=%s access_token_exp=%s "
+            "auth_time=%s iat=%s sid=%s",
             self.id_token_claim_names,
             self.id_token_expires_at.isoformat() if self.id_token_expires_at else None,
             self._expires_at.isoformat() if self._expires_at else None,
+            _as_timestamp(claims.get("auth_time")),
+            _as_timestamp(claims.get("iat")),
+            _fingerprint(claims.get("sid")),
         )
+        self.account_claim_missing = DHL_DE_ACCOUNT_CLAIM not in claims
 
 
 __all__ = [

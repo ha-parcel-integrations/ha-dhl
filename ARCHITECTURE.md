@@ -135,6 +135,19 @@ sort and event-firing path.
 account-less carrier's `track_parcel`, more than one configured DHL account
 needs `config_entry_id` to disambiguate.
 
+### The account link lives in a claim, and can go missing
+
+`DHL_DE_LOGIN_CLAIMS` is sent at `authorize` only; the token endpoint has no
+way to re-request it on a refresh. A refreshed ID token that has lost
+`post_number` is still a valid token — it simply no longer resolves to an
+account, and the inbox reports no parcels rather than an error.
+
+`DHLDeSession` records every token's claim *names* (never their values: half
+of them are PII) and raises `DHLDeAuthError` when the account claim is gone,
+which reaches the user as a re-authentication request. The names, the ID
+token's own expiry and the last refresh time are in the diagnostics export,
+which is what tells an emptied session apart from an empty account.
+
 ### A stub and a not-found parcel look identical
 
 The inbox can list an element without its details. `needs_enrichment()` spots

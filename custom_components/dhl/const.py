@@ -87,6 +87,11 @@ DHL_DE_CLIENT_ID = "83471082-5c13-4fce-8dcb-19d2a3fca413"
 DHL_DE_REDIRECT_URI = "dhllogin://de.deutschepost.dhl/login"
 DHL_DE_SCOPE = "openid offline_access"
 
+# The claim that links a token to its DHL account. A refreshed ID token that
+# has lost it still authenticates, but the inbox answers HTTP 200 with an
+# empty list — indistinguishable from an account with no parcels.
+DHL_DE_ACCOUNT_CLAIM = "post_number"
+
 # Without requesting these ID-token claims, the account-inbox endpoint
 # returns an empty shipment list even though login succeeds — the account
 # link needs post_number specifically.

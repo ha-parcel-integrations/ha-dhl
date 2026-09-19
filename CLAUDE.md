@@ -54,6 +54,16 @@ client id *succeeds* — tokens issued, no error — but silently returns an emp
 account inbox on every poll. A change that still logs in proves nothing.
 `DHL_DE_LOGIN_CLAIMS` (`post_number` specifically) is part of this.
 
+**A refreshed ID token without `post_number` must force a reauth.** `claims`
+is only sent at `authorize`, never on `grant_type=refresh_token`, and a
+refreshed token that comes back without the account claim still authenticates
+— the inbox just answers HTTP 200 with an empty list forever. Confirmed live
+on a reporter's account (issue #6): the six identity claims
+(`post_number`, `email`, `display_name`, `customer_type`, `last_login`,
+`service_mask`) were gone while `sub`, `sid` and `auth_time` were unchanged.
+Re-authenticating is the only recovery, so `_async_refresh()` raises
+`DHLDeAuthError` — after recording a rotated refresh token, never before.
+
 **A failed enrichment must never be reported as an empty inbox.**
 `needs_enrichment()` and `is_not_found()` both key off a missing
 `sendungsdetails.sendungsverlauf`, so an un-enriched stub *is* "not found" by

@@ -226,6 +226,11 @@ finished, since nobody building it has a DHL parcel of their own.
   *entire* address after logging in, including everything after `code=`.
   Trailing characters get trimmed automatically, but a truncated copy will
   not.
+- **Re-authentication is requested while everything looked fine** — DHL
+  sometimes hands back a refreshed session that is no longer linked to your
+  account. It still works as a login, but your parcel list would stay empty,
+  so the integration asks you to sign in again rather than showing nothing.
+  Signing in restores the link.
 - **Re-authentication is requested** — DHL's session expired (they last
   about 30 minutes and are refreshed automatically in the background; this
   only triggers if the refresh itself is rejected). Repeat the sign-in step.
