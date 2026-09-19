@@ -12,6 +12,7 @@ from custom_components.dhl.countries.de.session import (
     DHLDeAuthError,
     DHLDeSession,
     DHLDeSessionError,
+    decode_id_token_claims,
     decode_id_token_subject,
     generate_nonce,
     generate_pkce,
@@ -68,8 +69,9 @@ def _token_body(
     return body
 
 
-def _jwt(sub: str | None) -> str:
+def _jwt(sub: str | None, **claims) -> str:
     payload = {"sub": sub} if sub else {}
+    payload.update(claims)
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=")
     return f"header.{encoded.decode()}.sig"
 
@@ -321,3 +323,67 @@ async def test_refresh_missing_expires_in_falls_back_to_default():
     await de_session.async_get_id_token()
 
     assert de_session._expires_at is not None
+
+
+# ---------------------------------------------------------------------------
+# ID-token claim reporting — an emptied inbox's only signal
+# ---------------------------------------------------------------------------
+
+
+async def test_refresh_records_claim_names_and_the_id_tokens_own_expiry():
+    """`expires_in` is the access token's; the `dhli` cookie is the ID token."""
+    expiry = int(
+        (datetime.now(timezone.utc) + timedelta(hours=8)).timestamp()
+    )
+    token = _jwt("abc", post_number="12345", email="a@b.c", exp=expiry)
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(_response(200, _token_body(id_token=token)))
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    await de_session.async_get_id_token()
+
+    assert de_session.id_token_claim_names == ["email", "exp", "post_number", "sub"]
+    assert de_session.id_token_expires_at == datetime.fromtimestamp(
+        expiry, timezone.utc
+    )
+    assert de_session.last_refresh_at is not None
+
+
+async def test_refresh_with_an_undecodable_id_token_reports_no_claims():
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(_response(200, _token_body(id_token="not-a-jwt")))
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    await de_session.async_get_id_token()
+
+    assert de_session.id_token_claim_names == []
+    assert de_session.id_token_expires_at is None
+
+
+async def test_refresh_with_an_unparseable_exp_claim_reports_no_expiry():
+    session = _session()
+    session.post = MagicMock(
+        return_value=_ctx(
+            _response(200, _token_body(id_token=_jwt("abc", exp="soon")))
+        )
+    )
+    de_session = DHLDeSession(session, refresh_token="stored-refresh")
+
+    await de_session.async_get_id_token()
+
+    assert de_session.id_token_expires_at is None
+
+
+def test_decode_id_token_claims_returns_the_whole_payload():
+    assert decode_id_token_claims(_jwt("abc", post_number="1")) == {
+        "sub": "abc",
+        "post_number": "1",
+    }
+
+
+def test_decode_id_token_claims_malformed_token():
+    assert decode_id_token_claims("not-a-jwt") is None

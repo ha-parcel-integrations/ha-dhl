@@ -216,6 +216,12 @@ finished, since nobody building it has a DHL parcel of their own.
   [open an issue](https://github.com/ha-parcel-integrations/ha-dhl/issues/new)
   or attach a diagnostics export — this is the single most useful thing a
   tester can confirm right now.
+- **Sensors go `unavailable` instead of dropping to zero** — when DHL lists
+  a parcel but will not hand over its details, the update is failed on purpose
+  rather than reported as an empty account. That keeps a temporary glitch from
+  looking like "all parcels delivered" and firing your automations. The next
+  successful poll restores the sensors. A warning naming the number of
+  affected parcels is written to the log.
 - **Sign-in fails or the pasted link is rejected** — make sure you copied the
   *entire* address after logging in, including everything after `code=`.
   Trailing characters get trimmed automatically, but a truncated copy will

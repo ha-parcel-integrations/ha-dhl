@@ -86,7 +86,9 @@ class DHLApiClient:
         surface those as parcels. The inbox listing can also return a bare
         stub for a real, active shipment it hasn't detailed yet — those are
         enriched with an individual by-number fetch before the not-found
-        check runs, or they would be misread as not-found instead.
+        check runs, or they would be misread as not-found instead. When that
+        fetch fails they *are* misread, so a poll in which enrichment failed
+        for every element raises rather than reporting an empty inbox.
         """
         if self._country != "DE":
             if self._country == "PL" and self._pl_session and self._pl_device_id:
@@ -95,22 +97,49 @@ class DHLApiClient:
         de_session = self._require_de_session()
         envelope = await async_get_inbox_envelope(self._session, de_session)
         sendungen = envelope.get("sendungen")
-        elements = select_active_elements(sendungen if isinstance(sendungen, list) else [])
-        elements = await self._enrich_stubs(elements)
-        elements = [element for element in elements if not is_not_found(element)]
+        raw = sendungen if isinstance(sendungen, list) else []
+        unarchived = select_active_elements(raw)
+        enriched, stub_count, failed = await self._enrich_stubs(unarchived)
+        elements = [element for element in enriched if not is_not_found(element)]
+        # Every stub that failed to enrich is still a stub, and a stub is
+        # `is_not_found` by construction — so it sits inside the drop count.
         _LOGGER.debug(
-            "Account inbox: %d raw, %d active after filtering",
-            len(sendungen) if isinstance(sendungen, list) else 0,
+            "Account inbox: %d raw, %d active after filtering "
+            "(unarchived=%d stubs=%d enrich_failed=%d dropped_not_found=%d)",
+            len(raw),
             len(elements),
+            len(unarchived),
+            stub_count,
+            failed,
+            len(enriched) - len(elements) - failed,
         )
+        if failed:
+            if not elements:
+                # Publishing zero here would be a lie the coordinator can't
+                # tell apart from a genuinely empty account: every parcel
+                # would vanish from the UI and fire "gone" automations.
+                # Failing the poll keeps the last good data in place.
+                raise DHLApiError(
+                    f"all {failed} inbox element(s) failed to enrich; "
+                    "treating as a failed poll rather than an empty inbox"
+                )
+            _LOGGER.warning(
+                "DHL Germany's account inbox listed %d parcel(s) without "
+                "details, and fetching those details failed — they are "
+                "missing from this update. They should reappear on the next "
+                "poll; if they do not, re-authenticate the integration.",
+                failed,
+            )
         return elements, bool(envelope.get("rateLimited"))
 
-    async def _enrich_stubs(self, elements: list[dict]) -> list[dict]:
-        """Replace a bare inbox stub with its by-number equivalent, where possible.
+    async def _enrich_stubs(self, elements: list[dict]) -> tuple[list[dict], int, int]:
+        """Replace bare inbox stubs with their by-number equivalents.
 
-        One bad enrichment fetch falls back to the original stub rather than
-        failing the whole inbox fetch — the not-found check downstream then
-        drops it the same way it would a genuinely unavailable parcel.
+        Returns ``(elements, stubs seen, stubs that could not be enriched)``.
+        A stub that fails to enrich stays a stub, and the not-found check
+        downstream cannot tell that apart from a parcel DHL genuinely has no
+        data for — so the failure count is reported rather than swallowed,
+        and the caller decides what an unexplained disappearance means.
         """
         de_session = self._require_de_session()
         stubs = [
@@ -119,7 +148,7 @@ class DHLApiClient:
             if element.get("id") and needs_enrichment(element)
         ]
         if not stubs:
-            return elements
+            return elements, 0, 0
 
         async def _fetch(barcode: str) -> dict | None:
             envelope = await async_get_by_number_envelope(
@@ -136,10 +165,16 @@ class DHLApiClient:
             return_exceptions=True,
         )
         enriched = list(elements)
-        for (index, original), result in zip(stubs, results):
+        failed = 0
+        for (index, _original), result in zip(stubs, results):
             if isinstance(result, dict):
                 enriched[index] = result
-        return enriched
+            else:
+                failed += 1
+                _LOGGER.debug(
+                    "Enrichment failed for inbox element %d: %r", index, result
+                )
+        return enriched, len(stubs), failed
 
     async def async_get_by_number(self, piece_code: str) -> dict | None:
         """Fetch one manually-tracked parcel by its piece code (`track_parcel`).

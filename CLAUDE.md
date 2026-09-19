@@ -54,6 +54,14 @@ client id *succeeds* — tokens issued, no error — but silently returns an emp
 account inbox on every poll. A change that still logs in proves nothing.
 `DHL_DE_LOGIN_CLAIMS` (`post_number` specifically) is part of this.
 
+**A failed enrichment must never be reported as an empty inbox.**
+`needs_enrichment()` and `is_not_found()` both key off a missing
+`sendungsdetails.sendungsverlauf`, so an un-enriched stub *is* "not found" by
+construction. Letting a failed by-number fetch fall through to the not-found
+drop makes a real parcel disappear on HTTP 200, with no warning and no reauth
+prompt — two tests used to assert exactly that. `async_get_incoming()` now
+raises when enrichment failed for every element.
+
 **Requests must originate from a German IP.** The endpoint does not answer a
 non-German client correctly — country-level, not bot detection. Developing from
 elsewhere needs a German VPN/VM, or every request stalls until

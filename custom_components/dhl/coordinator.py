@@ -155,6 +155,19 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         # Filiale-arrival case nothing maps yet.
         self._out_for_delivery_streak: dict[str, int] = {}
         self._stall_warned: set[str] = set()
+        # Element count of the last poll's inbox, reported by diagnostics.
+        # ``None`` before the first poll.
+        self._last_element_count: int | None = None
+
+    @property
+    def de_session(self) -> DHLDeSession | None:
+        """The DE OIDC session, for diagnostics to report its token claims."""
+        return self._de_session
+
+    @property
+    def last_element_count(self) -> int | None:
+        """Inbox element count of the last poll, ``None`` before the first."""
+        return self._last_element_count
 
     def _device_id(self) -> str | None:
         """Resolve (and cache) this entry's device id for event payloads."""
@@ -288,6 +301,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             # permanently burning a token that was in fact refreshed fine.
             self._persist_refresh_token_if_rotated()
 
+        self._last_element_count = len(elements)
         self._warn_rate_limited(rate_limited)
 
         country = self.config_entry.data.get(CONF_COUNTRY, "DE")

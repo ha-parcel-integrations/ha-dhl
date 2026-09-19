@@ -559,3 +559,24 @@ async def test_event_carries_device_id(hass):
     await hass.async_block_till_done()
 
     assert events[0].data["device_id"] == device.id
+
+
+# ---------------------------------------------------------------------------
+# inbox element count, for diagnostics
+# ---------------------------------------------------------------------------
+
+
+async def test_last_element_count_tracks_the_latest_poll(hass):
+    """Diagnostics reports this, so it must follow the inbox down as well as up."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client([active_sample()])
+    coordinator = _coordinator(hass, entry, client)
+    assert coordinator.last_element_count is None
+
+    await coordinator._async_update_data()
+    assert coordinator.last_element_count == 1
+
+    client.async_get_incoming.return_value = ([], False)
+    await coordinator._async_update_data()
+    assert coordinator.last_element_count == 0

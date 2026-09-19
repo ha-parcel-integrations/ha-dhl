@@ -135,6 +135,21 @@ sort and event-firing path.
 account-less carrier's `track_parcel`, more than one configured DHL account
 needs `config_entry_id` to disambiguate.
 
+### A stub and a not-found parcel look identical
+
+The inbox can list an element without its details. `needs_enrichment()` spots
+that by the absence of `sendungsdetails.sendungsverlauf` — and `is_not_found()`
+reads the *same* absence as "DHL has no data for this parcel". The two
+predicates therefore agree on every un-enriched element, so a stub survives
+only if its by-number enrichment fetch succeeds.
+
+`async_get_incoming()` counts the enrichment failures instead of letting them
+fall into the not-found drop. A poll where enrichment failed for every element
+raises `DHLApiError` rather than reporting an empty inbox: the coordinator
+turns that into `UpdateFailed` and keeps its last good data, because publishing
+zero would remove every parcel from the UI and fire the delivered/gone events
+for parcels that are still in transit.
+
 ## The status ladder is a progress bar, not a vocabulary
 
 `fortschritt` runs 0–5, bounded by `maximalFortschritt` (defended against being

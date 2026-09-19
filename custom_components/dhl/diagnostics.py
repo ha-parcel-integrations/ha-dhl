@@ -71,8 +71,28 @@ async def async_get_config_entry_diagnostics(
         entry_options[CONF_TRACKED_CODES] = ["**REDACTED**" for _ in tracked_codes]
 
     interval = coordinator.update_interval
+    de_session = coordinator.de_session
     return {
         "entry_options": async_redact_data(entry_options, TO_REDACT),
+        # Claim *names* only, never their values — `post_number` and `email`
+        # are PII. Their presence is what tells an emptied inbox apart from
+        # an empty account.
+        "session": {
+            "id_token_claims": (
+                de_session.id_token_claim_names if de_session else None
+            ),
+            "id_token_expires_at": (
+                de_session.id_token_expires_at.isoformat()
+                if de_session and de_session.id_token_expires_at
+                else None
+            ),
+            "last_refresh_at": (
+                de_session.last_refresh_at.isoformat()
+                if de_session and de_session.last_refresh_at
+                else None
+            ),
+            "last_inbox_elements": coordinator.last_element_count,
+        },
         "counts": {
             "incoming_active": len(coordinator.data or []),
             "delivered": len(coordinator.delivered or []),

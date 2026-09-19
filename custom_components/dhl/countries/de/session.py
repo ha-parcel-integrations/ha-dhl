@@ -123,13 +123,13 @@ def generate_nonce() -> str:
     return secrets.token_urlsafe(24)
 
 
-def decode_id_token_subject(id_token: str) -> str | None:
-    """Best-effort, unverified read of the ID token's ``sub`` claim.
+def decode_id_token_claims(id_token: str) -> dict[str, Any] | None:
+    """Best-effort, unverified read of an ID token's claim set.
 
-    Used only to key ``unique_id`` at config-flow time — never to authorise
-    anything, so no signature check is needed (or possible without the
-    tenant's signing key). Returns ``None`` on any malformed token rather
-    than raising, since a missing ``sub`` must not block the flow.
+    Never used to authorise anything — only to key ``unique_id`` at
+    config-flow time and to report which claims a token carries — so no
+    signature check is needed (or possible without the tenant's signing
+    key). Returns ``None`` on any malformed token rather than raising.
     """
     try:
         _, payload_b64, _ = id_token.split(".")
@@ -140,7 +140,15 @@ def decode_id_token_subject(id_token: str) -> str | None:
         payload = json.loads(base64.urlsafe_b64decode(payload_b64 + padding))
     except (ValueError, UnicodeDecodeError):
         return None
-    subject = payload.get("sub")
+    return payload if isinstance(payload, dict) else None
+
+
+def decode_id_token_subject(id_token: str) -> str | None:
+    """Best-effort, unverified read of the ID token's ``sub`` claim."""
+    claims = decode_id_token_claims(id_token)
+    if claims is None:
+        return None
+    subject = claims.get("sub")
     return str(subject) if subject else None
 
 
@@ -166,6 +174,11 @@ class DHLDeSession:
         self._id_token: str | None = None
         self._expires_at: datetime | None = None
         self._endpoints: dict[str, str] | None = None
+        # Last ID token's claim names and own `exp`, for diagnostics. Names
+        # only — several of the claims are PII.
+        self.id_token_claim_names: list[str] = []
+        self.id_token_expires_at: datetime | None = None
+        self.last_refresh_at: datetime | None = None
         # Set when a refresh response carries a *different* refresh token
         # than the one we sent — some OIDC providers rotate it silently.
         # Cleared by `pop_refresh_token_changed()`, the coordinator's signal
@@ -370,12 +383,42 @@ class DHLDeSession:
         except (TypeError, ValueError):
             lifetime = _EXPECTED_TOKEN_LIFETIME
         self._expires_at = datetime.now(timezone.utc) + lifetime
+        self.last_refresh_at = datetime.now(timezone.utc)
+        self._record_claims(id_token)
+
+    def _record_claims(self, id_token: str) -> None:
+        """Note which claims the new ID token carries, and warn if the account link is gone.
+
+        `expires_in` describes the *access* token, but what authenticates the
+        tracking endpoint is the ID token in the `dhli` cookie — so its own
+        `exp` is recorded separately rather than assumed equal.
+        """
+        claims = decode_id_token_claims(id_token)
+        if claims is None:
+            self.id_token_claim_names = []
+            self.id_token_expires_at = None
+            _LOGGER.debug("ID token could not be decoded for claim reporting")
+            return
+        self.id_token_claim_names = sorted(str(name) for name in claims)
+        try:
+            self.id_token_expires_at = datetime.fromtimestamp(
+                float(claims["exp"]), timezone.utc
+            )
+        except (KeyError, TypeError, ValueError, OSError, OverflowError):
+            self.id_token_expires_at = None
+        _LOGGER.debug(
+            "ID token refreshed: claims=%s id_token_exp=%s access_token_exp=%s",
+            self.id_token_claim_names,
+            self.id_token_expires_at.isoformat() if self.id_token_expires_at else None,
+            self._expires_at.isoformat() if self._expires_at else None,
+        )
 
 
 __all__ = [
     "DHLDeAuthError",
     "DHLDeSession",
     "DHLDeSessionError",
+    "decode_id_token_claims",
     "decode_id_token_subject",
     "generate_nonce",
     "generate_pkce",
