@@ -366,7 +366,14 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "twoManHandling",
 }
 
-_KNOWN_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND", "AUSGEHEND"}
+_INCOMING_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND"}
+# ABGEHEND is what a real account actually returns for an outgoing shipment.
+# AUSGEHEND comes from two OSS sources and has never been seen on the wire, so
+# it stays recognised rather than being swapped out.
+_OUTGOING_SENDUNGSRICHTUNG_VALUES = {"AUSGEHEND", "ABGEHEND"}
+_KNOWN_SENDUNGSRICHTUNG_VALUES = (
+    _INCOMING_SENDUNGSRICHTUNG_VALUES | _OUTGOING_SENDUNGSRICHTUNG_VALUES
+)
 _sendungsrichtung_values_logged: set[str] = set()
 
 
@@ -390,21 +397,22 @@ def _direction(sendungsinfo: dict) -> str | None:
     return richtung.upper() if isinstance(richtung, str) else None
 
 
+def _is_outgoing(sendungsinfo: dict) -> bool:
+    """Whether this element's direction is one of the outgoing values."""
+    return _direction(sendungsinfo) in _OUTGOING_SENDUNGSRICHTUNG_VALUES
+
+
 def is_outgoing_element(raw: dict) -> bool:
-    """Whether a ``sendungen[]`` element is outgoing (``sendungsrichtung: AUSGEHEND``).
+    """Whether a ``sendungen[]`` element is outgoing.
 
     A missing/unrecognised direction defaults to incoming (mirrors
     ha-dhl-nl's ``_is_return`` default-safe behaviour) so an element with no
     known direction still surfaces somewhere rather than vanishing from every
-    sensor. Neither confirmed OSS source (issue #2, Versand-HA) has ever
-    actually observed a populated ``AUSGEHEND`` element on the wire —
-    Versand-HA's own comment notes its anonymous by-piececode search returns
-    ``ANKOMMEND`` unconditionally — so this may simply never fire in
-    practice until a real export proves otherwise.
+    sensor.
     """
     sendungsinfo = raw.get("sendungsinfo")
     sendungsinfo = sendungsinfo if isinstance(sendungsinfo, dict) else {}
-    return _direction(sendungsinfo) == "AUSGEHEND"
+    return _is_outgoing(sendungsinfo)
 
 
 def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
@@ -413,7 +421,7 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     Single confirmed field (issue #2): for an incoming shipment
     (``sendungsrichtung: ANKOMMEND``/``EINGEHEND`` — a second OSS source names
     the latter alongside the former) `sendungsname` names the sender; for an
-    outgoing one (``AUSGEHEND``) it names the recipient instead. An
+    outgoing one (``ABGEHEND``/``AUSGEHEND``) it names the recipient instead. An
     unrecognised/missing direction leaves both `None` rather than guessing.
     """
     name = sendungsinfo.get("sendungsname")
@@ -424,9 +432,9 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     richtung = _direction(sendungsinfo)
     if richtung is None:
         return None, None
-    if richtung in ("ANKOMMEND", "EINGEHEND"):
+    if richtung in _INCOMING_SENDUNGSRICHTUNG_VALUES:
         return name, None
-    if richtung == "AUSGEHEND":
+    if richtung in _OUTGOING_SENDUNGSRICHTUNG_VALUES:
         return None, name
     _warn_sendungsrichtung_value(richtung)
     return None, None
@@ -475,7 +483,7 @@ _outgoing_status_unconfirmed_logged = False
 
 
 def _warn_outgoing_status_unconfirmed_once() -> None:
-    """One-shot warning for the first outgoing (AUSGEHEND) parcel seen.
+    """One-shot warning for the first outgoing parcel seen.
 
     The fortschritt ladder has only ever been confirmed against incoming
     shipments — reporting it for an outgoing one would be a guess, so
@@ -486,7 +494,7 @@ def _warn_outgoing_status_unconfirmed_once() -> None:
         return
     _outgoing_status_unconfirmed_logged = True
     _LOGGER.warning(
-        "DHL Germany reported an outgoing (AUSGEHEND) parcel — its "
+        "DHL Germany reported an outgoing parcel — its "
         "fortschritt ladder was only ever confirmed against incoming "
         "shipments, so status is reported as 'unknown' rather than guessed. "
         "Open an issue with a real outgoing sendungsverlauf export: %s",
@@ -662,7 +670,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     sendungsinfo = raw.get("sendungsinfo")
     sendungsinfo = sendungsinfo if isinstance(sendungsinfo, dict) else {}
     sender, receiver = _sender_receiver(sendungsinfo)
-    is_outgoing = _direction(sendungsinfo) == "AUSGEHEND"
+    is_outgoing = _is_outgoing(sendungsinfo)
 
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}

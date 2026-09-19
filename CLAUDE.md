@@ -105,9 +105,14 @@ window (`Von`/`Bis` pair, else singular `zustellzeitfenster`/`zustelldatum`).
 against incoming sources only), so `_fire_outgoing_change_events` detects the
 terminal hop from the independently-derived `delivered` bool, not
 `status == DELIVERED`. **Do not "simplify" this back to mirroring
-`_fire_change_events`.** The outgoing pipeline may legitimately read 0 forever —
-no source has ever observed a populated `AUSGEHEND` element — which is a
-deliberate ship-pre-guarded decision.
+`_fire_change_events`.**
+
+**The outgoing direction value is `ABGEHEND`, not `AUSGEHEND`.** Both OSS
+sources named `AUSGEHEND`; the first real outgoing parcel ever seen on a real
+account (maintainer's own, 2026-09-19) said `ABGEHEND`, and until then every
+outgoing element fell through to the incoming default. Both are recognised now.
+When a vocabulary in this integration comes only from reconstruction sources,
+treat it as a hypothesis — the unrecognised-value warning is what catches it.
 
 **`sender`/`receiver` come from `sendungsinfo.sendungsname` keyed on
 `sendungsrichtung`**; an unrecognised direction warns once and leaves both

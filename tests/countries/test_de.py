@@ -325,6 +325,21 @@ def test_normalize_outgoing_maps_sendungsname_to_receiver():
     assert parcel["receiver"] == "Jane Doe"
 
 
+def test_normalize_abgehend_is_outgoing(caplog):
+    """ABGEHEND is the value a real account returns for an outgoing parcel."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="ABGEHEND",
+    )
+    parcel = normalize_parcel_de(raw)
+    assert is_outgoing_element(raw) is True
+    assert parcel["sender"] is None
+    assert parcel["receiver"] == "Jane Doe"
+    assert "sendungsrichtung" not in caplog.text.lower()
+
+
 def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
     raw = element(
         ACTIVE_CODE,

@@ -210,9 +210,17 @@ no longer a reconstruction.
 
 Both come from `sendungsinfo.sendungsname`, keyed on `sendungsrichtung` (issue
 #2, reported live): `ANKOMMEND` / `EINGEHEND` (incoming — Versand-HA names
-`EINGEHEND` alongside `ANKOMMEND`) means the name is the **sender**; `AUSGEHEND`
-means it is the **recipient**. An unrecognised direction warns once and leaves
-both `None` rather than guessing.
+`EINGEHEND` alongside `ANKOMMEND`) means the name is the **sender**;
+`ABGEHEND` / `AUSGEHEND` means it is the **recipient**. An unrecognised
+direction warns once and leaves both `None` rather than guessing.
+
+**The real outgoing value is `ABGEHEND`, confirmed live 2026-09-19** on the
+maintainer's own account. `AUSGEHEND` was the value both OSS reconstruction
+sources named, and it was wrong — until a real outgoing parcel appeared in a
+real inbox, every outgoing element was silently falling through to the
+incoming default. Both values are recognised: `AUSGEHEND` has never been seen
+on the wire, but nothing proves it never appears, and keeping it costs a set
+member.
 
 **Open risk, unconfirmed either way.** Versand-HA's own comment on this mapping
 says DHL's *anonymous* by-piececode search returns `ANKOMMEND` for every parcel
@@ -247,7 +255,7 @@ per-parcel outgoing sensors, matching ha-dhl-nl's summary-only pattern.
 
 **`status` is force-`UNKNOWN` for every outgoing parcel** (one-shot
 `_warn_outgoing_status_unconfirmed_once`): the ladder was calibrated purely
-against incoming reconstruction sources, so applying it to an `AUSGEHEND`
+against incoming reconstruction sources, so applying it to an outgoing
 element would be a guess. `retoure` / `ruecksendung` can still override to
 `RETURNING`, since that is a separate, direction-agnostic flag.
 
@@ -259,12 +267,14 @@ delivery detection differently on purpose. Outgoing events
 (`dhl_outgoing_parcel_status_changed` / `_delivered`) have no `registered` or
 `delivery_time_changed` counterpart, matching ha-dhl-nl.
 
-**Doubly unconfirmed — this may ship inert.** Neither issue #2 nor Versand-HA
-has ever actually observed a populated `AUSGEHEND` element, and Versand-HA's
-anonymous by-piececode search (same params as `async_get_by_number_envelope`)
-returns `ANKOMMEND` unconditionally. The outgoing sensors may legitimately read
-0 forever until a real export proves otherwise. Shipping the pipeline
-pre-guarded rather than waiting is a deliberate decision, not an oversight.
+**Confirmed on the wire 2026-09-19.** Shipping this pipeline pre-guarded,
+before any source had observed an outgoing element, turned out to be the right
+call — a real outgoing parcel appeared on the maintainer's account and the
+whole path worked, apart from the direction value itself being wrong. The one
+remaining unconfirmed piece is Versand-HA's report that the *anonymous*
+by-piececode search returns `ANKOMMEND` unconditionally; our by-number path
+uses the same params but is authenticated, so whether it shares the quirk is
+still open.
 
 ## Polling
 

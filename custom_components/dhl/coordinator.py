@@ -121,7 +121,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._client = client
         self._de_session = de_session
         self.delivered: list[dict] = []
-        # Outgoing (sendungsrichtung: AUSGEHEND) elements, split out of the
+        # Outgoing (sendungsrichtung: ABGEHEND) elements, split out of the
         # same account-inbox list as incoming ones — mirrors ha-dhl-nl's
         # `data`/`delivered_outgoing` pair, just sourced from one endpoint
         # instead of two.
@@ -380,7 +380,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         return normalized_active
 
     def _fire_outgoing_change_events(self, parcels: list[dict]) -> None:
-        """Fire status/delivered events for outgoing (AUSGEHEND) parcels.
+        """Fire status/delivered events for outgoing parcels.
 
         Mirrors ha-dhl-nl's outgoing event contract: silent on the very
         first refresh, the hop **to** delivered fires only

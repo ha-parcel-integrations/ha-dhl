@@ -315,12 +315,10 @@ class DHLAwaitingPickupSensor(
 class DHLOutgoingParcelsSensor(
     CoordinatorEntity[DHLCoordinator], SensorEntity
 ):
-    """Summary sensor: count of active outgoing (AUSGEHEND) DHL parcels.
+    """Summary sensor: count of active outgoing DHL parcels.
 
     No per-parcel sensors — same single-entity-with-a-list shape as
-    ``DHLDeliveredParcelsSensor``. See ``countries/de/__init__.py`` for why
-    this may realistically stay empty: no known source has ever observed a
-    populated ``AUSGEHEND`` element on the wire.
+    ``DHLDeliveredParcelsSensor``.
     """
 
     _attr_has_entity_name = True
@@ -351,7 +349,7 @@ class DHLOutgoingParcelsSensor(
 class DHLOutgoingDeliveredSensor(
     CoordinatorEntity[DHLCoordinator], SensorEntity
 ):
-    """Summary sensor: count of delivered outgoing (AUSGEHEND) DHL parcels."""
+    """Summary sensor: count of delivered outgoing DHL parcels."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "outgoing_delivered_parcels"

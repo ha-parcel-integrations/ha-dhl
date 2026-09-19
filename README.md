@@ -129,13 +129,13 @@ Standard HA removal applies: **Settings → Devices & Services → DHL → ⋮ �
 | `sensor.dhl_<account>_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.dhl_<account>_next_delivery` | Earliest expected delivery moment across all active parcels |
 | `sensor.dhl_<account>_delivered_parcels` | Recently delivered parcels (see the retention option) |
-| `sensor.dhl_<account>_outgoing_parcels` | Number of active outgoing (`AUSGEHEND`) parcels, full list under the `parcels` attribute |
+| `sensor.dhl_<account>_outgoing_parcels` | Number of active outgoing parcels, full list under the `parcels` attribute |
 | `sensor.dhl_<account>_outgoing_delivered_parcels` | Recently delivered outgoing parcels (see the retention option) |
 | `sensor.dhl_<account>_last_successful_update` | Diagnostic: when DHL was last polled successfully |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
 
-Outgoing parcels are shipments DHL reports as sent *by* your account rather than to it — DHL exposes this as a `sendungsrichtung` field (`ANKOMMEND`/`EINGEHEND` incoming, `AUSGEHEND` outgoing) on the same account-inbox listing incoming parcels come from, no separate endpoint. Their canonical `status` always reports `unknown`: the 0-5 progress ladder below was only ever confirmed against incoming shipments, so guessing what it means for an outgoing one isn't done — the raw DHL status text is still available as `raw_status`. This is also genuinely unconfirmed data: no known source (including a second open-source DHL client) has ever observed a populated `AUSGEHEND` element on the wire, so this sensor may simply stay at 0 until a real export proves otherwise — [please open an issue](https://github.com/ha-parcel-integrations/ha-dhl/issues/new) if yours doesn't.
+Outgoing parcels are shipments DHL reports as sent *by* your account rather than to it — DHL exposes this as a `sendungsrichtung` field (`ANKOMMEND`/`EINGEHEND` incoming, `ABGEHEND` outgoing) on the same account-inbox listing incoming parcels come from, no separate endpoint. Their canonical `status` always reports `unknown`: the 0-5 progress ladder below was only ever confirmed against incoming shipments, so guessing what it means for an outgoing one isn't done — the raw DHL status text is still available as `raw_status`.
 
 ## Parcel status reference
 
