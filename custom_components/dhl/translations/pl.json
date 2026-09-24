@@ -152,7 +152,7 @@
         "name": "Następna dostawa"
       },
       "awaiting_pickup": {
-        "name": "Do odbioru",
+        "name": "Oczekuje na odbiór",
         "unit_of_measurement": "przesyłki"
       },
       "delivered_parcels": {
