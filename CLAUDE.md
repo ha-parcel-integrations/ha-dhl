@@ -138,16 +138,17 @@ shared config-flow base class is worth building for two data points.
 
 ## Load-bearing PL decisions — do not refactor away
 
-**`menuTimelineLabel.status` and the raw `status` (`TT_*`/`SP_*`) code are two
-different, both-closed enums — never conflate them.** `_RAW` in
-`countries/pl/__init__.py` is the primary source for canonical `status`; the
-9-value coarse ladder (`_LADDER`) is only a fallback for a raw code that isn't
-in `_RAW` yet (`carrier-research/dhl/api/dhl-pl/tracking.md`, "the coarse ladder").
-The 22-name `ShipmentStatusName` timeline (`DeliveredToLocker`,
-`RetrievedFromPoint`, …) is a **third**, closed enum whose field in the wire
-payload was never confirmed by research — do not key `_LADDER` on those names;
-a past version of this file did, and `menuTimelineLabel.status` never actually
-carries them, so that mapping silently never fired.
+**The raw `status` (`TT_*`/`SP_*`) code is the primary status source; never
+flip that order.** `_RAW` in `countries/pl/__init__.py` decides whenever it
+knows the code. `menuTimelineLabel.status` is only the fallback for a code
+that isn't in `_RAW` yet, and which vocabulary it carries is **contested**
+(`carrier-research/dhl/api/dhl-pl/tracking.md`, "Contested: what
+`menuTimelineLabel.status` carries"): the 9-value coarse ladder (`_LADDER`)
+or the timeline names (`_TIMELINE` — `DeliveredToLocker`,
+`RetrievedFromPoint`, …). The only live value seen, `Delivered`, is in both.
+The fallback therefore accepts both tables; they overlap only on `Route`,
+`Delivery` and `Delivered`, which map the same way. Once a real parcel settles
+the field, drop the table that turned out wrong.
 
 **The access token is split across two cookies on purpose.**
 `DHLPlSession._adopt_access_token` writes a minted JWT's `header.payload` into

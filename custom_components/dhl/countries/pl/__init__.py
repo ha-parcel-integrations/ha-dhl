@@ -9,17 +9,32 @@ from .session import DHLPlSession
 # `status` — the raw TT_*/SP_* code (primary; tracking.md#status-the-raw-code-primary).
 _RAW = {"TT_EDWP": ParcelStatus.REGISTERED, "SP_DSP": ParcelStatus.IN_TRANSIT, "TT_MAG": ParcelStatus.IN_TRANSIT, "TT_MAG_INT": ParcelStatus.IN_TRANSIT, "TT_PRZEKIERUJ": ParcelStatus.IN_TRANSIT, "TT_DWP": ParcelStatus.OUT_FOR_DELIVERY, "TT_DWP_INT": ParcelStatus.OUT_FOR_DELIVERY, "TT_DWP_PUNKT": ParcelStatus.OUT_FOR_DELIVERY, "TT_LK": ParcelStatus.AT_PICKUP_POINT, "TT_AWI": ParcelStatus.AT_PICKUP_POINT, "TT_OP": ParcelStatus.DELIVERED, "TT_DOR": ParcelStatus.DELIVERED, "TT_ZWN": ParcelStatus.RETURNING, "TT_DOR_ZWN": ParcelStatus.RETURNING, "TT_DELAY_KUR": ParcelStatus.PROBLEM, "TT_DELAY_MAG": ParcelStatus.PROBLEM, "TT_OWL": ParcelStatus.PROBLEM, "TT_CS": ParcelStatus.PROBLEM, "TT_ZGN": ParcelStatus.PROBLEM, "TT_LIK": ParcelStatus.PROBLEM, "SP_CN": ParcelStatus.PROBLEM, "ERR": ParcelStatus.PROBLEM}
 
-# `menuTimelineLabel.status` — the 9-value coarse ladder (tracking.md#menutimelinelabelstatus).
-# Used only as a fallback for a raw code that isn't in `_RAW` yet — not the
-# other way around. It is a *different, coarser* field than the 22-name
-# `ShipmentStatusName` timeline (whose wire location was never confirmed by
-# research): do not key this table on those names, e.g. "DeliveredToLocker".
+# `menuTimelineLabel.status` — used only as a fallback for a raw code that isn't
+# in `_RAW` yet. Which vocabulary it carries is contested: the 9-value coarse
+# ladder, or the timeline names in `_TIMELINE`. The two overlap only on Route,
+# Delivery and Delivered, which map the same way, so the fallback accepts both.
 _LADDER = {
     "None": ParcelStatus.REGISTERED, "Resigned": ParcelStatus.PROBLEM,
     "Sent": ParcelStatus.IN_TRANSIT, "Route": ParcelStatus.IN_TRANSIT,
     "Delivery": ParcelStatus.OUT_FOR_DELIVERY, "ReturnToSender": ParcelStatus.RETURNING,
     "Delivered": ParcelStatus.DELIVERED, "DeliveredToSender": ParcelStatus.RETURNING,
     "Error": ParcelStatus.PROBLEM,
+}
+
+# DeliveredTo* means it reached the point or locker; Retrieved* is the collection.
+_TIMELINE = {
+    "ShipmentInPreparation": ParcelStatus.REGISTERED, "WaitingForCourierPickup": ParcelStatus.REGISTERED,
+    "PostedAtPoint": ParcelStatus.IN_TRANSIT, "PickedUpByCourier": ParcelStatus.IN_TRANSIT,
+    "Redirected": ParcelStatus.IN_TRANSIT, "RedirectedToPoint": ParcelStatus.IN_TRANSIT,
+    "DeliveryToPoint": ParcelStatus.OUT_FOR_DELIVERY, "DeliveryToLocker": ParcelStatus.OUT_FOR_DELIVERY,
+    "DeliveredToPoint": ParcelStatus.AT_PICKUP_POINT, "DeliveredToLocker": ParcelStatus.AT_PICKUP_POINT,
+    "RetrievedFromPoint": ParcelStatus.DELIVERED, "RetrievedFromLocker": ParcelStatus.DELIVERED,
+    "Refusal": ParcelStatus.RETURNING, "ParcelReturnsToSender": ParcelStatus.RETURNING,
+    "ParcelReturnedToSender": ParcelStatus.RETURNING,
+    "Resignated": ParcelStatus.PROBLEM, "Disposed": ParcelStatus.PROBLEM, "Lost": ParcelStatus.PROBLEM,
+    "UnsuccessfulAttemptAtDelivery": ParcelStatus.PROBLEM, "SecondUnsuccessfulAttemptAtDelivery": ParcelStatus.PROBLEM,
+    "DeliveryDelay": ParcelStatus.PROBLEM, "DeliveryProblem": ParcelStatus.PROBLEM,
+    "WaitingForShipperDecision": ParcelStatus.PROBLEM, "ContactDHL": ParcelStatus.PROBLEM,
 }
 
 
@@ -54,7 +69,7 @@ def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
     timeline = raw.get("menuTimelineLabel") if isinstance(raw.get("menuTimelineLabel"), dict) else {}
     raw_status = raw.get("status") if isinstance(raw.get("status"), str) else None
     ladder_status = timeline.get("status") if isinstance(timeline.get("status"), str) else None
-    status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "", ParcelStatus.UNKNOWN)
+    status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "") or _TIMELINE.get(ladder_status or "", ParcelStatus.UNKNOWN)
     timestamp = timeline.get("dateUtc") if isinstance(timeline.get("dateUtc"), str) else None
     return {"carrier": "DHL Parcel Polska", "barcode": raw.get("shipmentNumber"), "status": status,
             "raw_status": raw_status, "sender": raw.get("sender"), "receiver": None,

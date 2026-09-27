@@ -31,6 +31,20 @@ def test_coarse_ladder_is_the_fallback_for_an_unrecognised_raw_code():
     assert parcel["delivered"] is False
 
 
+@pytest.mark.parametrize(("timeline", "expected"), [
+    ("DeliveredToLocker", ParcelStatus.AT_PICKUP_POINT),
+    ("RetrievedFromPoint", ParcelStatus.DELIVERED),
+    ("Refusal", ParcelStatus.RETURNING),
+    ("WaitingForShipperDecision", ParcelStatus.PROBLEM),
+])
+def test_timeline_name_is_also_accepted_as_the_fallback(timeline, expected):
+    parcel = normalize_parcel_pl({
+        "shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+        "menuTimelineLabel": {"status": timeline},
+    })
+    assert parcel["status"] is expected
+
+
 def test_unrecognised_raw_code_and_ladder_value_fall_back_to_unknown():
     parcel = normalize_parcel_pl({
         "shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
