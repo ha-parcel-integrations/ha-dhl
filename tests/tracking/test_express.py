@@ -350,11 +350,15 @@ def test_later_real_checkpoints_map_too(caplog):
             "Delivery attempt could not be completed",
             "Further consignee information needed",
             "Arrived at DHL Delivery Facility  MONTEROTONDO - ITALY",
+            "Delivery not accepted",
+            "Shipment information received",
         ]
     )
     parcel = normalize_parcel_express(raw, include_history=True)
 
     assert [e["status"] for e in parcel["history"]] == [
+        ParcelStatus.REGISTERED,
+        ParcelStatus.PROBLEM,
         ParcelStatus.IN_TRANSIT,
         ParcelStatus.PROBLEM,
         ParcelStatus.PROBLEM,

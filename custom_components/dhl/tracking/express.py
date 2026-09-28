@@ -290,6 +290,8 @@ _CHECKPOINT_PREFIXES: tuple[tuple[str, ParcelStatus], ...] = (
     ("shipment is out with courier for delivery", ParcelStatus.OUT_FOR_DELIVERY),
     ("delivery attempt could not be completed", ParcelStatus.PROBLEM),
     ("further consignee information needed", ParcelStatus.PROBLEM),
+    ("delivery not accepted", ParcelStatus.PROBLEM),
+    ("shipment information received", ParcelStatus.REGISTERED),
     ("shipment is scheduled for delivery", ParcelStatus.IN_TRANSIT),
     ("arrived at dhl delivery facility", ParcelStatus.IN_TRANSIT),
     ("shipment accepted", ParcelStatus.IN_TRANSIT),
