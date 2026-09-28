@@ -261,3 +261,57 @@ def test_history_maps_known_checkpoints_and_warns_once_on_the_rest(caplog):
     assert again["history"] == parcel["history"]
     assert caplog.text.count("unrecognised checkpoint 'Picked up'") == 1
     assert "'Delivered'" not in caplog.text
+
+
+_REAL_CHECKPOINTS = [
+    # Newest-first, as the backend sends them.
+    ("Shipment is out with courier for delivery", ParcelStatus.OUT_FOR_DELIVERY),
+    ("Arrived at DHL Sort Facility  VALENCIA - SPAIN", ParcelStatus.IN_TRANSIT),
+    ("Shipment has departed from a DHL facility VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
+    ("Processed at VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
+    ("Arrived at DHL Sort Facility  VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
+    ("Shipment has departed from a DHL facility MILAN - MALPENSA - ITALY", ParcelStatus.IN_TRANSIT),
+    ("Processed at MILAN - MALPENSA - ITALY", ParcelStatus.IN_TRANSIT),
+    ("Shipment picked up", ParcelStatus.IN_TRANSIT),
+    ("Shipment Accepted", ParcelStatus.IN_TRANSIT),
+]
+
+
+def _with_checkpoints(descriptions: list[str]) -> dict:
+    raw = express_in_transit()
+    raw["eddDate"] = "2000-01-01"
+    raw["checkpoints"] = [
+        {"description": d, "time": "09:00", "date": "Monday, July 27, 2026"}
+        for d in descriptions
+    ]
+    return raw
+
+
+def test_real_checkpoints_map_whatever_facility_they_name(caplog):
+    raw = _with_checkpoints([d for d, _ in _REAL_CHECKPOINTS])
+    parcel = normalize_parcel_express(raw, include_history=True)
+
+    assert [e["status"] for e in parcel["history"]] == [
+        s for _, s in reversed(_REAL_CHECKPOINTS)
+    ]
+    assert "unrecognised" not in caplog.text
+
+
+def test_parcel_status_follows_the_newest_checkpoint():
+    parcel = normalize_parcel_express(_with_checkpoints([d for d, _ in _REAL_CHECKPOINTS]))
+    assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
+    assert parcel["delivered"] is False
+
+
+def test_an_unfetched_placeholder_is_unknown_without_a_warning(caplog):
+    parcel = normalize_parcel_express({"id": "1", "status": "", "checkpoints": []})
+    assert parcel["status"] == ParcelStatus.UNKNOWN
+    assert "unrecognised" not in caplog.text
+
+
+def test_an_unknown_checkpoint_warns_once_whatever_facility_it_names(caplog):
+    normalize_parcel_express(
+        _with_checkpoints(["Clearance delay VITORIA - SPAIN", "Clearance delay MILAN - ITALY"]),
+        include_history=True,
+    )
+    assert caplog.text.count("unrecognised checkpoint") == 1

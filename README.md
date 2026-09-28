@@ -199,7 +199,7 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 
 **Tracking codes — DHL Parcel gateway.** The event category behind a barcode maps as: `DATA_RECEIVED` → `registered`, `UNDERWAY` → `in_transit`, `IN_DELIVERY` → `out_for_delivery`, `PROBLEM` → `problem`, `DELIVERED` → `delivered`; a `RETURNED_TO_SHIPPER` event maps to `returning` regardless of category. `at_pickup_point` is not currently mapped on this backend. Anything else falls back to `unknown`.
 
-**Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`; an in-progress shipment (an empty status with checkpoints and a future estimated delivery date) maps to `in_transit`. No exception, problem or pickup-point state has been observed on this backend yet, so those fall back to `unknown`.
+**Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`. Before delivery the status follows the newest checkpoint: *Shipment is out with courier for delivery* is `out_for_delivery`; *Shipment Accepted*, *Shipment picked up*, *Processed at …*, *Arrived at DHL Sort Facility …* and *Shipment has departed from a DHL facility …* are `in_transit`. Any other checkpoint is `in_transit` while the estimated delivery date is still ahead, otherwise `unknown`. No exception, problem or pickup-point state has been observed on this backend yet.
 
 The carrier's own human-readable text is always available as `raw_status`.
 

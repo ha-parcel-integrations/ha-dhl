@@ -292,10 +292,15 @@ shipment's log has been observed to resume with further `UNDERWAY` events
 after a `RETURNED_TO_SHIPPER` event — its presence anywhere in the log is not
 "stop watching this parcel".
 
-**Express history maps only checkpoint descriptions seen on a real parcel.**
-The checkpoints carry free English text and no code. Anything outside
-`_CHECKPOINT_MAP` is `unknown` with one WARNING per new description, so the
-vocabulary grows from reports, not guesses.
+**Express checkpoints map on their start, and only for text seen on a real
+parcel.** The checkpoints carry free English text and no code, with the
+facility appended in capitals (`Processed at MILAN - MALPENSA - ITALY`), so
+`_CHECKPOINT_PREFIXES` matches the start of the text. Anything else is
+`unknown` with one WARNING per description, with the facility stripped so a new
+location doesn't warn again. The top-level `status` is only filled on
+delivery; before that the parcel status is the newest checkpoint's, falling
+back to `in_transit` on a future EDD. A code with no checkpoints at all (the
+not-yet-fetched placeholder) is `unknown` without a warning.
 
 **Interval scheduling stays split.** `tracking/coordinator.py` reuses
 `account/coordinator.py`'s `compute_poll_interval` for the whole coordinator's

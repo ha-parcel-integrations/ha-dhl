@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -176,10 +177,18 @@ def _map_status(raw: dict) -> ParcelStatus:
     raw_status = raw.get("status") or ""
     if raw_status == "DELIVERED":
         return ParcelStatus.DELIVERED
-    if raw_status == "" and raw.get("checkpoints") and _edd_is_future(raw.get("eddDate")):
+    if raw_status:
+        _warn_unmapped_status(raw_status)
+        return ParcelStatus.UNKNOWN
+    # The top-level status is only ever filled in on delivery; until then the
+    # newest checkpoint is the best signal.
+    latest = next((c for c in raw.get("checkpoints") or [] if isinstance(c, dict)), None)
+    if latest is None:
+        return ParcelStatus.UNKNOWN
+    status = _map_checkpoint(latest.get("description"))
+    if status is ParcelStatus.UNKNOWN and _edd_is_future(raw.get("eddDate")):
         return ParcelStatus.IN_TRANSIT
-    _warn_unmapped_status(raw_status)
-    return ParcelStatus.UNKNOWN
+    return status
 
 
 def _parse_edd_time(raw_time: str | None) -> str | None:
@@ -214,19 +223,31 @@ def _checkpoint_timestamp(checkpoint: dict) -> str | None:
 
 
 # Only descriptions confirmed on a real parcel. The checkpoints carry free
-# English text and no code, so anything else stays unknown until seen.
-_CHECKPOINT_MAP: dict[str, ParcelStatus] = {
-    "delivered": ParcelStatus.DELIVERED,
-}
+# English text and no code, with the facility appended in capitals, so they
+# match on their start.
+_CHECKPOINT_PREFIXES: tuple[tuple[str, ParcelStatus], ...] = (
+    ("delivered", ParcelStatus.DELIVERED),
+    ("shipment is out with courier for delivery", ParcelStatus.OUT_FOR_DELIVERY),
+    ("shipment accepted", ParcelStatus.IN_TRANSIT),
+    ("shipment picked up", ParcelStatus.IN_TRANSIT),
+    ("processed at", ParcelStatus.IN_TRANSIT),
+    ("arrived at dhl sort facility", ParcelStatus.IN_TRANSIT),
+    ("shipment has departed from a dhl facility", ParcelStatus.IN_TRANSIT),
+)
+
+# The trailing facility, e.g. " MILAN - MALPENSA - ITALY", so an unknown
+# description warns once rather than once per location.
+_TRAILING_LOCATION_RE = re.compile(r"\s+[A-Z][A-Z\s\-,./()']*$")
 
 _warned_checkpoints: set[str] = set()
 
 
 def _map_checkpoint(description: str | None) -> ParcelStatus:
-    key = (description or "").strip().lower()
-    status = _CHECKPOINT_MAP.get(key)
-    if status is not None:
-        return status
+    text = " ".join((description or "").split()).lower()
+    for prefix, status in _CHECKPOINT_PREFIXES:
+        if text.startswith(prefix):
+            return status
+    key = _TRAILING_LOCATION_RE.sub("", (description or "").strip()).lower()
     if key not in _warned_checkpoints:
         _warned_checkpoints.add(key)
         _LOGGER.warning(
