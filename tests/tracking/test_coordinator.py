@@ -652,6 +652,7 @@ async def test_a_code_dhl_has_not_answered_for_has_an_empty_raw(hass):
 
 
 async def test_a_single_planned_moment_runs_to_the_end_of_that_day(hass):
+    await hass.config.async_set_time_zone("Europe/Amsterdam")
     entry = _entry([GATEWAY_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)

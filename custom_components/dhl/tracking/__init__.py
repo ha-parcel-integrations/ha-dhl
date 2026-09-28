@@ -11,7 +11,6 @@ Express backend's scarce budget for a request that can never resolve.
 from __future__ import annotations
 
 import re
-from datetime import datetime
 
 from ..const import (
     CONF_DIRECTION,
@@ -64,12 +63,3 @@ def valid_tracking_code(value: str) -> bool:
 def tracked_direction(item: dict) -> str:
     """Return the declared direction of one tracked-parcel options entry."""
     return item.get(CONF_DIRECTION) or DEFAULT_DIRECTION
-
-
-def end_of_day(moment: str) -> str | None:
-    """Return 23:59:59 on ``moment``'s own day, keeping its UTC offset."""
-    try:
-        parsed = datetime.fromisoformat(moment.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    return parsed.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()

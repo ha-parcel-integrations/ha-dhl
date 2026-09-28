@@ -34,6 +34,7 @@ from ....const import (
     DHLAuthError,
     ParcelStatus,
 )
+from ....delivery_window import end_of_day
 from .session import DHLDeAuthError, DHLDeSession, DHLDeSessionError
 
 _LOGGER = logging.getLogger(__name__)
@@ -651,12 +652,17 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
         _warn_delivery_window_shape_once(present)
 
     if von or bis:
-        return _parse_de_timestamp(von), _parse_de_timestamp(bis)
-    if fenster:
-        return _parse_de_timestamp(fenster) or fenster, None
-    if datum:
-        return _parse_de_timestamp(datum), None
-    return None, None
+        planned_from, planned_to = _parse_de_timestamp(von), _parse_de_timestamp(bis)
+    elif fenster:
+        planned_from, planned_to = _parse_de_timestamp(fenster) or fenster, None
+    elif datum:
+        planned_from, planned_to = _parse_de_timestamp(datum), None
+    else:
+        return None, None
+    if planned_from and not planned_to:
+        # A single moment means "that day", not "that second".
+        planned_to = end_of_day(planned_from)
+    return planned_from, planned_to
 
 
 def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:

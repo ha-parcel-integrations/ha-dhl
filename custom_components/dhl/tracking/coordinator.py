@@ -42,12 +42,12 @@ from ..const import (
     DHLExpressThrottledError,
     ParcelStatus,
 )
+from ..delivery_window import end_of_day
 from . import (
     BACKEND_EXPRESS,
     BACKEND_GATEWAY,
     BACKEND_UNKNOWN,
     classify_shape,
-    end_of_day,
     tracked_direction,
 )
 from .budget import RequestBudget

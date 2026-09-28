@@ -420,8 +420,11 @@ normalizer. The Express ePOD link stays in `raw`. A code DHL has not answered
 for yet (not fetched, or not found) has `raw: {}` — the placeholder the
 coordinator normalizes from is never published as if DHL had sent it.
 `delivery_window` is populated on both tracking backends. DHL gives a single
-moment, which becomes `planned_from`; the coordinator sets `planned_to` to
-23:59:59 on that day, in the same offset. A delivered parcel has neither —
-only `delivered_at`, as in ha-dhl-nl. None of this changes `CAPABILITIES` in
+moment, which becomes `planned_from`; `planned_to` is then 23:59:59 on that
+day in Home Assistant's time zone (`delivery_window.py::end_of_day`) — the
+recipient's day, since a moment DHL sends in UTC can fall on another date
+there. The DE account source does the same when it only has a single
+`zustellzeitfenster`/`zustelldatum`; a real `Von`/`Bis` pair is kept as is.
+A delivered parcel has neither — only `delivered_at`, as in ha-dhl-nl. None of this changes `CAPABILITIES` in
 `const.py`, which already claimed all of these from the account source — keep
 it in sync if that ever changes.

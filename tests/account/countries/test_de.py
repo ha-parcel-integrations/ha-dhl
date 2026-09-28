@@ -25,6 +25,7 @@ from custom_components.dhl.account.countries.de.session import (
     DHLDeSession,
 )
 from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
+from custom_components.dhl.delivery_window import end_of_day
 
 from ...payloads import (
     ACTIVE_CODE,
@@ -482,7 +483,9 @@ def test_delivery_window_falls_back_to_singular_fenster():
     )
     parcel = normalize_parcel_de(raw)
     assert parcel["planned_from"] == "2026-04-29T11:00:00+00:00"
-    assert parcel["planned_to"] is None
+    # End of that day for the recipient, in Home Assistant's time zone.
+    assert parcel["planned_to"] == end_of_day(parcel["planned_from"])
+    assert parcel["planned_to"].startswith("2026-04-29T23:59:59")
 
 
 def test_delivery_window_falls_back_to_zustelldatum():
