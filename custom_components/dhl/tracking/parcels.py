@@ -1,7 +1,7 @@
 """Per-backend ``normalize_parcel`` dispatcher, plus generic list helpers.
 
 Mirrors ``account/parcels.py``'s role: the mapping logic itself lives in
-``gateway.py``/``express.py``; this module dispatches on which backend
+``gateway.py``/``express.py``/``hamta.py``; this module dispatches on which backend
 answered a given raw payload and carries the list helpers that are identical
 regardless of which one produced it. Every raw payload carries a private
 ``_dhl_backend`` marker (stamped by the coordinator, stripped again in
@@ -26,12 +26,14 @@ from ..const import (
 )
 from .express import normalize_parcel_express
 from .gateway import normalize_parcel_gateway
+from .hamta import normalize_parcel_hamta
 
 BACKEND_KEY = "_dhl_backend"
 
 _NORMALIZERS = {
     "gateway": normalize_parcel_gateway,
     "express": normalize_parcel_express,
+    "hamta": normalize_parcel_hamta,
 }
 
 

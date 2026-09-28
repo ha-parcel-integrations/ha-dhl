@@ -55,12 +55,12 @@ has nothing in common with DE's OAuth flow, so its step will look nothing like
 points.** `unique_id` is `f"{country}:{subject}"`; reauth reads the country back
 off the existing entry (`entry_data[CONF_COUNTRY]`) and never asks again.
 
-## Tracking source: shape-routed, two backends
+## Tracking source: shape-routed, three backends
 
 `tracking/` has no account and no login — a user pastes in tracking codes
 (`config_flow.py`'s `tracking` step creates an empty hub; codes are added
 through the options flow's "parcels" entry), and each code is routed to
-whichever of two backends its *shape* resolves on
+whichever backend its *shape* resolves on
 (`tracking/__init__.py::classify_shape`):
 
 | Shape | Backend | Module |
@@ -68,6 +68,16 @@ whichever of two backends its *shape* resolves on
 | `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl`, keyless | `tracking/gateway.py` |
 | Bare 10-digit number (a DHL Express AWB) | `dhle.dhl.com` | `tracking/express.py` |
 | Anything else | Tried on the gateway first; only falls back to Express if the gateway can't resolve it — and never for a confidently-classified shape | both |
+
+**DHL Freight Sweden shares the Express shape.** Its shipment numbers are 10
+characters too, so shape cannot separate them from Express AWBs. A code that
+leaves an Express request without an Express record (not found, throttled,
+failed) is tried once against `hamta.dhl.com` (`tracking/hamta.py`), keyless
+and batchable. A code found there is cached with the `hamta` backend marker,
+leaves the Express queue for good, and is polled in one batch per cycle like
+the gateway. While Express is standing down or disabled, one code per cycle
+without any record yet is tried on Hamta instead; a miss there is not asked
+again from that path, only after the code's next Express request.
 
 **Do not try both backends for a confidently-classified code.** Every
 barcode-shaped code tried against the Express backend comes back a clean
@@ -148,6 +158,7 @@ custom_components/dhl/
     ├── __init__.py         shape classification + code routing
     ├── gateway.py           api-gw.dhlparcel.nl client + normalize_parcel_gateway
     ├── express.py           dhle.dhl.com client + normalize_parcel_express
+    ├── hamta.py             hamta.dhl.com client + normalize_parcel_hamta
     ├── budget.py            RequestBudget token bucket (Express only)
     ├── coordinator.py       poll loop, routing, Express queue/throttle, events
     └── parcels.py           per-backend dispatch, sort, filters
@@ -411,11 +422,12 @@ the credential itself, which this module never touches.
 ## Fields
 
 `weight` and `dimensions` are always `None` on every source. `pickup_point` is
-populated for account/DE Packstation arrivals only — never on the tracking
-source, on either backend. `history` is populated on both tracking backends.
+populated for account/DE Packstation arrivals and for DHL Freight Sweden
+service-point and locker shipments — never on the gateway or Express.
+`history` is populated on every tracking backend.
 `url` on the tracking source is always the dhl.com tracking page, localised
 from Home Assistant's country and language (`tracking/parcels.py::
-tracking_page_locale`) — set by the coordinator, not by either backend's
+tracking_page_locale`) — set by the coordinator, not by any backend's
 normalizer. The Express ePOD link stays in `raw`. A code DHL has not answered
 for yet (not fetched, or not found) has `raw: {}` — the placeholder the
 coordinator normalizes from is never published as if DHL had sent it.

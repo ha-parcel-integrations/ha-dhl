@@ -24,8 +24,8 @@ DHL's Netherlands business is a separate integration,
 [**ha-dhl-nl**](https://github.com/ha-parcel-integrations/ha-dhl-nl).
 
 **Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
-and any DHL Express air waybill (a bare 10-digit number), worldwide — no
-account or postcode needed. See [Tracking codes](#tracking-codes) below.
+and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
+domestic DHL Freight Sweden shipment numbers — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
 
 ## Contents
 
@@ -133,7 +133,7 @@ answer it — you never say which:
 | Code shape | Backend |
 |---|---|
 | `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands |
-| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend |
+| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend. A code DHL Express can't find is tried on DHL Freight Sweden's public tracking (Mitt DHL); once found there, it is followed there on the normal cadence |
 | Anything else | Tried on the gateway first; only falls back to the Express backend if the gateway can't resolve it |
 
 **The DHL Express backend is intentionally slow to refresh — roughly once
@@ -200,6 +200,8 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 **Tracking codes — DHL Parcel gateway.** The event category behind a barcode maps as: `DATA_RECEIVED` → `registered`, `UNDERWAY` → `in_transit`, `IN_DELIVERY` → `out_for_delivery`, `PROBLEM` → `problem`, `DELIVERED` → `delivered`; a `RETURNED_TO_SHIPPER` event maps to `returning` regardless of category. `at_pickup_point` is not currently mapped on this backend. Anything else falls back to `unknown`.
 
 **Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`. Before delivery the status follows the newest checkpoint: *Shipment is out with courier for delivery* is `out_for_delivery`; *Delivery attempt could not be completed*, *Delivery not accepted* and *Further consignee information needed* are `problem`; *Shipment information received* is `registered`; *Shipment Accepted*, *Shipment picked up*, *Processed at …*, *Arrived at DHL Sort Facility …*, *Arrived at DHL Delivery Facility …*, *Shipment has departed from a DHL facility …* and *Shipment is scheduled for delivery* are `in_transit`. Any other checkpoint is `in_transit` while the estimated delivery date is still ahead, otherwise `unknown`. No pickup-point state has been observed on this backend yet. Checkpoint times are the local time of the DHL facility; they carry that country's time zone when it has only one, and no offset otherwise.
+
+**Tracking codes — DHL Freight Sweden.** Follows Mitt DHL's own status card: a collected shipment is `delivered`, one waiting too long at the service point is `returning`, a stopped one is `problem`, and one ready for collection is `at_pickup_point`. Otherwise the newest event decides: *OUT FOR DELIVERY* is `out_for_delivery`, a drop-off at the service point or locker is `at_pickup_point`, a return is `returning`, and terminal and transport events are `in_transit`. A shipment without events is `registered`. `pickup_point` is the service point's name.
 
 The carrier's own human-readable text is always available as `raw_status`.
 

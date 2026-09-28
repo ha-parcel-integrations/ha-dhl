@@ -19,7 +19,12 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.tracking.coordinator import DHLTrackingCoordinator
 
-from .payloads import express_delivered, express_in_transit, gateway_element
+from .payloads import (
+    express_delivered,
+    express_in_transit,
+    gateway_element,
+    hamta_shipment,
+)
 
 GATEWAY_CODE = "3SXYZ0000000001"
 GATEWAY_CODE_2 = "3SXYZ0000000002"
@@ -671,3 +676,80 @@ async def test_a_single_planned_moment_runs_to_the_end_of_that_day(hass):
 
     assert data[0]["planned_from"] == "2026-02-13T13:00:00+01:00"
     assert data[0]["planned_to"] == "2026-02-13T23:59:59+01:00"
+
+
+# ---------------------------------------------------------------------------
+# DHL Freight Sweden fallback
+# ---------------------------------------------------------------------------
+
+
+async def test_a_code_express_cannot_find_falls_back_to_freight_and_stays_there(
+    hass, fetch_hamta
+):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_hamta.return_value = {EXPRESS_CODE: hamta_shipment(EXPRESS_CODE)}
+    express = AsyncMock(return_value=None)
+
+    with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", express):
+        data = await coordinator._async_update_data()
+        assert data[0]["status"] == ParcelStatus.OUT_FOR_DELIVERY
+        assert data[0]["raw"]["trackingNumber"] == EXPRESS_CODE
+        express.assert_awaited_once()
+
+        coordinator._budget = type(coordinator._budget)(capacity=1, refill_seconds=1)
+        await coordinator._async_update_data()
+
+    express.assert_awaited_once()
+    _, codes = fetch_hamta.call_args.args
+    assert codes == [EXPRESS_CODE]
+    assert fetch_hamta.await_count == 2
+
+
+async def test_a_code_express_answers_never_asks_freight(hass, fetch_hamta):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=express_in_transit(EXPRESS_CODE)),
+    ):
+        await coordinator._async_update_data()
+
+    fetch_hamta.assert_not_awaited()
+
+
+async def test_a_standdown_tries_freight_once_per_unknown_code(hass, fetch_hamta):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    coordinator._standdown_until_utc = time.time() + 3600
+    express = AsyncMock()
+
+    with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", express):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    express.assert_not_awaited()
+    fetch_hamta.assert_awaited_once()
+
+
+async def test_a_freight_parcel_is_restored_from_the_cache(hass, fetch_hamta):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_hamta.return_value = {EXPRESS_CODE: hamta_shipment(EXPRESS_CODE)}
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=None),
+    ):
+        await coordinator._async_update_data()
+    stored = coordinator._raw_cache
+
+    restored = _coordinator(hass, entry)
+    with patch.object(restored._store, "async_load", AsyncMock(return_value={"raw_cache": stored})):
+        await restored.async_load_cache()
+
+    assert restored._backend_of(EXPRESS_CODE) == "hamta"

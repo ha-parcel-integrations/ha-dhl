@@ -235,8 +235,9 @@ implementing:
 | `tracking/__init__.py` (shape classification, code routing) | **yes** |
 | `tracking/gateway.py` (client + `normalize_parcel_gateway`) | **yes** |
 | `tracking/express.py` (client + `normalize_parcel_express`) | **yes** |
+| `tracking/hamta.py` (client + `normalize_parcel_hamta`) | **yes** |
 | `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
-| `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and both normalizers don't) |
+| `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and the normalizers don't) |
 | `tracking/parcels.py` (per-backend dispatch, sort, filters) | no |
 
 ## Load-bearing tracking decisions — do not refactor away
@@ -247,6 +248,16 @@ must not also try Express, and vice versa — see `ARCHITECTURE.md`'s
 "Tracking source" section for why. The one exception is a code matching
 neither known shape, which tries the gateway first and only falls back to
 Express if the gateway can't resolve it either.
+
+**DHL Freight Sweden is a fallback behind Express, never a first try.**
+Freight numbers share the 10-character Express shape, so only an Express
+request that leaves no Express record sends the code on to Hamta. Once
+Hamta has it, the `hamta` marker in the cache is the routing decision: that
+code never re-enters the Express queue. The status follows Mitt DHL's own
+card precedence (`isCollected` → `isTimeout` → `isTerminated` →
+`isReadyForCollection` → newest event), and hand-over is `21/0` for home
+delivery but `21/908`/`21/13` for a service point, where `21/0` is only the
+drop-off.
 
 **The Express half is a shared single-token-bucket queue, not one budget per
 code.** `tracking/coordinator.py` spends at most one Express request per poll

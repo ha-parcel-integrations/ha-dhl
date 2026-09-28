@@ -107,3 +107,47 @@ def express_in_transit(awb: str = "1000000002") -> dict:
         ],
         "pieces": {"value": 1, "label": "Piece", "pIds": []},
     }
+
+
+def hamta_shipment(
+    number: str = "8000000001",
+    *,
+    delivery_method: str = "SERVICEPOINT",
+    events: list[tuple[int, int, str, str]] | None = None,
+    **flags: bool,
+) -> dict:
+    """A Mitt DHL shipment; ``events`` are ``(status, reason, text, time)``."""
+    if events is None:
+        events = [
+            (24, 0, "PROCESSED AT TERMINAL", "2026-09-24T16:31:00.000Z"),
+            (1, 0, "ARRIVED AT TERMINAL", "2026-09-25T00:25:00.000Z"),
+            (24, 501, "OUT FOR DELIVERY", "2026-09-25T08:51:00.000Z"),
+        ]
+    return {
+        "trackingNumber": number,
+        "createdAt": "2026-09-24T07:29:23.532Z",
+        "product": "DHL_SERVICEPOINT_B2C",
+        "deliveryMethod": delivery_method,
+        "isReturn": False,
+        "isCollected": False,
+        "isReadyForCollection": False,
+        "isTimeout": False,
+        "isTerminated": False,
+        **flags,
+        "servicePoint": {"id": 1, "name": "EXAMPLE SHOP", "city": "EXAMPLE"},
+        "events": [
+            {
+                "statusCode": status,
+                "reasonCode": reason,
+                "eventText": text,
+                "occuredAtTime": when,
+                "occuredAtLocation": "EXAMPLE",
+            }
+            for status, reason, text, when in events
+        ],
+        "parties": [
+            {"type": "CZ", "name": "EXAMPLE SENDER", "countryCode": "SE"},
+            {"type": "CN", "name": None, "countryCode": "SE"},
+        ],
+        "retention": {"latestPickUpDate": None},
+    }

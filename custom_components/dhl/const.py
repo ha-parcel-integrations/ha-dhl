@@ -367,6 +367,16 @@ DHL_EXPRESS_JITTER_FRACTION = 0.15
 # refreshes roughly every N * REQUEST_BUDGET_REFILL_SECONDS.
 DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT = 3
 
+# ---------------------------------------------------------------------------
+# Tracking source, fallback: DHL Freight Sweden's public Mitt DHL backend.
+# ---------------------------------------------------------------------------
+
+# Freight Sweden numbers share the 10-character shape of Express AWBs, so a
+# code Express cannot answer is tried here; once found, it stays here.
+DHL_HAMTA_URL = "https://hamta.dhl.com/api/v1/shipment"
+DHL_HAMTA_CODE_LENGTH = 10
+DHL_HAMTA_REQUEST_TIMEOUT_SECONDS = 30
+
 # Per-entry Store for the tracking source. Without it every restart starts the
 # Express budget full and forgets a running stand-down, so a reboot during a
 # cooldown polls straight back into it, and Express parcels fall back to

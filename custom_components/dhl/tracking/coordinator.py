@@ -6,6 +6,10 @@ instead — one token bucket per entry, spent on at most one Express code per
 cycle, ranked by :data:`_QUEUE_PRIORITY` — because the Express backend's
  answers a handful of requests and then stands down with no
 advance warning (see ``express.py`` and the research this was sized from).
+
+A 10-character code Express cannot answer is tried once against DHL Freight
+Sweden's backend (``hamta.py``); a code found there is polled there from then
+on, in one batch per cycle, and never queued for Express again.
 """
 from __future__ import annotations
 
@@ -53,6 +57,7 @@ from . import (
 from .budget import RequestBudget
 from .express import async_fetch_express
 from .gateway import DHLGatewayError, async_fetch_gateway
+from .hamta import async_fetch_hamta, hamta_shaped
 from .parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -160,6 +165,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         # this running entry rather than repeating the failure every cycle.
         self._express_disabled = False
         self._warned_soft_limit = False
+        # Codes Hamta already answered not-found while Express was out of
+        # action, so a stand-down does not re-ask Hamta every cycle.
+        self._hamta_misses: set[str] = set()
 
         self._known_state: dict[str, ParcelStatus] | None = None
         self._known_delivery_times: (
@@ -209,7 +217,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                 for code, raw in raw_cache.items()
                 if isinstance(code, str)
                 and isinstance(raw, dict)
-                and raw.get(BACKEND_KEY) in ("gateway", "express")
+                and raw.get(BACKEND_KEY) in ("gateway", "express", "hamta")
             }
         delivered_codes = stored.get("delivered_codes")
         if isinstance(delivered_codes, list):
@@ -357,8 +365,35 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._attempted_codes.add(code)
         self._last_fetch_by_code[code] = time.time()
 
+    def _backend_of(self, code: str) -> str | None:
+        cached = self._raw_cache.get(code)
+        return cached.get(BACKEND_KEY) if cached else None
+
+    async def _async_try_hamta(self, code: str) -> None:
+        """Try a code Express could not answer against DHL Freight Sweden."""
+        if not hamta_shaped(code) or self._backend_of(code) == "express":
+            return
+        try:
+            results = await async_fetch_hamta(self._client, [code])
+        except DHLApiError as err:
+            _LOGGER.warning("DHL Freight fetch failed for %s: %s", code, err)
+            return
+        if code in results:
+            self._raw_cache[code] = {**results[code], BACKEND_KEY: "hamta"}
+            self._hamta_misses.discard(code)
+        else:
+            self._hamta_misses.add(code)
+
     async def _async_fetch_one_express(self, code: str) -> None:
-        """Spend the cycle's one Express request, if any, on ``code``."""
+        """Spend the cycle's one Express request, if any, on ``code``.
+
+        Whenever that leaves the code without an Express record, it falls
+        through to Hamta.
+        """
+        await self._async_fetch_express_request(code)
+        await self._async_try_hamta(code)
+
+    async def _async_fetch_express_request(self, code: str) -> None:
         try:
             payload = await async_fetch_express(self._client, code)
         except DHLExpressThrottledError:
@@ -394,6 +429,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._raw_cache = {c: r for c, r in self._raw_cache.items() if c in tracked}
         self._delivered_codes &= tracked
         self._attempted_codes &= tracked
+        self._hamta_misses &= tracked
         self._status_by_code = {
             c: s for c, s in self._status_by_code.items() if c in tracked
         }
@@ -424,10 +460,23 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         # gets one attempt against the Express backend too, sharing its
         # queue with the confidently Express-shaped codes.
         unresolved_unknown = [c for c in unknown_codes if c not in gateway_results]
+        hamta_codes = [
+            c for c in express_codes + unresolved_unknown if self._backend_of(c) == "hamta"
+        ]
+        hamta_active = [c for c in hamta_codes if c not in self._delivered_codes]
+        if hamta_active:
+            try:
+                hamta_results = await async_fetch_hamta(self._client, hamta_active)
+            except DHLApiError as err:
+                _LOGGER.warning("DHL Freight request failed: %s", err)
+                hamta_results = {}
+            for code, raw in hamta_results.items():
+                self._raw_cache[code] = {**raw, BACKEND_KEY: "hamta"}
+
         express_candidates = [
             c
             for c in express_codes + unresolved_unknown
-            if c not in self._delivered_codes
+            if c not in self._delivered_codes and c not in hamta_codes
         ]
 
         if len(express_candidates) > DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT:
@@ -455,6 +504,16 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         ):
             queue = self._express_queue(express_candidates)
             await self._async_fetch_one_express(queue[0])
+        elif self._express_disabled or self._standing_down():
+            # Express is out of action, so it cannot tell a Freight code
+            # apart; give Hamta one code that has no record yet.
+            untried = [
+                c
+                for c in self._express_queue(express_candidates)
+                if c not in self._raw_cache and c not in self._hamta_misses
+            ]
+            if untried:
+                await self._async_try_hamta(untried[0])
 
         raws: list[tuple[str, dict]] = []
         for code in codes:

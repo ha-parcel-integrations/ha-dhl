@@ -45,6 +45,17 @@ TO_REDACT = {
     "id",
     "name",
     "sendungsnummer",
+    # DHL Freight Sweden's shipment: its numbers, the parties' towns and the
+    # service point near the recipient
+    "trackingNumber",
+    "parcelId",
+    "pickup_point",
+    "address",
+    "address2",
+    "zipCode",
+    "city",
+    "latitude",
+    "longitude",
     # the account holder's own email address, present on every element
     "email",
     "phone",
