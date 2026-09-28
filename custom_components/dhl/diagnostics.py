@@ -1,13 +1,17 @@
 """Diagnostics support for the DHL parcel tracker integration.
 
-This export is not only a support tool here — it is the instrument the
-payload mapping gets *finished* with: nobody in this suite has ever seen a
-populated ``sendungen`` element, so a tester's diagnostics download is what
-corrects that mapping (see countries/de/__init__.py's module docstring).
-**Redact values, never structure** — a redacted string stays a string, a
-redacted number stays a number, and no key is ever dropped. See
-``tests/countries/test_de.py``'s redaction test, which asserts the key set
-survives untouched.
+For the account source this export is not only a support tool — it is the
+instrument the payload mapping gets *finished* with (see
+account/countries/de/__init__.py's module docstring). **Redact values, never
+structure** — a redacted string stays a string, a redacted number stays a
+number, and no key is ever dropped. See
+``tests/account/countries/test_de.py``'s redaction test, which asserts the
+key set survives untouched.
+
+The tracking source shares the same shape (``incoming``/``delivered``/
+``counts``), plus a ``tracking`` block reporting the Express half's
+budget/backoff state — never the shared bearer token itself, which this
+module never touches.
 """
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import DHLConfigEntry
-from .const import CONF_TRACKED_CODES
+from .const import CONF_PARCELS, CONF_SOURCE, CONF_TRACKED_CODES, SOURCE_TRACKING
 
 # Redact values, keep every key — a missing key would be indistinguishable
 # from a key the API never sent, which is exactly the ambiguity this export
@@ -69,9 +73,24 @@ async def async_get_config_entry_diagnostics(
     tracked_codes = entry_options.get(CONF_TRACKED_CODES)
     if isinstance(tracked_codes, list):
         entry_options[CONF_TRACKED_CODES] = ["**REDACTED**" for _ in tracked_codes]
+    parcels = entry_options.get(CONF_PARCELS)
+    if isinstance(parcels, list):
+        entry_options[CONF_PARCELS] = [{"tracking_code": "**REDACTED**"} for _ in parcels]
 
     interval = coordinator.update_interval
     de_session = coordinator.de_session
+    is_tracking = entry.data.get(CONF_SOURCE) == SOURCE_TRACKING
+    tracking_info = None
+    if is_tracking:
+        # The Express bearer token itself never appears here — it is never
+        # attached to the coordinator, only decrypted per-request inside
+        # tracking/express.py.
+        tracking_info = {
+            "express_budget_available": coordinator.express_budget_available,
+            "express_consecutive_failures": coordinator.express_consecutive_failures,
+            "express_standing_down": coordinator.express_standing_down,
+            "express_disabled": coordinator.express_disabled,
+        }
     return {
         "entry_options": async_redact_data(entry_options, TO_REDACT),
         # Claim *names* only, never their values — `post_number` and `email`
@@ -93,6 +112,7 @@ async def async_get_config_entry_diagnostics(
             ),
             "last_inbox_elements": coordinator.last_element_count,
         },
+        "tracking": tracking_info,
         "counts": {
             "incoming_active": len(coordinator.data or []),
             "delivered": len(coordinator.delivered or []),

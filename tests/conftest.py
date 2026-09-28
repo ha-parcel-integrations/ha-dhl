@@ -20,8 +20,8 @@ def reset_one_shot_warnings():
     makes them leak across tests, so whether a warning fires would otherwise
     depend on test order.
     """
-    from custom_components.dhl.countries import de
-    from custom_components.dhl.countries.de import session
+    from custom_components.dhl.account.countries import de
+    from custom_components.dhl.account.countries.de import session
 
     de._unexpected_body_logged = False
     de._sendungsliste_values_logged.clear()

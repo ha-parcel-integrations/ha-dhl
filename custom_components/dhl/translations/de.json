@@ -4,6 +4,13 @@
     "step": {
       "user": {
         "title": "DHL einrichten",
+        "menu_options": {
+          "account": "Konto",
+          "tracking": "Tracking-Codes"
+        }
+      },
+      "account": {
+        "title": "Bei einem DHL-Konto anmelden",
         "description": "Welches DHL-Konto möchtest du hinzufügen? Deutschland und Polen werden unterstützt. [Fordere ein anderes Land an]({issue_url}). Suchst du DHL in den Niederlanden? Das ist eine eigene Integration: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Land"
@@ -19,12 +26,16 @@
       "pl": {
         "title": "DHL Parcel Polska einrichten",
         "description": "Gib die bei Mój DHL hinterlegte polnische Mobilnummer ein. Neun Ziffern, +48 und 0048 werden akzeptiert; DHL erhält die neun lokalen Ziffern und sendet einen SMS-Code. Diese Integration sendet ihn niemals automatisch erneut.",
-        "data": {"phone": "Polnische Mobilnummer"}
+        "data": {
+          "phone": "Polnische Mobilnummer"
+        }
       },
       "pl_sms": {
         "title": "DHL Parcel Polska bestätigen",
         "description": "Gib den von Mój DHL gesendeten SMS-Code ein.",
-        "data": {"sms_code": "SMS-Code"}
+        "data": {
+          "sms_code": "SMS-Code"
+        }
       },
       "reauth_confirm": {
         "title": "DHL-Anmeldung abgelaufen",
@@ -74,8 +85,47 @@
               "include_history": "Fügt jeder Sendung ein Verlaufsattribut mit jeder Statusaktualisierung hinzu (Zeitpunkt, Status, Originaltext). Standardmäßig aus."
             }
           }
+        },
+        "menu_options": {
+          "parcels": "Sendungen",
+          "settings": "Einstellungen"
+        }
+      },
+      "parcels": {
+        "title": "Verfolgte Sendungen verwalten",
+        "description": "Füge DHL-Tracking-Codes hinzu oder entferne sie. Jeder Code wird anhand seiner Form automatisch an das passende DHL-Backend weitergeleitet — du musst nicht angeben, welches.",
+        "data": {
+          "tracking_codes": "Tracking-Codes"
+        }
+      },
+      "settings": {
+        "title": "Tracking-Einstellungen konfigurieren",
+        "sections": {
+          "delivered": {
+            "name": "Zugestellte Sendungen",
+            "data": {
+              "delivered_filter_type": "Filtern nach",
+              "delivered_filter_amount": "Anzahl"
+            },
+            "data_description": {
+              "delivered_filter_type": "Zugestellte Sendungen der letzten X Tage anzeigen, oder auf die X neuesten begrenzen.",
+              "delivered_filter_amount": "Anzahl der Tage oder Sendungen, die angezeigt werden sollen."
+            }
+          },
+          "history": {
+            "name": "Sendungsverlauf",
+            "data": {
+              "include_history": "Statusverlauf einbeziehen"
+            },
+            "data_description": {
+              "include_history": "Fügt jeder Sendung ein Verlaufsattribut mit jeder Statusaktualisierung hinzu (Zeitpunkt, Status, Originaltext). Standardmäßig aus."
+            }
+          }
         }
       }
+    },
+    "error": {
+      "invalid_tracking_code": "Einer der Tracking-Codes ist ungültig."
     }
   },
   "selector": {

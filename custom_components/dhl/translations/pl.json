@@ -4,6 +4,13 @@
     "step": {
       "user": {
         "title": "Skonfiguruj DHL",
+        "menu_options": {
+          "account": "Konto",
+          "tracking": "Kody śledzenia"
+        }
+      },
+      "account": {
+        "title": "Zaloguj się do konta DHL",
         "description": "Które konto DHL chcesz dodać? Obsługiwane są Niemcy i Polska. [Poproś o inny kraj]({issue_url}). Szukasz DHL w Holandii? To osobna integracja: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Kraj"
@@ -19,12 +26,16 @@
       "pl": {
         "title": "Skonfiguruj DHL Parcel Polska",
         "description": "Wpisz polski numer telefonu zarejestrowany w Mój DHL. Akceptowane są dziewięć cyfr, +48 i 0048; DHL otrzymuje dziewięć cyfr krajowych i wysyła jeden kod SMS. Ta integracja nigdy nie wysyła go ponownie automatycznie.",
-        "data": {"phone": "Polski numer telefonu"}
+        "data": {
+          "phone": "Polski numer telefonu"
+        }
       },
       "pl_sms": {
         "title": "Zweryfikuj DHL Parcel Polska",
         "description": "Wpisz kod SMS wysłany przez Mój DHL.",
-        "data": {"sms_code": "Kod SMS"}
+        "data": {
+          "sms_code": "Kod SMS"
+        }
       },
       "reauth_confirm": {
         "title": "Logowanie DHL wygasło",
@@ -74,8 +85,47 @@
               "include_history": "Dodaje do każdej przesyłki atrybut historii z każdą aktualizacją statusu (znacznik czasu, status, oryginalny tekst). Domyślnie wyłączone."
             }
           }
+        },
+        "menu_options": {
+          "parcels": "Przesyłki",
+          "settings": "Ustawienia"
+        }
+      },
+      "parcels": {
+        "title": "Zarządzaj śledzonymi przesyłkami",
+        "description": "Dodaj lub usuń kody śledzenia DHL. Każdy kod jest automatycznie kierowany do właściwego backendu DHL na podstawie jego formatu — nie musisz podawać, którego.",
+        "data": {
+          "tracking_codes": "Kody śledzenia"
+        }
+      },
+      "settings": {
+        "title": "Skonfiguruj ustawienia śledzenia",
+        "sections": {
+          "delivered": {
+            "name": "Doręczone przesyłki",
+            "data": {
+              "delivered_filter_type": "Filtruj według",
+              "delivered_filter_amount": "Liczba"
+            },
+            "data_description": {
+              "delivered_filter_type": "Pokaż doręczone przesyłki z ostatnich X dni lub ogranicz do X najnowszych.",
+              "delivered_filter_amount": "Liczba dni lub przesyłek do pokazania."
+            }
+          },
+          "history": {
+            "name": "Historia przesyłki",
+            "data": {
+              "include_history": "Uwzględnij historię statusów"
+            },
+            "data_description": {
+              "include_history": "Dodaje do każdej przesyłki atrybut historii z każdą aktualizacją statusu (znacznik czasu, status, oryginalny tekst). Domyślnie wyłączone."
+            }
+          }
         }
       }
+    },
+    "error": {
+      "invalid_tracking_code": "Jeden z kodów śledzenia jest nieprawidłowy."
     }
   },
   "selector": {

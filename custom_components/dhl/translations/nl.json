@@ -4,6 +4,13 @@
     "step": {
       "user": {
         "title": "DHL instellen",
+        "menu_options": {
+          "account": "Account",
+          "tracking": "Trackingcodes"
+        }
+      },
+      "account": {
+        "title": "Inloggen bij een DHL-account",
         "description": "Welk DHL-account wil je toevoegen? Duitsland en Polen worden ondersteund. [Vraag een ander land aan]({issue_url}). Op zoek naar DHL in Nederland? Dat is een aparte integratie: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Land"
@@ -19,12 +26,16 @@
       "pl": {
         "title": "DHL Parcel Polska instellen",
         "description": "Voer het Poolse mobiele nummer in dat bij Mój DHL hoort. Negen cijfers, +48 en 0048 worden geaccepteerd; DHL ontvangt de negen lokale cijfers en stuurt één sms-code. Deze integratie verstuurt die nooit automatisch opnieuw.",
-        "data": {"phone": "Pools mobiel nummer"}
+        "data": {
+          "phone": "Pools mobiel nummer"
+        }
       },
       "pl_sms": {
         "title": "DHL Parcel Polska verifiëren",
         "description": "Voer de sms-code in die Mój DHL heeft verstuurd.",
-        "data": {"sms_code": "Sms-code"}
+        "data": {
+          "sms_code": "Sms-code"
+        }
       },
       "reauth_confirm": {
         "title": "Aanmelding bij DHL verlopen",
@@ -74,8 +85,47 @@
               "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
             }
           }
+        },
+        "menu_options": {
+          "parcels": "Pakketten",
+          "settings": "Instellingen"
+        }
+      },
+      "parcels": {
+        "title": "Gevolgde pakketten beheren",
+        "description": "Voeg DHL-trackingcodes toe of verwijder ze. Elke code wordt automatisch naar de juiste DHL-backend gerouteerd op basis van de vorm — je hoeft niet aan te geven welke.",
+        "data": {
+          "tracking_codes": "Trackingcodes"
+        }
+      },
+      "settings": {
+        "title": "Trackinginstellingen configureren",
+        "sections": {
+          "delivered": {
+            "name": "Bezorgde pakketten",
+            "data": {
+              "delivered_filter_type": "Filteren op",
+              "delivered_filter_amount": "Aantal"
+            },
+            "data_description": {
+              "delivered_filter_type": "Toon bezorgde pakketten van de laatste X dagen, of beperk tot de X meest recente.",
+              "delivered_filter_amount": "Aantal dagen of pakketten om te tonen."
+            }
+          },
+          "history": {
+            "name": "Pakketgeschiedenis",
+            "data": {
+              "include_history": "Statusgeschiedenis toevoegen"
+            },
+            "data_description": {
+              "include_history": "Voegt per pakket een history-attribuut toe met elke statusupdate (tijdstip, status, originele tekst). Standaard uit."
+            }
+          }
         }
       }
+    },
+    "error": {
+      "invalid_tracking_code": "Een van de trackingcodes is ongeldig."
     }
   },
   "selector": {

@@ -7,19 +7,25 @@
 
 > 💬 Questions or feedback? Join the discussion on the [Home Assistant community](https://community.home-assistant.io/t/packages-postnl-dhl-nl-dpd-and-gls-parcel-integration/112433/).
 
-A custom Home Assistant integration that tracks **DHL Paket** (Germany) and
-**DHL Parcel Polska** parcels. Log in once with your own carrier account and
-your parcels are imported automatically. Germany also supports manually added
-tracking codes; Poland uses its Mój DHL phone/SMS account inbox.
+A custom Home Assistant integration that tracks **DHL Paket** (Germany),
+**DHL Parcel Polska**, and — via tracking codes, no account needed — DHL
+Parcel's wider network and DHL Express. During setup, pick **Account** to log
+in with your own DHL Kundenkonto or Mój DHL account (parcels import
+automatically), or **Tracking codes** to add tracking numbers directly; each
+code is routed automatically to whichever DHL backend can answer it.
 
 Part of the [ha-parcel-integrations](https://ha-parcel-integrations.github.io/) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
-**Country support:** Germany and Poland. DHL's Polish account setup uses a
+**Account support:** Germany and Poland. DHL's Polish account setup uses a
 nine-digit Polish mobile number and a one-time SMS code; the renewable session
 cookie jar is stored locally, never the SMS code or a bearer token. Country
 requests go through the [organisation discussion](https://github.com/ha-parcel-integrations/.github/discussions/new/choose).
 DHL's Netherlands business is a separate integration,
 [**ha-dhl-nl**](https://github.com/ha-parcel-integrations/ha-dhl-nl).
+
+**Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
+and any DHL Express air waybill (a bare 10-digit number), worldwide — no
+account or postcode needed. See [Tracking codes](#tracking-codes) below.
 
 ## Contents
 
@@ -27,6 +33,7 @@ DHL's Netherlands business is a separate integration,
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Tracking codes](#tracking-codes)
 - [Options](#options)
 - [Removal](#removal)
 - [Sensors](#sensors)
@@ -55,15 +62,20 @@ DHL's Netherlands business is a separate integration,
 
 ## Requirements
 
+**Account setup:**
+
 - A DHL Kundenkonto (a free DHL account) — the same account you use on
-  dhl.de or in the DHL Paket app
-- A browser to complete the one-time sign-in during setup
-- **A German IP address.** DHL's tracking endpoint only answers requests
-  that originate from Germany — this is normally not a concern (a DHL Paket
-  customer's own Home Assistant is already reached from Germany), but it
-  means the integration will not work over a non-German VPN, from a
+  dhl.de or in the DHL Paket app — or a Mój DHL account for Poland
+- A browser to complete the one-time sign-in during setup (Germany only)
+- **A German IP address for Germany.** DHL's tracking endpoint only answers
+  requests that originate from Germany — this is normally not a concern (a
+  DHL Paket customer's own Home Assistant is already reached from Germany),
+  but it means the integration will not work over a non-German VPN, from a
   non-German cloud/VPS-hosted Home Assistant, or during development/testing
   from outside Germany.
+
+**Tracking-code setup:** nothing beyond the tracking code itself — no
+account, no login, no postcode.
 
 ## Installation
 
@@ -80,41 +92,76 @@ Copy `custom_components/dhl` into your `config/custom_components/` folder and re
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration → DHL**.
-2. Pick a country. For Poland, enter the Mój DHL mobile number and then the
+2. Choose **Account** or **Tracking codes**.
+
+### Account
+
+1. Pick a country. For Poland, enter the Mój DHL mobile number and then the
    single SMS code DHL sends; the integration never resends it automatically.
-3. The next form shows a sign-in link. Open it in a browser and log in with
+2. The next form shows a sign-in link. Open it in a browser and log in with
    your DHL Kundenkonto.
-4. Your browser will fail to open the final `dhllogin://…` redirect it lands
+3. Your browser will fail to open the final `dhllogin://…` redirect it lands
    on — **that is expected**. This address never appears in the address bar
    (no desktop browser has an app registered for it); you catch it in your
    browser's developer tools' Network tab instead. See
    [docs/finding-the-redirect-url.md](docs/finding-the-redirect-url.md) for
    step-by-step instructions for Chrome, Edge, Firefox and Safari. Paste the
    full address into the form.
-5. Submit. Your account's parcels start appearing on the next poll.
+4. Submit. Your account's parcels start appearing on the next poll.
 
 Nothing is typed into Home Assistant itself except that pasted-back address —
 your DHL password never passes through this integration.
 
-### Adding a parcel that is not in your account
+#### Adding a parcel that is not in your account
 
 Your DHL account inbox only shows parcels addressed to you. To also track a
 parcel someone else is sending you (or one your account has not picked up
 yet), call the [`dhl.track_parcel`](#services) service with its tracking
 number, or use a [dashboard button](examples/dashboards/add_parcel_card.yaml).
 
+### Tracking codes
+
+Choosing **Tracking codes** creates a single tracking hub with no parcels yet
+— add codes afterwards from **Configure → Parcels**. Nothing is validated
+against DHL at add time; a code only resolves (or doesn't) on the next poll.
+
+## Tracking codes
+
+Each code you add is routed automatically to whichever DHL backend can
+answer it — you never say which:
+
+| Code shape | Backend |
+|---|---|
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands |
+| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend |
+| Anything else | Tried on the gateway first; only falls back to the Express backend if the gateway can't resolve it |
+
+**The DHL Express backend is intentionally slow to refresh — roughly once
+every 40 minutes per tracked Express code, shared across however many you
+track.** It runs on a credential extracted from DHL's own Express app rather
+than one issued to this integration, and that credential answers only a
+handful of requests before standing down with no advance warning. Polling it
+gently is what keeps it working at all: aggressive polling risks the shared
+credential being noticed and rotated for every install, not just one, and if
+DHL does rotate or revoke it an integration update — not a reauth — is what
+fixes it. DHL Parcel barcodes have none of this: the gateway is keyless and
+answers immediately on the integration's normal polling cadence.
+
 ## Options
 
-Click **Configure** on the integration entry:
+Click **Configure** on the integration entry. An account hub shows one
+sectioned form; a tracking hub shows a menu:
 
-| Section | Option | Default | Description |
+| Menu entry | Option | Default | Description |
 |---|---|---|---|
-| Delivered parcels | Filter by / amount | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
-| Parcel history | Include status history | off | Adds a `history` attribute per parcel with each status update. |
+| Parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes to follow. |
+| Settings | Filter by / amount (Delivered parcels) | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
+| Settings | Include status history (Parcel history) | off | Adds a `history` attribute per parcel with each status update. |
 
-Polling isn't one of these settings: the integration polls on a dynamic,
+Polling isn't one of these settings. An account hub polls on a dynamic,
 status-driven schedule (quiet overnight window, faster when a parcel is out
-for delivery) with nothing to configure. See
+for delivery); a tracking hub follows the same schedule for its DHL Parcel
+codes, with Express codes rationed separately as described above. See
 [ARCHITECTURE.md](ARCHITECTURE.md) for the details.
 
 ## Removal
@@ -125,13 +172,13 @@ Standard HA removal applies: **Settings → Devices & Services → DHL → ⋮ �
 
 | Entity | Description |
 |---|---|
-| `sensor.dhl_<account>_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
-| `sensor.dhl_<account>_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
-| `sensor.dhl_<account>_next_delivery` | Earliest expected delivery moment across all active parcels |
-| `sensor.dhl_<account>_delivered_parcels` | Recently delivered parcels (see the retention option) |
-| `sensor.dhl_<account>_outgoing_parcels` | Number of active outgoing parcels, full list under the `parcels` attribute |
-| `sensor.dhl_<account>_outgoing_delivered_parcels` | Recently delivered outgoing parcels (see the retention option) |
-| `sensor.dhl_<account>_last_successful_update` | Diagnostic: when DHL was last polled successfully |
+| `sensor.dhl_<hub>_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
+| `sensor.dhl_<hub>_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
+| `sensor.dhl_<hub>_next_delivery` | Earliest expected delivery moment across all active parcels |
+| `sensor.dhl_<hub>_delivered_parcels` | Recently delivered parcels (see the retention option) |
+| `sensor.dhl_<hub>_outgoing_parcels` | Number of active outgoing parcels, full list under the `parcels` attribute |
+| `sensor.dhl_<hub>_outgoing_delivered_parcels` | Recently delivered outgoing parcels (see the retention option) |
+| `sensor.dhl_<hub>_last_successful_update` | Diagnostic: when DHL was last polled successfully |
 
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
 
@@ -139,7 +186,9 @@ Outgoing parcels are shipments DHL reports as sent *by* your account rather than
 
 ## Parcel status reference
 
-The `status` field is the carrier-agnostic enum shared by the whole integration family. DHL Germany reports a coarse 0-5 progress ladder rather than a status vocabulary, so the mapping below is what that ladder can express, plus a Packstation arrival read from the parcel's delivery details. A Filiale arrival cannot currently be told apart from an ordinary "out for delivery" (see [Troubleshooting](#troubleshooting)).
+The `status` field is the carrier-agnostic enum shared by the whole integration family, and its exact source depends on which of the three DHL backends produced a given parcel.
+
+**Account (Germany).** DHL Germany reports a coarse 0-5 progress ladder rather than a status vocabulary, so the mapping below is what that ladder can express, plus a Packstation arrival read from the parcel's delivery details. A Filiale arrival cannot currently be told apart from an ordinary "out for delivery" (see [Troubleshooting](#troubleshooting)).
 
 | Status | Meaning |
 |---|---|
@@ -151,6 +200,10 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 | `returning` | DHL reports the shipment as a return |
 | `problem` | Not currently distinguishable — see Troubleshooting |
 | `unknown` | A progress value we have not mapped yet |
+
+**Tracking codes — DHL Parcel gateway.** The event category behind a barcode maps as: `DATA_RECEIVED` → `registered`, `UNDERWAY` → `in_transit`, `IN_DELIVERY` → `out_for_delivery`, `PROBLEM` → `problem`, `DELIVERED` → `delivered`; a `RETURNED_TO_SHIPPER` event maps to `returning` regardless of category. `at_pickup_point` is not currently mapped on this backend. Anything else falls back to `unknown`.
+
+**Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`; an in-progress shipment (an empty status with checkpoints and a future estimated delivery date) maps to `in_transit`. No exception, problem or pickup-point state has been observed on this backend yet, so those fall back to `unknown`.
 
 The carrier's own human-readable text is always available as `raw_status`.
 
@@ -234,6 +287,14 @@ finished, since nobody building it has a DHL parcel of their own.
 - **Re-authentication is requested** — DHL's session expired (they last
   about 30 minutes and are refreshed automatically in the background; this
   only triggers if the refresh itself is rejected). Repeat the sign-in step.
+- **A tracking-code Express parcel barely updates** — this is expected, not a
+  bug; see [Tracking codes](#tracking-codes) for why. A DHL Parcel barcode
+  (`3S…`/`JJD…`/`CR…`/`LX…`) updates on the normal cadence.
+- **A tracking code never resolves** — double-check it against the shape
+  table in [Tracking codes](#tracking-codes). A code that matches none of
+  the known DHL Parcel barcode families and isn't a 10-digit Express AWB is
+  still tried, but only on the gateway, and only if the gateway's own answer
+  for it looks like "not found" rather than "not this kind of key".
 
 ## Related integrations
 
@@ -254,6 +315,8 @@ All third-party trademarks, trade names, product names, logos, and other brand a
 This integration may rely on public, unofficial, or undocumented carrier interfaces, accessed with your own account or API key where required. These may change or be withdrawn without notice and may be subject to DHL's terms. Data is sent only to DHL's own services or those of its group; this project operates no servers of its own. You are responsible for ensuring that your use complies with applicable law and those terms. Use is at your own risk; see the [licence](LICENSE) for warranty limitations.
 
 This integration uses the same account-inbox endpoint the DHL website uses once you are logged in. Your credentials never pass through this integration or any third party — sign-in happens directly in your own browser against DHL's own login page; only the resulting refresh token is stored in Home Assistant's own config-entry storage, the same way any other integration's credentials are.
+
+**The Express half of tracking-code lookups uses a static credential extracted from DHL's official Express app, not one issued to this project or to you.** It is never displayed, never stored in a config entry, and never appears in diagnostics or logs. DHL can revoke or rotate it without notice; if that happens, an integration update fixes it, not a reauth on your part. Its request budget is intentionally very conservative — roughly one request per tracked Express code every 40 minutes — specifically because aggressive polling risks that shared credential being noticed and rotated for every install, not just yours. The DHL Parcel gateway half of tracking-code lookups needs no credential of any kind.
 
 ## Contributing
 

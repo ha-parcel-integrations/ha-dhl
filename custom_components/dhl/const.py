@@ -37,7 +37,7 @@ KNOWN_CAPABILITIES = frozenset(
 
 # Which optional contract fields this carrier's API actually populates — feeds
 # the comparison table on the docs site. Everything not listed here comes back
-# as a literal ``None`` from normalize_parcel_de() in countries/de/__init__.py.
+# as a literal ``None`` from normalize_parcel_de() in account/countries/de/__init__.py.
 #
 # DHL DE never exposes weight or dimensions (no source names either field).
 # ``pickup_point`` counts for Packstations only — it is read from the latest
@@ -178,6 +178,24 @@ class DHLAuthError(DHLApiError):
     """
 
 
+class DHLExpressThrottledError(DHLApiError):
+    """Raised when the Express backend's abuse heuristic has tripped.
+
+    Never HA's reauth flow — nothing about a credential is wrong, the shared
+    secret just needs to rest. See ``tracking/coordinator.py``'s stand-down.
+    """
+
+
+class DHLExpressCredentialError(DHLApiError):
+    """Raised on a 401/403 from the Express backend — likely rotation.
+
+    Deliberately **not** :class:`DHLAuthError`: there is no user credential to
+    reauthenticate with (the secret is static and shared), so this must never
+    reach Home Assistant's reauth flow. The coordinator aborts Express polling
+    for the entry and logs one WARNING instead.
+    """
+
+
 # Entry-data keys. The stored credential is a refresh token, never a
 # password — config_flow.py exchanges the pasted redirect URL for it once and
 # discards the authorization code and the PKCE verifier immediately after.
@@ -237,8 +255,88 @@ DEFAULT_INCLUDE_HISTORY = False
 HISTORY_MAX_EVENTS = 20
 
 # Where users report a status/shape we do not map yet. Every one-shot WARNING
-# in countries/de/__init__.py and countries/de/session.py links here.
+# in account/countries/de/__init__.py and account/countries/de/session.py
+# links here.
 NEW_ISSUE_URL = (
     "https://github.com/ha-parcel-integrations/ha-dhl/issues/new"
     "?template=unrecognised_status.yml"
 )
+
+# ---------------------------------------------------------------------------
+# Setup source — account (DE/PL browser-paste OIDC / phone+SMS) vs tracking
+# (keyless gateway + shared-secret Express app backend, code-based, modelled
+# on ha-bpost's SOURCE_ACCOUNT/SOURCE_TRACKING menu). An entry with no
+# CONF_SOURCE predates this split and is an account entry — never migrated,
+# just defaulted, everywhere this key is read.
+# ---------------------------------------------------------------------------
+CONF_SOURCE = "source"
+SOURCE_ACCOUNT = "account"
+SOURCE_TRACKING = "tracking"
+
+# Tracking-mode tracked parcels, stored in entry.options as a list of
+# ``{tracking_code}`` dicts (mirrors ha-bpost/ha-ups) — distinct from
+# CONF_TRACKED_CODES, which is the DE account's by-number `track_parcel`
+# service list and only ever holds DE-shaped codes.
+CONF_PARCELS = "parcels"
+
+# ---------------------------------------------------------------------------
+# Tracking source, half 1: the keyless api-gw.dhlparcel.nl gateway.
+# ---------------------------------------------------------------------------
+
+DHL_GATEWAY_URL = "https://api-gw.dhlparcel.nl/track-trace"
+DHL_GATEWAY_HEADERS = {"accept": "*/*"}
+DHL_GATEWAY_REQUEST_TIMEOUT_SECONDS = 30
+
+# Barcode shape families the gateway is confirmed to resolve — anything
+# outside these three is an "unknown" shape (still tried, per the plan's
+# narrow fallback rule below), never a bare 10-digit Express AWB, which the
+# gateway has been observed to answer with a clean 404 for every time.
+#
+# The JJD digit-count range is corrected from the build plan's own
+# `JJD[0-9]{21,24}`: the two real codes it was sized from are 21 and 27
+# characters *including* the `JJD` prefix (18 and 24 digits), not 22 and 27 —
+# the plan's regex would have rejected its own shorter example.
+DHL_GATEWAY_BARCODE_PATTERNS = (
+    r"^3S[A-Z]{3}[0-9]{10}$",
+    r"^JJD[0-9]{18,24}$",
+    r"^(CR|LX)[0-9]{9}[A-Z]{2}$",
+)
+
+# ---------------------------------------------------------------------------
+# Tracking source, half 2: the DHL Express app backend (dhle.dhl.com).
+# ---------------------------------------------------------------------------
+
+# Bare 10-digit Express AWBs never resolve on the gateway and are the only
+# shape this backend is routed for by classification alone.
+DHL_EXPRESS_AWB_PATTERN = r"^[0-9]{10}$"
+
+DHL_EXPRESS_URL = "https://dhle.dhl.com/access/access/com.dhl.exp.dhlmobile"
+DHL_EXPRESS_APP_VERSION = "6.1.0"
+DHL_EXPRESS_REQUEST_TIMEOUT_SECONDS = 30
+
+# The abuse-heuristic error code the app's own client branches on. Matched
+# against the response *body*, never the HTTP status alone — it has been
+# observed on both a 503 and, per the client's own error-handling code, could
+# in principle surface on other statuses if the server's behaviour drifts.
+DHL_EXPRESS_THROTTLE_CODE = "DRG10012"
+
+# Sized from this repo's own 2026-09-28 cooldown measurements (10.5-34 min
+# across three timed trials), not copied from ha-ups's numbers, which
+# measured a different carrier. See tracking/express.py's RequestBudget use.
+DHL_EXPRESS_REQUEST_BUDGET_CAPACITY = 1
+DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS = 2400  # 40 min
+DHL_EXPRESS_MIN_CYCLE_GAP_SECONDS = 2400
+DHL_EXPRESS_STAGGER_MINUTES = 7
+DHL_EXPRESS_JITTER_FRACTION = 0.15
+
+# How many tracked Express-shaped codes before the soft-limit WARNING fires
+# (mirrors ha-ups's TRACKED_CODE_SOFT_LIMIT) — past this, each code only
+# refreshes roughly every N * REQUEST_BUDGET_REFILL_SECONDS.
+DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT = 3
+
+# Per-entry Store for the tracking source. Without it every restart starts the
+# Express budget full and forgets a running stand-down, so a reboot during a
+# cooldown polls straight back into it, and Express parcels fall back to
+# placeholders until the queue reaches them again.
+TRACKING_STORAGE_VERSION = 1
+TRACKING_STORAGE_KEY = f"{DOMAIN}.tracking_cache"

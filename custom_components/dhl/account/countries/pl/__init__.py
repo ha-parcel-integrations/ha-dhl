@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import aiohttp
 
-from ...const import DHLApiError, DHLAuthError, ParcelStatus
+from ....const import DHLApiError, DHLAuthError, ParcelStatus
 from .session import DHLPlSession
 
 # `status` — the raw TT_*/SP_* code (primary; tracking.md#status-the-raw-code-primary).

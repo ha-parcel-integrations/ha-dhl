@@ -16,7 +16,14 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
-from .const import CONF_TRACKED_CODES, CONF_TRACKING_CODE, DOMAIN, TRACKING_CODE_REGEX
+from .const import (
+    CONF_SOURCE,
+    CONF_TRACKED_CODES,
+    CONF_TRACKING_CODE,
+    DOMAIN,
+    SOURCE_ACCOUNT,
+    TRACKING_CODE_REGEX,
+)
 
 SERVICE_TRACK_PARCEL = "track_parcel"
 SERVICE_UNTRACK_PARCEL = "untrack_parcel"
@@ -46,11 +53,18 @@ def _resolve_entry(hass: HomeAssistant, call: ServiceCall):
     """Return the DHL account the call targets, or raise a clear error.
 
     A single configured account resolves without any target field; more
-    than one requires ``config_entry_id`` to disambiguate.
+    than one requires ``config_entry_id`` to disambiguate. Tracking-mode
+    entries are never eligible — this is the DE account's by-number
+    merge-into-inbox mechanic, and a tracking entry's parcels are managed
+    through its own options flow instead.
     """
-    entries = hass.config_entries.async_entries(DOMAIN)
+    entries = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_ACCOUNT
+    ]
     if not entries:
-        raise ServiceValidationError("DHL is not set up")
+        raise ServiceValidationError("No DHL account is set up")
     entry_id = call.data.get("config_entry_id")
     if entry_id:
         for entry in entries:

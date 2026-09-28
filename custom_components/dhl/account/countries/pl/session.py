@@ -10,7 +10,7 @@ from typing import Any
 
 import aiohttp
 
-from ...const import (
+from ....const import (
     DHL_PL_BASE_URL,
     DHL_PL_HEADERS,
     DHL_PL_REQUEST_TIMEOUT_SECONDS,

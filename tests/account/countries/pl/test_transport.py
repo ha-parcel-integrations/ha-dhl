@@ -5,9 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from custom_components.dhl.account.countries.pl import (
+    async_get_incoming,
+    normalize_parcel_pl,
+)
+from custom_components.dhl.account.countries.pl.session import DHLPlSession
 from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
-from custom_components.dhl.countries.pl import async_get_incoming, normalize_parcel_pl
-from custom_components.dhl.countries.pl.session import DHLPlSession
 
 
 def test_raw_code_is_the_primary_status_source():

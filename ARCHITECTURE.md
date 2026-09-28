@@ -3,29 +3,51 @@
 How `ha-dhl` is built and why it is built that way. `CLAUDE.md` is the short
 list of things not to get wrong; this file is the structure and the evidence
 behind it. API mechanics — the OIDC discovery/token endpoints, the
-`int-verfolgen/data/search` envelope, the `fortschritt` ladder and every
-contested field — live in the private `carrier-research/dhl/api/dhl-de/` and
-are never copied here.
+`int-verfolgen/data/search` envelope, the `fortschritt` ladder, the tracking
+gateway and Express mechanics, and every contested field — live in the
+private `carrier-research/dhl/api/` and are never copied here.
 
-Three things shape this repo. It is **country-split from day one**, with DE and
-PL backends. DE auth is a **one-time browser hop** producing a refresh token;
-PL auth is a phone/SMS flow whose rotating cookie jar is its credential. And a
-large share of its payload mapping is **inferred from
-third-party sources** rather than observed, so nearly every decision codes both
-branches and warns.
+Four things shape this repo. It has **two setup-flow sources**: `account`
+(DE/PL, a logged-in inbox) and `tracking` (a keyless DHL Parcel gateway plus
+DHL Express tracking, both code-based). DE auth is a **one-time browser hop**
+producing a refresh token; PL auth is a phone/SMS flow whose rotating cookie
+jar is its credential. And a large share of the account source's payload
+mapping is **inferred from third-party sources** rather than observed, so
+nearly every decision there codes both branches and warns.
 
-## Country split
+## Two sources: account and tracking
 
-`ha-dhl` is the country-split DHL repo — DE today, with the
-`custom_components/dhl/countries/<code>/` layout already in place for a second
-country, mirroring `ha-gls`. DHL eCommerce NL is a *separate*, already-released
-repo ([`ha-dhl-nl`](https://github.com/ha-parcel-integrations/ha-dhl-nl)) on a
+Mirroring `ha-bpost`, `ha-usps`: `custom_components/dhl/account/` and
+`custom_components/dhl/tracking/` are self-contained source packages, each
+with its own `client.py`/`coordinator.py`/`parcels.py`. The domain root
+(`__init__.py`, `config_flow.py`, `sensor.py`, …) dispatches on the entry's
+`CONF_SOURCE` and otherwise carries no source-specific logic. An entry with no
+`CONF_SOURCE` key predates this split and is an account entry — a default
+read everywhere, never a migration.
+
+`api.py`/`coordinator.py`/`parcels.py` still exist at the domain root as thin
+compatibility re-exports onto `account/client.py` etc. — the pre-split public
+import path (`custom_components.dhl.api.DHLApiClient…`) and any external
+automation/test patching it keep resolving to the same objects.
+
+Both sources answer the same shape of question — "what's the status of this
+parcel" — with no meaningful difference in user experience beyond how a hub is
+identified (an account, or a tracking code). That is why they are one setup
+flow, `SOURCE_ACCOUNT`/`SOURCE_TRACKING`, not two integrations.
+
+## Account source: country split
+
+`account/` is the country-split half — DE today, with the
+`account/countries/<code>/` layout already in place for a second country,
+mirroring `ha-gls`. DHL eCommerce NL is a *separate*, already-released repo
+([`ha-dhl-nl`](https://github.com/ha-parcel-integrations/ha-dhl-nl)) on a
 different backend, not something this repo extends. The maintainer's stated
-intent is to eventually fold it in as `countries/nl/`, but that is a
+intent is to eventually fold it in as `account/countries/nl/`, but that is a
 repo-consolidation decision for later — **do not design toward it here.**
 
-**The config flow is a country router**, mirroring the module layout.
-`async_step_user` shows a country picker (`COUNTRIES` — DE and PL) and
+**The config flow's `account` step is a country router**, mirroring the
+module layout. `async_step_user` shows the account/tracking source menu;
+picking `account` shows a country picker (`COUNTRIES` — DE and PL) and
 dispatches to `async_step_<code>`; `async_step_de` holds the entire
 browser-paste OIDC dance. NL's auth model (email/password, like `ha-dhl-nl`)
 has nothing in common with DE's OAuth flow, so its step will look nothing like
@@ -33,36 +55,111 @@ has nothing in common with DE's OAuth flow, so its step will look nothing like
 points.** `unique_id` is `f"{country}:{subject}"`; reauth reads the country back
 off the existing entry (`entry_data[CONF_COUNTRY]`) and never asks again.
 
+## Tracking source: shape-routed, two backends
+
+`tracking/` has no account and no login — a user pastes in tracking codes
+(`config_flow.py`'s `tracking` step creates an empty hub; codes are added
+through the options flow's "parcels" entry), and each code is routed to
+whichever of two backends its *shape* resolves on
+(`tracking/__init__.py::classify_shape`):
+
+| Shape | Backend | Module |
+|---|---|---|
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl`, keyless | `tracking/gateway.py` |
+| Bare 10-digit number (a DHL Express AWB) | `dhle.dhl.com` | `tracking/express.py` |
+| Anything else | Tried on the gateway first; only falls back to Express if the gateway can't resolve it — and never for a confidently-classified shape | both |
+
+**Do not try both backends for a confidently-classified code.** Every
+barcode-shaped code tried against the Express backend comes back a clean
+`[]` (not found, not an error) — technically harmless, but wasteful of
+Express's scarce request budget for a request that can never resolve; the
+reverse holds for a bare-digit code against the gateway. The unknown-shape
+fallback is the one narrow, deliberately-inferred exception to this rule.
+
+**The gateway is keyless, unthrottled, and batched.** One request per poll
+covers the entire gateway-routed (plus unresolved-unknown-shape) subset of
+tracked codes, comma-separated (`tracking/gateway.py::async_fetch_gateway`).
+Unknown codes are dropped silently from a mixed batch, never erred — results
+are matched on the returned `barcode` field, never array position.
+
+**Express shares ha-ups's throttled-queue coordinator model, not a new
+one.** A single request per poll cycle at most, gated by a token-bucket
+`RequestBudget` (`tracking/budget.py` — capacity 1, refill ≈40 min, sized from
+this repo's own measured cooldowns, not UPS's), which of several waiting
+Express-routed codes gets that request decided by `_QUEUE_PRIORITY` +
+never-attempted-first + an overdue band (`tracking/coordinator.py::
+_express_queue`, ported from `ha-ups`'s `_fetch_queue`). A `DRG10012` body
+match (any HTTP status, not just `503`) means "stand down", not "fatal error"
+— exponential backoff capped, never shorter than a full refill interval, with
+the same per-install stagger + jitter `ha-ups` uses. A 401/403 is different
+again: fetching is disabled for the rest of that running entry
+(`DHLExpressCredentialError`, never `DHLAuthError` — this is not a
+user-reauthable condition).
+
+**Interval scheduling is split, not budget-driven end to end.** Unlike
+`ha-ups` (Express-only, no other backend), the gateway is cheap and normal-
+cadence, so `tracking/coordinator.py` reuses `account/coordinator.py`'s
+`compute_poll_interval` (hot/mid/quiet tiering) for the whole coordinator's
+`update_interval`, and only overrides it with a longer wait when an active
+Express stand-down outlasts that cadence (`_schedule`, mirroring `ha-ups`'s own
+override). The Express budget instead gates, independently, whether *this*
+cycle's one affordable Express request happens at all — it never inflates the
+interval for gateway-only installs, which are the common case.
+
+**The Express queue state survives a restart.** Like `ha-ups`, the tracking
+coordinator keeps a per-entry `Store` (`dhl.tracking_cache.<entry_id>`) holding
+the last raw payload per code, the budget balance, the stand-down deadline,
+consecutive stand-downs and the per-code fetch times. It is loaded in
+`__init__.py` before the first refresh and written debounced after every poll.
+Without it every boot started the budget full and dropped a running
+stand-down, so a restart during a cooldown polled straight back into it, and
+Express parcels fell back to placeholders until the queue reached them again.
+The stand-down is stored as a deadline, never a duration. The entry's store is
+deleted in `async_remove_entry`.
+
+**The DHL Parcel barcode-family regex was corrected during the build.** The
+plan this shipped from specified `JJD[0-9]{21,24}` (21-24 digits after the
+`JJD` prefix), but its own two cited real examples are 18 and 24 digits — the
+regex would have rejected the shorter one. `DHL_GATEWAY_BARCODE_PATTERNS` in
+`const.py` uses `JJD[0-9]{18,24}`.
+
 ## Project layout
 
 ```
 custom_components/dhl/
-├── __init__.py          setup, session + coordinator wiring, first refresh
-├── api.py               transport dispatcher; error types live in const.py
-├── const.py             COUNTRIES, ladder, headers, timeouts, CAPABILITIES
-├── coordinator.py       poll loop, by-number merge, in/outgoing split, events
-├── parcels.py           per-country dispatch (normalize_parcel, is_outgoing), sort, filters
-├── config_flow.py       country router + the DE browser-paste OIDC flow
-├── sensor.py            summary, per-parcel, outgoing and diagnostic sensors
-├── button.py            refresh button
-├── calendar.py          read-only deliveries calendar
-├── services.py          dhl.track_parcel / dhl.untrack_parcel (by-number)
+├── __init__.py          source dispatch, setup/unload for both
+├── api.py / coordinator.py / parcels.py   compat re-exports onto account/*
+├── const.py              shared + account + tracking constants, CAPABILITIES
+├── config_flow.py        source menu + account's country router/OIDC flow +
+│                         tracking's setup/options steps
+├── sensor.py              summary, per-parcel, outgoing and diagnostic sensors
+├── button.py              refresh button
+├── calendar.py            read-only deliveries calendar
+├── services.py            dhl.track_parcel / dhl.untrack_parcel (account, by-number)
 ├── device.py / device_trigger.py / diagnostics.py
-└── countries/
-    └── de/
-        ├── __init__.py  transport, ladder mapping, normalize_parcel_de, is_outgoing_element
-        └── session.py   OIDC lifecycle: PKCE, refresh, rotation
+├── account/
+│   ├── client.py          transport dispatcher; error types live in const.py
+│   ├── coordinator.py     poll loop, by-number merge, in/outgoing split, events
+│   ├── parcels.py         per-country dispatch (normalize_parcel, is_outgoing), sort, filters
+│   └── countries/
+│       ├── de/            transport, ladder mapping, normalize_parcel_de, session (OIDC)
+│       └── pl/             transport, status maps, normalize_parcel_pl, session (Altcha/SMS)
+└── tracking/
+    ├── __init__.py         shape classification + code routing
+    ├── gateway.py           api-gw.dhlparcel.nl client + normalize_parcel_gateway
+    ├── express.py           dhle.dhl.com client + normalize_parcel_express
+    ├── budget.py            RequestBudget token bucket (Express only)
+    ├── coordinator.py       poll loop, routing, Express queue/throttle, events
+    └── parcels.py           per-backend dispatch, sort, filters
 ```
 
-`PLATFORMS` is `[Platform.BUTTON, Platform.CALENDAR, Platform.SENSOR]`.
-
-Concern-level files stay top-level and dispatch into the country package;
-`countries/de/` owns everything DE-specific.
+`PLATFORMS` is `[Platform.BUTTON, Platform.CALENDAR, Platform.SENSOR]` for both
+sources.
 
 ## Authentication
 
 **Login is a one-time browser hop, then headless.** `config_flow.py` builds a
-PKCE authorization URL (via `countries/de/session.py`); the user logs in in a
+PKCE authorization URL (via `account/countries/de/session.py`); the user logs in in a
 real browser and pastes back the `dhllogin://…?code=…` redirect their browser
 could not open. **The stored credential is the refresh token, never a
 password**; the authorization code and PKCE verifier are discarded the moment
@@ -243,7 +340,7 @@ Unlike `ha-dhl-nl`'s `DhlSentShipmentsCoordinator` (a genuinely separate API),
 DE has **one endpoint**, and `sendungsrichtung` splits it.
 `is_outgoing_element()` classifies each raw `sendungen[]` element *before*
 normalization, `parcels.is_outgoing()` dispatches per country, and
-`coordinator.py` partitions `elements` into incoming/outgoing before calling
+`account/coordinator.py` partitions `elements` into incoming/outgoing before calling
 `normalize_parcel` on each half.
 
 There is **no new canonical parcel key** for direction — the suite's parcel
@@ -301,10 +398,23 @@ the leaf `name` key reaches the PII without destroying the structure a tester's
 export needs.
 
 `CONF_TRACKED_CODES` is redacted by hand — a bare list of strings has no key for
-`async_redact_data` to match.
+`async_redact_data` to match. `CONF_PARCELS` (the tracking source's list of
+`{tracking_code}` dicts) is redacted the same way, by hand, for the same reason.
+
+The tracking source's diagnostics export shares this shape (`incoming`,
+`delivered`, `counts`, …) plus a `tracking` block reporting the Express
+queue's budget/backoff state (`tracking/coordinator.py`'s
+`express_budget_available`/`express_consecutive_failures`/
+`express_standing_down`/`express_disabled` properties) — never anything about
+the credential itself, which this module never touches.
 
 ## Fields
 
-`weight` and `dimensions` are always `None`; `pickup_point` is populated for
-Packstation arrivals only. Keep `CAPABILITIES` in `const.py` in sync if that ever
-changes.
+`weight` and `dimensions` are always `None` on every source. `pickup_point` is
+populated for account/DE Packstation arrivals only — never on the tracking
+source, on either backend. `url` and `history` are populated on the tracking
+source's Express half; the gateway half never populates `url`.
+`delivery_window` is populated (as a single `planned_from` moment, never a
+true range) on both tracking backends. None of this changes `CAPABILITIES` in
+`const.py`, which already claimed all of these from the account source — keep
+it in sync if that ever changes.

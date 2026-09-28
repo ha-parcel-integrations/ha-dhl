@@ -7,12 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 import aiohttp
 import pytest
 
-from custom_components.dhl.const import DHLApiError, DHLAuthError
-from custom_components.dhl.countries.pl.session import (
+from custom_components.dhl.account.countries.pl.session import (
     DHLPlSession,
     new_device_id,
     solve_altcha,
 )
+from custom_components.dhl.const import DHLApiError, DHLAuthError
 
 CHALLENGE = {
     "algorithm": "SHA-256", "salt": "test-salt", "signature": "sig",

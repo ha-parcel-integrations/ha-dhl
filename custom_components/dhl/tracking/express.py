@@ -1,0 +1,289 @@
+"""The DHL Express app backend (dhle.dhl.com): fetch + normalize.
+
+Auth is a single static secret baked into the official app, not a credential
+issued to this project (see ``../../carrier-research/dhl/api/dhl/
+express-app-backend.md`` for the extraction — never referenced from code).
+It is stored here the same way the app itself stores it: AES-256-CBC
+ciphertext plus an XOR-obfuscated key/IV, decrypted once at runtime rather
+than committed as a bare plaintext string. This is obfuscation, not real
+protection — the point is only to avoid the secret sitting in the clear in
+this public repo's history, matching how the app ships it. The derived value
+must never be logged, and never appears in a config entry, in diagnostics, or
+in any exception message raised from this module.
+"""
+from __future__ import annotations
+
+import base64
+import json
+import logging
+import uuid
+from datetime import datetime, timezone
+
+import aiohttp
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from ..const import (
+    DHL_EXPRESS_APP_VERSION,
+    DHL_EXPRESS_REQUEST_TIMEOUT_SECONDS,
+    DHL_EXPRESS_THROTTLE_CODE,
+    DHL_EXPRESS_URL,
+    HISTORY_MAX_EVENTS,
+    NEW_ISSUE_URL,
+    DHLApiError,
+    DHLExpressCredentialError,
+    DHLExpressThrottledError,
+    ParcelStatus,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+_TIMEOUT = aiohttp.ClientTimeout(total=DHL_EXPRESS_REQUEST_TIMEOUT_SECONDS)
+
+# Two-layer obfuscation exactly as the app itself ships it: AES-256-CBC
+# ciphertext, with a key/IV that are themselves only XOR+base64-obfuscated in
+# the bundle. Both layers are already broken offline (no network call
+# needed) — reproduced here as the same encrypted constants rather than the
+# bare plaintext they decrypt to.
+_CIPHERTEXT_B64 = (
+    "ArnvnwcNI+HBw27G2csnAMJGPW3qTpB5xaDSOeNfaEcIeQd9mlcT3C1vZIkWV9Ph"
+)
+_AES_KEY = b"MyBillSDSHOLIENBTAICGKREANTDIMON"
+_AES_IV = b"hq1wNoGMkcqcKAR6"
+
+_bearer_token: str | None = None
+
+
+def _derive_bearer_token() -> str:
+    """Decrypt the static Express bearer token once, cached in-process.
+
+    The plaintext carries a 3-character random prefix the app strips before
+    use (``decryptAPIKey(t){ return decryptDataAES(t).slice(3) }``).
+    """
+    cipher = Cipher(algorithms.AES(_AES_KEY), modes.CBC(_AES_IV))
+    decryptor = cipher.decryptor()
+    padded = decryptor.update(base64.b64decode(_CIPHERTEXT_B64)) + decryptor.finalize()
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    plaintext = unpadder.update(padded) + unpadder.finalize()
+    return plaintext[3:].decode()
+
+
+def _get_bearer_token() -> str:
+    global _bearer_token
+    if _bearer_token is None:
+        _bearer_token = _derive_bearer_token()
+    return _bearer_token
+
+
+def _transaction_id() -> str:
+    """Build a transaction id in the app's own fallback shape.
+
+    Per the mechanics research, the field is not validated server-side — this
+    only needs to be *shaped* like the app's own guest fallback.
+    """
+    now = datetime.now(timezone.utc)
+    return (
+        f"UNKNOWN-XX-GUST-0000-{now:%Y%m%d}-AH-000000-"
+        f"{uuid.uuid4().hex[:4].upper()}"
+    )
+
+
+def _request_envelope(awb: str) -> dict:
+    return {
+        "method": "tracking",
+        "service": "shipments",
+        "data": {
+            "parameters": {},
+            "timezoneOffset": "+00:00",
+            "appVersion": DHL_EXPRESS_APP_VERSION,
+            "UIClient": "Android",
+            "device_info": {
+                "device_unique_id": "ha-dhl",
+                "device_language": "en",
+                "os_version": "unknown",
+                "rooted": "false",
+                "app_id": "com.dhl.exp.dhlmobile",
+                "time_zone": "UTC",
+                "deviceId": "ha-dhl",
+                "cordovaVer": "unknown",
+                "deviceModel": "ha-dhl",
+            },
+            "airWayBill": awb,
+            "countryCode": "",
+            "languageCd": "en",
+            "addShipmentToODD": "N",
+            "moreDetails": "Y",
+            "iv": "",
+            "captchaVerificationData": {"captchaText": "", "token": ""},
+            "postCd": None,
+            "ctyNm": None,
+            "sbNm": None,
+        },
+        "authentication": {"provider": "DEMP.RS1", "token": "", "login": ""},
+    }
+
+
+async def async_fetch_express(session: aiohttp.ClientSession, awb: str) -> dict | None:
+    """Fetch one Express AWB. Returns ``None`` for a clean not-found.
+
+    Raises :class:`DHLExpressThrottledError` when the abuse heuristic's
+    ``DRG10012`` code is present in the body — matched on the body, never the
+    HTTP status alone, since the client's own error handling treats that code
+    as meaningful whatever status it rides on. Raises
+    :class:`DHLExpressCredentialError` on a 401/403, which the coordinator
+    treats as systemic (the whole entry's Express half, not this one code).
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        "Authorization": _get_bearer_token(),
+        "transactionId": _transaction_id(),
+    }
+    try:
+        async with session.post(
+            f"{DHL_EXPRESS_URL}?appVersion={DHL_EXPRESS_APP_VERSION}"
+            "&service=tracking-shipments",
+            json=_request_envelope(awb),
+            headers=headers,
+            timeout=_TIMEOUT,
+        ) as resp:
+            status = resp.status
+            text = await resp.text()
+    except aiohttp.ClientError as err:
+        raise DHLApiError(str(err)) from err
+
+    if DHL_EXPRESS_THROTTLE_CODE in text:
+        raise DHLExpressThrottledError("Express abuse heuristic triggered")
+    if status in (401, 403):
+        raise DHLExpressCredentialError(f"HTTP {status}")
+    if status != 200:
+        raise DHLApiError(f"HTTP {status}")
+
+    try:
+        data = json.loads(text)
+    except ValueError as err:
+        raise DHLApiError("invalid JSON body") from err
+
+    if not isinstance(data, list) or not data:
+        return None
+    return data[0]
+
+
+_warned_statuses: set[str] = set()
+
+
+def _edd_is_future(edd_date: str | None) -> bool:
+    if not edd_date:
+        return False
+    try:
+        parsed = datetime.strptime(edd_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return False
+    return parsed >= datetime.now(timezone.utc)
+
+
+def _warn_unmapped_status(raw_status: str) -> None:
+    if raw_status in _warned_statuses:
+        return
+    _warned_statuses.add(raw_status)
+    _LOGGER.warning(
+        "DHL Express reported an unrecognised status %r — mapped to "
+        "'unknown'. Please report this: %s",
+        raw_status,
+        NEW_ISSUE_URL,
+    )
+
+
+def _map_status(raw: dict) -> ParcelStatus:
+    raw_status = raw.get("status") or ""
+    if raw_status == "DELIVERED":
+        return ParcelStatus.DELIVERED
+    if raw_status == "" and raw.get("checkpoints") and _edd_is_future(raw.get("eddDate")):
+        return ParcelStatus.IN_TRANSIT
+    _warn_unmapped_status(raw_status)
+    return ParcelStatus.UNKNOWN
+
+
+def _parse_edd_time(raw_time: str | None) -> str | None:
+    """Parse eddTime's inconsistent shape (``"03:59 am"`` / ``"1:07 PM"``)."""
+    if not raw_time:
+        return None
+    for fmt in ("%I:%M %p", "%I:%M%p"):
+        try:
+            return datetime.strptime(raw_time.strip().upper(), fmt).strftime("%H:%M:%S")
+        except ValueError:
+            continue
+    return None
+
+
+def _planned_from(raw: dict) -> str | None:
+    edd_date = raw.get("eddDate")
+    if not edd_date:
+        return None
+    edd_time = _parse_edd_time(raw.get("eddTime")) or "00:00:00"
+    return f"{edd_date}T{edd_time}"
+
+
+def _checkpoint_timestamp(checkpoint: dict) -> str | None:
+    date, time = checkpoint.get("date"), checkpoint.get("time")
+    if not date or not time:
+        return None
+    try:
+        parsed = datetime.strptime(f"{date} {time}", "%A, %B %d, %Y %H:%M")
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=timezone.utc).isoformat()
+
+
+def _build_history(checkpoints: list) -> list[dict]:
+    # Newest-first on this backend, unlike the gateway — reverse to the
+    # canonical oldest-first order.
+    entries = []
+    for checkpoint in reversed(checkpoints):
+        if not isinstance(checkpoint, dict):
+            continue
+        timestamp = _checkpoint_timestamp(checkpoint)
+        if timestamp is None:
+            continue
+        entries.append(
+            {
+                "timestamp": timestamp,
+                "status": None,
+                "raw_status": checkpoint.get("description"),
+            }
+        )
+    return entries[-HISTORY_MAX_EVENTS:]
+
+
+def _url(raw: dict) -> str | None:
+    signature = raw.get("signature")
+    if not isinstance(signature, dict) or signature.get("type") != "epod":
+        return None
+    link = signature.get("link")
+    return link.get("url") if isinstance(link, dict) else None
+
+
+def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dict:
+    """Map one Express app-backend response object onto the canonical shape."""
+    status = _map_status(raw)
+    checkpoints = raw.get("checkpoints") or []
+
+    return {
+        "carrier": "DHL",
+        "barcode": raw.get("id"),
+        "sender": None,
+        "receiver": None,
+        "status": status,
+        "raw_status": raw.get("status", ""),
+        "delivered": status is ParcelStatus.DELIVERED,
+        "delivered_at": None,
+        "planned_from": _planned_from(raw),
+        "planned_to": None,
+        "pickup": False,
+        "pickup_point": None,
+        "url": _url(raw),
+        "weight": None,
+        "dimensions": None,
+        "history": _build_history(checkpoints) if include_history else None,
+        "raw": raw,
+    }

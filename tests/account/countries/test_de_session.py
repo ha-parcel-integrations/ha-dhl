@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
-from custom_components.dhl.countries.de.session import (
+from custom_components.dhl.account.countries.de.session import (
     DHLDeAuthError,
     DHLDeSession,
     DHLDeSessionError,

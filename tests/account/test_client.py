@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.dhl.api import DHLApiClient, DHLApiError
+from custom_components.dhl.account.client import DHLApiClient, DHLApiError
 
-from .payloads import (
+from ..payloads import (
     ACTIVE_CODE,
     active_sample,
     archived_sample,
@@ -26,7 +26,7 @@ def test_requires_de_session_for_de():
 
 async def test_get_incoming_filters_and_returns_rate_limited():
     with patch(
-        "custom_components.dhl.api.async_get_inbox_envelope",
+        "custom_components.dhl.account.client.async_get_inbox_envelope",
         new=AsyncMock(
             return_value={
                 "sendungen": [active_sample(), archived_sample()],
@@ -42,7 +42,7 @@ async def test_get_incoming_filters_and_returns_rate_limited():
 
 async def test_get_incoming_drops_not_found_markers():
     with patch(
-        "custom_components.dhl.api.async_get_inbox_envelope",
+        "custom_components.dhl.account.client.async_get_inbox_envelope",
         new=AsyncMock(return_value={"sendungen": [not_found_sample()]}),
     ):
         elements, _ = await _client().async_get_incoming()
@@ -52,7 +52,7 @@ async def test_get_incoming_drops_not_found_markers():
 
 async def test_get_incoming_handles_missing_sendungen_key():
     with patch(
-        "custom_components.dhl.api.async_get_inbox_envelope",
+        "custom_components.dhl.account.client.async_get_inbox_envelope",
         new=AsyncMock(return_value={}),
     ):
         elements, rate_limited = await _client().async_get_incoming()
@@ -64,11 +64,11 @@ async def test_get_incoming_handles_missing_sendungen_key():
 async def test_get_incoming_enriches_a_bare_stub():
     with (
         patch(
-            "custom_components.dhl.api.async_get_inbox_envelope",
+            "custom_components.dhl.account.client.async_get_inbox_envelope",
             new=AsyncMock(return_value={"sendungen": [stub_sample()]}),
         ),
         patch(
-            "custom_components.dhl.api.async_get_by_number_envelope",
+            "custom_components.dhl.account.client.async_get_by_number_envelope",
             new=AsyncMock(return_value={"sendungen": [active_sample()]}),
         ) as by_number,
     ):
@@ -87,11 +87,11 @@ async def test_get_incoming_fails_the_poll_when_enrichment_resolves_nothing():
     """
     with (
         patch(
-            "custom_components.dhl.api.async_get_inbox_envelope",
+            "custom_components.dhl.account.client.async_get_inbox_envelope",
             new=AsyncMock(return_value={"sendungen": [stub_sample()]}),
         ),
         patch(
-            "custom_components.dhl.api.async_get_by_number_envelope",
+            "custom_components.dhl.account.client.async_get_by_number_envelope",
             new=AsyncMock(return_value={"sendungen": []}),
         ),
         pytest.raises(DHLApiError),
@@ -102,11 +102,11 @@ async def test_get_incoming_fails_the_poll_when_enrichment_resolves_nothing():
 async def test_get_incoming_fails_the_poll_when_enrichment_raises():
     with (
         patch(
-            "custom_components.dhl.api.async_get_inbox_envelope",
+            "custom_components.dhl.account.client.async_get_inbox_envelope",
             new=AsyncMock(return_value={"sendungen": [stub_sample()]}),
         ),
         patch(
-            "custom_components.dhl.api.async_get_by_number_envelope",
+            "custom_components.dhl.account.client.async_get_by_number_envelope",
             new=AsyncMock(side_effect=RuntimeError("boom")),
         ),
         pytest.raises(DHLApiError),
@@ -118,11 +118,11 @@ async def test_get_incoming_keeps_healthy_elements_when_one_stub_fails(caplog):
     """A partial failure must not take the parcels that did resolve with it."""
     with (
         patch(
-            "custom_components.dhl.api.async_get_inbox_envelope",
+            "custom_components.dhl.account.client.async_get_inbox_envelope",
             new=AsyncMock(return_value={"sendungen": [active_sample(), stub_sample()]}),
         ),
         patch(
-            "custom_components.dhl.api.async_get_by_number_envelope",
+            "custom_components.dhl.account.client.async_get_by_number_envelope",
             new=AsyncMock(side_effect=RuntimeError("boom")),
         ),
         caplog.at_level("WARNING"),
@@ -137,7 +137,7 @@ async def test_get_incoming_drops_a_genuine_not_found_without_failing(caplog):
     """A parcel DHL truly has no data for is dropped quietly, as before."""
     with (
         patch(
-            "custom_components.dhl.api.async_get_inbox_envelope",
+            "custom_components.dhl.account.client.async_get_inbox_envelope",
             new=AsyncMock(return_value={"sendungen": [not_found_sample()]}),
         ),
         caplog.at_level("WARNING"),
@@ -150,7 +150,7 @@ async def test_get_incoming_drops_a_genuine_not_found_without_failing(caplog):
 
 async def test_get_by_number_returns_matching_element():
     with patch(
-        "custom_components.dhl.api.async_get_by_number_envelope",
+        "custom_components.dhl.account.client.async_get_by_number_envelope",
         new=AsyncMock(return_value={"sendungen": [active_sample()]}),
     ):
         element = await _client().async_get_by_number(ACTIVE_CODE)
@@ -160,7 +160,7 @@ async def test_get_by_number_returns_matching_element():
 
 async def test_get_by_number_returns_none_when_not_found():
     with patch(
-        "custom_components.dhl.api.async_get_by_number_envelope",
+        "custom_components.dhl.account.client.async_get_by_number_envelope",
         new=AsyncMock(return_value={"sendungen": [not_found_sample()]}),
     ):
         assert await _client().async_get_by_number("UNKNOWN00001") is None
@@ -168,7 +168,7 @@ async def test_get_by_number_returns_none_when_not_found():
 
 async def test_get_by_number_returns_none_for_empty_list():
     with patch(
-        "custom_components.dhl.api.async_get_by_number_envelope",
+        "custom_components.dhl.account.client.async_get_by_number_envelope",
         new=AsyncMock(return_value={"sendungen": []}),
     ):
         assert await _client().async_get_by_number(ACTIVE_CODE) is None

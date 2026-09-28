@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 
 import aiohttp
 
-from ...const import (
+from ....const import (
     DHL_DE_ARCHIVED_MARKER,
     DHL_DE_COOKIE_NAME,
     DHL_DE_PUBLIC_TRACKING_URL,

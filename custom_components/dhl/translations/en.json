@@ -4,6 +4,13 @@
     "step": {
       "user": {
         "title": "Set up DHL",
+        "menu_options": {
+          "account": "Account",
+          "tracking": "Tracking codes"
+        }
+      },
+      "account": {
+        "title": "Log in to a DHL account",
         "description": "Which DHL account do you want to add? Germany and Poland are supported. [Request another country]({issue_url}). Looking for DHL in the Netherlands? That's a separate integration: [ha-dhl-nl]({dhl_nl_url}).",
         "data": {
           "country": "Country"
@@ -53,6 +60,42 @@
     "step": {
       "init": {
         "title": "DHL options",
+        "menu_options": {
+          "parcels": "Parcels",
+          "settings": "Settings"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Delivered parcels",
+            "data": {
+              "delivered_filter_type": "Filter by",
+              "delivered_filter_amount": "Amount"
+            },
+            "data_description": {
+              "delivered_filter_type": "Show delivered parcels from the last X days, or limit to the X most recent.",
+              "delivered_filter_amount": "Number of days or parcels to show."
+            }
+          },
+          "history": {
+            "name": "Parcel history",
+            "data": {
+              "include_history": "Include status history"
+            },
+            "data_description": {
+              "include_history": "Add a per-parcel history attribute listing each status update (timestamp, status, original text). Off by default."
+            }
+          }
+        }
+      },
+      "parcels": {
+        "title": "Manage tracked parcels",
+        "description": "Add or remove the DHL tracking codes to follow. Each code is routed automatically to the right DHL backend by its shape — no need to say which.",
+        "data": {
+          "tracking_codes": "Tracking codes"
+        }
+      },
+      "settings": {
+        "title": "Configure tracking settings",
         "sections": {
           "delivered": {
             "name": "Delivered parcels",
@@ -76,6 +119,9 @@
           }
         }
       }
+    },
+    "error": {
+      "invalid_tracking_code": "One of the tracking codes is not valid."
     }
   },
   "selector": {

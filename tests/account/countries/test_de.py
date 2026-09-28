@@ -9,9 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
-from custom_components.dhl.countries import de as de_module
-from custom_components.dhl.countries.de import (
+from custom_components.dhl.account.countries import de as de_module
+from custom_components.dhl.account.countries.de import (
     async_get_by_number_envelope,
     async_get_inbox_envelope,
     find_element_by_id,
@@ -21,9 +20,13 @@ from custom_components.dhl.countries.de import (
     normalize_parcel_de,
     select_active_elements,
 )
-from custom_components.dhl.countries.de.session import DHLDeAuthError, DHLDeSession
+from custom_components.dhl.account.countries.de.session import (
+    DHLDeAuthError,
+    DHLDeSession,
+)
+from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
 
-from ..payloads import (
+from ...payloads import (
     ACTIVE_CODE,
     active_sample,
     archived_sample,
@@ -596,7 +599,7 @@ def test_unexpected_sendungsdetails_key_warns_once(caplog):
 
 
 async def test_transport_generic_session_error_becomes_api_error():
-    from custom_components.dhl.countries.de.session import DHLDeSessionError
+    from custom_components.dhl.account.countries.de.session import DHLDeSessionError
 
     de_session = MagicMock(spec=DHLDeSession)
     de_session.async_get_id_token = AsyncMock(side_effect=DHLDeSessionError("outage"))

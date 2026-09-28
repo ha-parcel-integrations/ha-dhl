@@ -6,6 +6,10 @@ import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.account.coordinator import (
+    DHLCoordinator,
+    compute_poll_interval,
+)
 from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
@@ -16,9 +20,8 @@ from custom_components.dhl.const import (
     DHLAuthError,
     ParcelStatus,
 )
-from custom_components.dhl.coordinator import DHLCoordinator, compute_poll_interval
 
-from .payloads import (
+from ..payloads import (
     ACTIVE_CODE,
     active_sample,
     delivered_sample,
@@ -277,8 +280,8 @@ async def test_rotated_refresh_token_survives_a_failed_inbox_fetch(hass):
 # dynamic polling
 # ---------------------------------------------------------------------------
 
-_NOW = "custom_components.dhl.coordinator.dt_util.now"
-_UTCNOW = "custom_components.dhl.coordinator.dt_util.utcnow"
+_NOW = "custom_components.dhl.account.coordinator.dt_util.now"
+_UTCNOW = "custom_components.dhl.account.coordinator.dt_util.utcnow"
 
 
 def _at(hour: int, minute: int = 0):
@@ -597,8 +600,8 @@ async def test_a_claimless_refresh_reaches_the_user_as_a_reauth_request(hass):
     import base64
     import json
 
-    from custom_components.dhl.api import DHLApiClient
-    from custom_components.dhl.countries.de.session import DHLDeSession
+    from custom_components.dhl.account.client import DHLApiClient
+    from custom_components.dhl.account.countries.de.session import DHLDeSession
 
     def _ctx(response):
         ctx = MagicMock()

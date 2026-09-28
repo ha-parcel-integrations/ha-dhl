@@ -159,3 +159,49 @@ async def test_diagnostics_session_block_without_a_de_session(hass):
         "last_refresh_at": None,
         "last_inbox_elements": None,
     }
+
+
+async def test_diagnostics_tracking_source_reports_express_state_and_redacts_parcels(hass):
+    from custom_components.dhl.const import CONF_PARCELS, CONF_SOURCE, SOURCE_TRACKING
+
+    entry = MagicMock()
+    entry.data = {CONF_SOURCE: SOURCE_TRACKING}
+    entry.options = {CONF_PARCELS: [{"tracking_code": "1000000001"}]}
+    coordinator = entry.runtime_data.coordinator
+    coordinator.data = []
+    coordinator.delivered = []
+    coordinator.outgoing = []
+    coordinator.delivered_outgoing = []
+    coordinator.last_element_count = None
+    coordinator.de_session = None
+    coordinator.express_budget_available = 1
+    coordinator.express_consecutive_failures = 0
+    coordinator.express_standing_down = False
+    coordinator.express_disabled = False
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["tracking"] == {
+        "express_budget_available": 1,
+        "express_consecutive_failures": 0,
+        "express_standing_down": False,
+        "express_disabled": False,
+    }
+    assert result["entry_options"][CONF_PARCELS] == [{"tracking_code": "**REDACTED**"}]
+
+
+async def test_diagnostics_account_source_has_no_tracking_block(hass):
+    entry = MagicMock()
+    entry.data = {}
+    entry.options = {}
+    coordinator = entry.runtime_data.coordinator
+    coordinator.data = []
+    coordinator.delivered = []
+    coordinator.outgoing = []
+    coordinator.delivered_outgoing = []
+    coordinator.last_element_count = None
+    coordinator.de_session = None
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["tracking"] is None

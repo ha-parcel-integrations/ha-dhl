@@ -1,17 +1,18 @@
 # Working in this repository
 
-Home Assistant custom integration for **DHL Paket (Germany)** parcel tracking.
-Distributed via HACS; not part of HA core. One carrier in the
+Home Assistant custom integration for **DHL**: an `account` source (DHL Paket
+Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (a
+keyless DHL Parcel gateway plus DHL Express tracking, both code-based, no
+account). Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
-**generated from ha-carrier-template**. Country-split from day one — DE and PL
-are implemented. No DTO layer.
+**generated from ha-carrier-template**. No DTO layer.
 
 Three places hold the knowledge, and they do not overlap:
 
 | What | Where |
 |---|---|
-| How this integration is built, and why it is built that way | [`ARCHITECTURE.md`](ARCHITECTURE.md) — read it before touching the OIDC session, the `fortschritt` ladder, the in/outgoing split, or `countries/de/` |
-| Endpoint mechanics, status vocabularies | `carrier-research/dhl/api/dhl-de/` (private repo) — the OIDC discovery/token endpoints, the `int-verfolgen/data/search` envelope, the `fortschritt` ladder and every contested field. **Never** duplicated into this repo |
+| How this integration is built, and why it is built that way | [`ARCHITECTURE.md`](ARCHITECTURE.md) — read it before touching the OIDC session, the `fortschritt` ladder, the in/outgoing split, `account/countries/de/`, or anything in `tracking/` |
+| Endpoint mechanics, status vocabularies | `carrier-research/dhl/api/` (private repo) — the OIDC discovery/token endpoints, the `int-verfolgen/data/search` envelope, the `fortschritt` ladder, the tracking gateway/Express mechanics, and every contested field. **Never** duplicated into this repo |
 | Suite-wide conventions | [`.github/CONVENTIONS.md`](https://github.com/ha-parcel-integrations/.github/blob/main/CONVENTIONS.md) |
 
 This file is the short list of things an agent must not get wrong.
@@ -132,14 +133,14 @@ arrivals only** (parsed from the latest event's link text). Keep `const.py`'s
 `CAPABILITIES` in sync if that changes.
 
 **Do not design toward folding in `ha-dhl-nl`.** It is a separate released repo
-on a different backend. Folding it in as `countries/nl/` is a later
+on a different backend. Folding it in as `account/countries/nl/` is a later
 repo-consolidation decision, and NL's auth model shares nothing with DE's — no
 shared config-flow base class is worth building for two data points.
 
 ## Load-bearing PL decisions — do not refactor away
 
 **The raw `status` (`TT_*`/`SP_*`) code is the primary status source; never
-flip that order.** `_RAW` in `countries/pl/__init__.py` decides whenever it
+flip that order.** `_RAW` in `account/countries/pl/__init__.py` decides whenever it
 knows the code. `menuTimelineLabel.status` is only the fallback for a code
 that isn't in `_RAW` yet, and which vocabulary it carries is **contested**
 (`carrier-research/dhl/api/dhl-pl/tracking.md`, "Contested: what
@@ -161,7 +162,7 @@ because this method puts the minted token back into the jar every time.
 **Refresh runs before every poll, not just after a failure.**
 `async_get_incoming` always calls `pl_session.async_refresh()` first — the
 cookie jar, not the short-lived bearer token, is the durable credential, and
-persisting the rotated jar after every successful poll (`coordinator.py`) is
+persisting the rotated jar after every successful poll (`account/coordinator.py`) is
 what survives a restart.
 
 **`/auth/refresh` is useless once the access token has actually expired — that
@@ -210,21 +211,96 @@ than using either stock mechanism. `options.async_init`'s form never touches
 mid tier is **30 min** rather than the scaffold's 45. Account-based, so it never
 fully stops.
 
-*Module layout* — country-split build, so several modules dispatch instead of
+*Module layout* — two setup-flow sources (`account/`, `tracking/`), each a
+self-contained package with its own `client.py`/`coordinator.py`/`parcels.py`
+(mirroring `ha-bpost`/`ha-usps`); the domain root dispatches on `CONF_SOURCE`
+and otherwise carries no source-specific logic. Within `account/`, the
+country-split build means several of *its* modules dispatch instead of
 implementing:
 
 | File | Carrier-specific? |
 |---|---|
-| `api.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `countries/de/` and `countries/pl/` |
-| `const.py` | partly (DE-specific URLs/OIDC constants, PL-specific Mój DHL constants) |
-| `parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `countries/de/` and `countries/pl/` |
-| `coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |
-| `config_flow.py` (country router + browser-paste OIDC flow + PL phone/SMS flow) | **yes** — no precedent elsewhere in the suite |
-| `services.py` | no — but present on an account-based carrier, unlike the rest of the suite |
-| `countries/de/__init__.py` (transport, ladder, `normalize_parcel_de`) | **yes** |
-| `countries/de/session.py` (OIDC token lifecycle) | **yes** |
-| `countries/pl/__init__.py` (transport, status maps, `normalize_parcel_pl`) | **yes** |
-| `countries/pl/session.py` (Altcha solver, SMS auth, cookie-pair session lifecycle) | **yes** |
+| `__init__.py` (source dispatch, setup/unload for both) | no |
+| `api.py` / `coordinator.py` / `parcels.py` (domain root) | no — compatibility re-exports onto `account/client.py` etc., for the pre-split public import path |
+| `const.py` | partly (shared contract + DE-specific/PL-specific/tracking-specific constants) |
+| `config_flow.py` (source menu + account's country router/OIDC/SMS flows + tracking's setup/options steps) | **yes** — no precedent elsewhere in the suite |
+| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — account-source only; filters to account entries, never picks a tracking entry |
+| `account/client.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
+| `account/parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
+| `account/coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |
+| `account/countries/de/__init__.py` (transport, ladder, `normalize_parcel_de`) | **yes** |
+| `account/countries/de/session.py` (OIDC token lifecycle) | **yes** |
+| `account/countries/pl/__init__.py` (transport, status maps, `normalize_parcel_pl`) | **yes** |
+| `account/countries/pl/session.py` (Altcha solver, SMS auth, cookie-pair session lifecycle) | **yes** |
+| `tracking/__init__.py` (shape classification, code routing) | **yes** |
+| `tracking/gateway.py` (client + `normalize_parcel_gateway`) | **yes** |
+| `tracking/express.py` (client + `normalize_parcel_express`) | **yes** |
+| `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
+| `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and both normalizers don't) |
+| `tracking/parcels.py` (per-backend dispatch, sort, filters) | no |
+
+## Load-bearing tracking decisions — do not refactor away
+
+**Routing is a classification of the code, never a fallback chain tried
+against both backends.** A gateway-shaped code that the gateway can't resolve
+must not also try Express, and vice versa — see `ARCHITECTURE.md`'s
+"Tracking source" section for why. The one exception is a code matching
+neither known shape, which tries the gateway first and only falls back to
+Express if the gateway can't resolve it either.
+
+**The Express half is a shared single-token-bucket queue, not one budget per
+code.** `tracking/coordinator.py` spends at most one Express request per poll
+cycle, chosen by `_express_queue` (ported from `ha-ups`'s `_fetch_queue` —
+never-attempted-first, then an overdue band, then `_QUEUE_PRIORITY`). **Do
+not** give each tracked Express code its own budget; that was measured to
+answer only a handful of requests total, not per code.
+
+**A `DRG10012` match in the response body is a stand-down signal, matched on
+the body, never the HTTP status alone.** It has been observed riding a `503`,
+but the mechanics research is explicit that it is not guaranteed to. Treat it
+as `DHLExpressThrottledError`, never as a fatal error — a stand-down must be
+scheduled at least `DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS` out (`ha-ups`'s
+`_standing_down`/`_schedule` split exists to stop a shorter one polling
+straight back into the cooldown it's waiting out; this repo reuses that
+split).
+
+**A 401/403 from the Express endpoint is `DHLExpressCredentialError`, never
+`DHLAuthError`.** There is no user credential to reauthenticate with, so this
+must never reach Home Assistant's reauth flow — the coordinator disables
+Express fetching for the rest of that running entry and logs one WARNING
+instead.
+
+**The gateway's request batching must match on the `barcode` field, never
+array position.** An unresolved code in a batch is silently dropped from the
+response, not erred — `tracking/gateway.py::async_fetch_gateway` builds its
+result dict keyed on each returned item's own `barcode`.
+
+**`RETURNED_TO_SHIPPER` overrides `category` and is checked on the *last*
+event only.** A return shipment's log has been observed to resume with
+further `UNDERWAY` events after a `RETURNED_TO_SHIPPER` event — its presence
+anywhere in the log is not "stop watching this parcel".
+
+**Interval scheduling stays split.** `tracking/coordinator.py` reuses
+`account/coordinator.py`'s `compute_poll_interval` for the whole coordinator's
+cadence (the gateway is cheap and unthrottled) and only overrides it when an
+active Express stand-down outlasts that cadence. **Do not** make the whole
+coordinator's interval budget-driven the way `ha-ups`'s is — `ha-ups` has no
+second, cheap backend to poll on a normal cadence; this repo does, and most
+installs will have no Express-shaped codes tracked at all.
+
+**The tracking coordinator's `Store` is what makes the budget a budget.**
+`async_load_cache()` runs before the first refresh and `_persist_cache()`
+after every poll. Drop either and every restart spends an Express request the
+backend never granted, or cuts a running stand-down short. The stand-down is
+persisted as a UTC deadline, never a duration. Cached raw payloads without the
+backend marker are discarded on load.
+
+**`tracking/parcels.py::normalize_parcel` dispatches on a private
+`_dhl_backend` marker the coordinator stamps onto every raw payload before
+normalizing, and strips again before it reaches `raw`.** Don't let that
+marker leak into a published parcel's `raw` field, and don't try to infer the
+backend from the payload shape instead — a placeholder for an unfetched code
+has too little shape to infer from reliably.
 
 ## Running tests
 
@@ -234,5 +310,5 @@ python -m pytest tests/ --cov=custom_components.dhl
 
 Coverage must stay **above 95%** (silver `test-coverage` rule). Run before
 committing. A code change updates the README, `ARCHITECTURE.md` and this file in
-the same commit; API mechanics go to `carrier-research/dhl/api/dhl-de/`, never
+the same commit; API mechanics go to `carrier-research/dhl/api/`, never
 here.

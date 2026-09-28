@@ -39,7 +39,7 @@ from urllib.parse import quote
 
 import aiohttp
 
-from ...const import (
+from ....const import (
     DHL_DE_ACCOUNT_CLAIM,
     DHL_DE_CLIENT_ID,
     DHL_DE_DISCOVERY_URL,

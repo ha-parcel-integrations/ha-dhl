@@ -63,11 +63,15 @@ def _pl_entry() -> MockConfigEntry:
 
 
 async def _start_pl_flow(hass):
-    """Init the flow and pick Poland — the two-step shape every test needs."""
+    """Init the flow, pick the account menu entry, then Poland."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
     assert result["step_id"] == "user"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "account"}
+    )
+    assert result["step_id"] == "account"
     return await hass.config_entries.flow.async_configure(
         result["flow_id"], {"country": "pl"}
     )

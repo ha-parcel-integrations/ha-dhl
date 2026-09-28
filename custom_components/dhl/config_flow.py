@@ -8,10 +8,12 @@ open. The stored credential is the refresh token that comes out of the code
 exchange — never a password, never the authorization code itself, which is
 discarded the moment the exchange finishes (whether it succeeds or fails).
 
-This config flow shape has no precedent elsewhere in the suite (every other
-carrier is email/password or keyless) — keep the OIDC mechanics entirely
-inside this file and countries/de/session.py; if it starts leaking into the
-coordinator, the abstraction is wrong.
+The OIDC dance has no precedent elsewhere in the suite (every other
+email/password or keyless carrier) — keep it entirely inside this file and
+account/countries/de/session.py; if it starts leaking into the coordinator,
+the abstraction is wrong. This module also holds the account-vs-tracking
+source menu (``SOURCE_ACCOUNT``/``SOURCE_TRACKING``, modelled on ha-bpost)
+and the tracking hub's own setup/options steps.
 """
 from __future__ import annotations
 
@@ -34,6 +36,13 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .account.countries.de.session import (
+    DHLDeAuthError,
+    DHLDeSession,
+    DHLDeSessionError,
+    decode_id_token_subject,
+)
+from .account.countries.pl.session import DHLPlSession, new_device_id
 from .const import (
     CONF_ACCOUNT_SUBJECT,
     CONF_COUNTRY,
@@ -43,8 +52,11 @@ from .const import (
     CONF_DHL_PL_DEVICE_ID,
     CONF_DHL_PL_PHONE,
     CONF_INCLUDE_HISTORY,
+    CONF_PARCELS,
     CONF_REFRESH_TOKEN,
+    CONF_SOURCE,
     CONF_TRACKED_CODES,
+    CONF_TRACKING_CODE,
     COUNTRIES,
     DEFAULT_COUNTRY,
     DEFAULT_DELIVERED_FILTER_AMOUNT,
@@ -54,14 +66,11 @@ from .const import (
     DHL_NL_REPO_URL,
     DOMAIN,
     NEW_COUNTRY_ISSUE_URL,
+    SOURCE_ACCOUNT,
+    SOURCE_TRACKING,
 )
-from .countries.de.session import (
-    DHLDeAuthError,
-    DHLDeSession,
-    DHLDeSessionError,
-    decode_id_token_subject,
-)
-from .countries.pl.session import DHLPlSession, new_device_id
+from .tracking import normalize_tracking_code as normalize_tracking_source_code
+from .tracking import valid_tracking_code as valid_tracking_source_code
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -212,7 +221,21 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Pick which DHL country to set up, then dispatch to its own flow.
+        """Offer the two ways to set up DHL: an account, or tracking codes.
+
+        Mirrors ha-bpost's ``SOURCE_ACCOUNT``/``SOURCE_TRACKING`` menu — both
+        answer "what's the status of this parcel", they just differ in
+        whether that comes from a logged-in inbox or a code the user pastes
+        in, which is a setup-flow fork, not two integrations.
+        """
+        return self.async_show_menu(
+            step_id="user", menu_options=[SOURCE_ACCOUNT, SOURCE_TRACKING]
+        )
+
+    async def async_step_account(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Pick which DHL country to log in to, then dispatch to its own flow.
 
         Each supported country owns its own flow: DE's browser-paste OIDC
         dance and PL's phone/SMS flow have no useful common auth base.
@@ -226,11 +249,35 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="unsupported_country")
 
         return self.async_show_form(
-            step_id="user",
+            step_id=SOURCE_ACCOUNT,
             data_schema=_COUNTRY_SCHEMA,
             description_placeholders={
                 "issue_url": NEW_COUNTRY_ISSUE_URL,
                 "dhl_nl_url": DHL_NL_REPO_URL,
+            },
+        )
+
+    async def async_step_tracking(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Create the tracking-code hub — one per DHL install, codes added after.
+
+        No account, no postcode: a tracking code alone routes to whichever
+        backend its shape resolves on (see ``tracking/__init__.py``). There is
+        nothing to distinguish a second tracking hub by, so this is a
+        singleton — parcels are added and removed afterwards through the
+        options flow's "parcels" entry.
+        """
+        await self.async_set_unique_id(SOURCE_TRACKING)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title="DHL tracking",
+            data={CONF_SOURCE: SOURCE_TRACKING},
+            options={
+                CONF_PARCELS: [],
+                CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+                CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
+                CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
             },
         )
 
@@ -400,21 +447,117 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+def _clean_tracking_codes(values: list[str] | None) -> list[str]:
+    """Normalise, drop blanks, and de-duplicate pasted tracking codes."""
+    codes: list[str] = []
+    for value in values or []:
+        code = normalize_tracking_source_code(value)
+        if code and code not in codes:
+            codes.append(code)
+    return codes
+
+
 class DHLOptionsFlowHandler(OptionsFlow):
-    """Manage delivered retention and history in one sectioned form."""
+    """Manage delivered retention and history — plus tracked parcels for a tracking hub."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show and handle the single sectioned options form."""
+        """Route to the tracking hub's menu, or straight to the account form.
+
+        A tracking hub offers "parcels" alongside "settings" (mirroring
+        ha-bpost); an account entry has no per-parcel list of its own to
+        manage here — the DE by-number list is `dhl.track_parcel`'s job —
+        so it goes straight to the single sectioned form it always has.
+        """
+        if self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
+            return self.async_show_menu(
+                step_id="init", menu_options=["parcels", "settings"]
+            )
+        return await self._async_step_account_settings(user_input)
+
+    async def async_step_parcels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show and handle the complete tracked tracking-code list."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            codes = _clean_tracking_codes(user_input.get("tracking_codes"))
+            if any(not valid_tracking_source_code(code) for code in codes):
+                errors["base"] = "invalid_tracking_code"
+            else:
+                return self.async_create_entry(
+                    title="",
+                    data={
+                        **self.config_entry.options,
+                        CONF_PARCELS: [
+                            {CONF_TRACKING_CODE: code} for code in codes
+                        ],
+                    },
+                )
+        current_codes = [
+            parcel[CONF_TRACKING_CODE]
+            for parcel in self.config_entry.options.get(CONF_PARCELS, [])
+        ]
+        schema = vol.Schema(
+            {
+                vol.Optional("tracking_codes"): selector.TextSelector(
+                    selector.TextSelectorConfig(multiple=True)
+                )
+            }
+        )
+        return self.async_show_form(
+            step_id="parcels",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, {"tracking_codes": current_codes}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show and handle a tracking hub's delivered-retention/history settings."""
+        return await self._async_step_account_settings(user_input, step_id="settings")
+
+    async def _async_step_account_settings(
+        self, user_input: dict[str, Any] | None = None, *, step_id: str = "init"
+    ) -> ConfigFlowResult:
+        """Show and handle the single sectioned delivered/history form.
+
+        Shared by the account source's only options step and the tracking
+        source's "settings" menu entry — the fields are identical, only the
+        tracked-codes key carried through untouched differs by source.
+        """
+        is_tracking = (
+            self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING
+        )
         if user_input is not None:
             delivered = user_input["delivered"]
             history = user_input["history"]
-            # No update listener is registered — combining one with a
-            # reload-on-update flow is deprecated.
-            self.hass.config_entries.async_schedule_reload(
-                self.config_entry.entry_id
-            )
+            if is_tracking:
+                # Applied live via the entry's update listener — no reload,
+                # so per-parcel sensors don't flicker unavailable.
+                carried: dict[str, Any] = {
+                    CONF_PARCELS: list(
+                        self.config_entry.options.get(CONF_PARCELS, [])
+                    )
+                }
+            else:
+                # No update listener is registered on an account entry —
+                # combining one with a reload-on-update flow is deprecated —
+                # so settings changes reload it explicitly instead.
+                self.hass.config_entries.async_schedule_reload(
+                    self.config_entry.entry_id
+                )
+                carried = {
+                    # Not part of the form — carried through untouched so the
+                    # options flow never wipes the tracked-code list
+                    # `dhl.track_parcel`/`dhl.untrack_parcel` maintain.
+                    CONF_TRACKED_CODES: list(
+                        self.config_entry.options.get(CONF_TRACKED_CODES, [])
+                    )
+                }
             return self.async_create_entry(
                 title="",
                 data={
@@ -423,12 +566,7 @@ class DHLOptionsFlowHandler(OptionsFlow):
                         delivered[CONF_DELIVERED_FILTER_AMOUNT]
                     ),
                     CONF_INCLUDE_HISTORY: bool(history[CONF_INCLUDE_HISTORY]),
-                    # Not part of the form — carried through untouched so the
-                    # options flow never wipes the tracked-code list
-                    # `dhl.track_parcel`/`dhl.untrack_parcel` maintain.
-                    CONF_TRACKED_CODES: list(
-                        self.config_entry.options.get(CONF_TRACKED_CODES, [])
-                    ),
+                    **carried,
                 },
             )
 
@@ -485,4 +623,4 @@ class DHLOptionsFlowHandler(OptionsFlow):
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id=step_id, data_schema=schema)

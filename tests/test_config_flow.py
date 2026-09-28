@@ -4,6 +4,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from homeassistant.config_entries import SOURCE_USER
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.account.countries.de.session import (
+    DHLDeAuthError,
+    DHLDeSessionError,
+)
 from custom_components.dhl.config_flow import DHLConfigFlow
 from custom_components.dhl.const import (
     CONF_ACCOUNT_SUBJECT,
@@ -11,11 +15,14 @@ from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     CONF_INCLUDE_HISTORY,
+    CONF_PARCELS,
     CONF_REFRESH_TOKEN,
+    CONF_SOURCE,
     CONF_TRACKED_CODES,
+    CONF_TRACKING_CODE,
     DOMAIN,
+    SOURCE_TRACKING,
 )
-from custom_components.dhl.countries.de.session import DHLDeAuthError, DHLDeSessionError
 
 AUTH_URL = "https://login.dhl.de/x/login/authorize?client_id=x&state=state123"
 REDIRECT = "dhllogin://de.dhl.paket/login?code=abc123&state=state123"
@@ -68,27 +75,44 @@ def _jwt_for(sub: str) -> str:
 
 
 async def _start_de_flow(hass):
-    """Init the flow and pick Germany — the two-step shape every test needs."""
+    """Init the flow, pick the account menu entry, then Germany."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
     assert result["step_id"] == "user"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "account"}
+    )
+    assert result["step_id"] == "account"
     return await hass.config_entries.flow.async_configure(
         result["flow_id"], {"country": "de"}
     )
 
 
 # ---------------------------------------------------------------------------
-# user step — country picker
+# user step — source menu, then the account step's country picker
 # ---------------------------------------------------------------------------
 
 
-async def test_user_flow_shows_country_picker(hass):
+async def test_user_flow_shows_source_menu(hass):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
 
     assert result["step_id"] == "user"
+    assert result["type"] == "menu"
+    assert set(result["menu_options"]) == {"account", "tracking"}
+
+
+async def test_user_flow_account_shows_country_picker(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "account"}
+    )
+
+    assert result["step_id"] == "account"
     assert result["type"] == "form"
 
 
@@ -104,7 +128,7 @@ async def test_user_flow_rejects_unsupported_country(hass):
     flow = DHLConfigFlow()
     flow.hass = hass
 
-    result = await flow.async_step_user({"country": "fr"})
+    result = await flow.async_step_account({"country": "fr"})
 
     assert result["type"] == "abort"
     assert result["reason"] == "unsupported_country"
@@ -347,3 +371,116 @@ async def test_options_flow_saves_and_reloads(hass):
         CONF_TRACKED_CODES: ["EXISTING000001"],
     }
     schedule_reload.assert_called_once_with(entry.entry_id)
+
+
+# ---------------------------------------------------------------------------
+# tracking source
+# ---------------------------------------------------------------------------
+
+
+def _tracking_entry(codes: list[str] | None = None) -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        title="DHL tracking",
+        unique_id=SOURCE_TRACKING,
+        data={CONF_SOURCE: SOURCE_TRACKING},
+        options={
+            CONF_DELIVERED_FILTER_TYPE: "days",
+            CONF_DELIVERED_FILTER_AMOUNT: 7,
+            CONF_INCLUDE_HISTORY: False,
+            CONF_PARCELS: [{CONF_TRACKING_CODE: c} for c in (codes or [])],
+        },
+    )
+
+
+async def test_tracking_flow_creates_entry(hass):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "tracking"}
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["data"] == {CONF_SOURCE: SOURCE_TRACKING}
+    assert result["options"][CONF_PARCELS] == []
+
+
+async def test_tracking_flow_is_a_singleton(hass):
+    _tracking_entry().add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "tracking"}
+    )
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "already_configured"
+
+
+async def test_tracking_options_flow_shows_menu(hass):
+    entry = _tracking_entry()
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    assert result["type"] == "menu"
+    assert set(result["menu_options"]) == {"parcels", "settings"}
+
+
+async def test_tracking_options_parcels_add_and_dedupe(hass):
+    entry = _tracking_entry(["3SBPB0010367741"])
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "parcels"}
+    )
+    assert result["step_id"] == "parcels"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"tracking_codes": ["lx200352688de", " lx200352688de ", "8929341455"]},
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_PARCELS] == [
+        {CONF_TRACKING_CODE: "LX200352688DE"},
+        {CONF_TRACKING_CODE: "8929341455"},
+    ]
+
+
+async def test_tracking_options_settings_applies_live_without_reload(hass):
+    entry = _tracking_entry(["3SBPB0010367741"])
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "settings"}
+    )
+    assert result["step_id"] == "settings"
+
+    with patch.object(
+        hass.config_entries, "async_schedule_reload"
+    ) as schedule_reload:
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                "delivered": {
+                    CONF_DELIVERED_FILTER_TYPE: "parcels",
+                    CONF_DELIVERED_FILTER_AMOUNT: 3,
+                },
+                "history": {CONF_INCLUDE_HISTORY: True},
+            },
+        )
+
+    assert result["type"] == "create_entry"
+    assert result["data"] == {
+        CONF_DELIVERED_FILTER_TYPE: "parcels",
+        CONF_DELIVERED_FILTER_AMOUNT: 3,
+        CONF_INCLUDE_HISTORY: True,
+        CONF_PARCELS: [{CONF_TRACKING_CODE: "3SBPB0010367741"}],
+    }
+    schedule_reload.assert_not_called()

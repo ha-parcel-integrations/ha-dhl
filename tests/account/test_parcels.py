@@ -10,6 +10,13 @@ from datetime import datetime, timedelta, timezone
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.account.parcels import (
+    apply_delivered_filter,
+    is_outgoing,
+    normalize_parcel,
+    parse_iso,
+    sort_parcels_by_ts,
+)
 from custom_components.dhl.const import (
     CAPABILITIES,
     CONF_DELIVERED_FILTER_AMOUNT,
@@ -18,15 +25,8 @@ from custom_components.dhl.const import (
     KNOWN_CAPABILITIES,
     ParcelStatus,
 )
-from custom_components.dhl.parcels import (
-    apply_delivered_filter,
-    is_outgoing,
-    normalize_parcel,
-    parse_iso,
-    sort_parcels_by_ts,
-)
 
-from .payloads import active_sample, delivered_sample, element
+from ..payloads import active_sample, delivered_sample, element
 
 # ---------------------------------------------------------------------------
 # timestamp helper

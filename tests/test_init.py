@@ -9,15 +9,21 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.dhl.const import (
     CONF_ACCOUNT_SUBJECT,
     CONF_COUNTRY,
+    CONF_PARCELS,
     CONF_REFRESH_TOKEN,
+    CONF_SOURCE,
+    CONF_TRACKING_CODE,
     DOMAIN,
+    SOURCE_TRACKING,
+    TRACKING_STORAGE_KEY,
     DHLApiError,
     DHLAuthError,
 )
 
 from .payloads import ACTIVE_CODE, active_sample
+from .tracking.payloads import gateway_element
 
-CLIENT = "custom_components.dhl.api.DHLApiClient"
+CLIENT = "custom_components.dhl.account.client.DHLApiClient"
 SESSION_CLASS = "custom_components.dhl.config_flow.DHLDeSession"
 
 
@@ -154,6 +160,73 @@ async def test_per_parcel_sensor_spawn_and_remove(hass):
             )
             is None
         )
+
+
+def _tracking_entry(codes: list[str] | None = None) -> MockConfigEntry:
+    return MockConfigEntry(
+        domain=DOMAIN,
+        title="DHL tracking",
+        unique_id=SOURCE_TRACKING,
+        data={CONF_SOURCE: SOURCE_TRACKING},
+        options={CONF_PARCELS: [{CONF_TRACKING_CODE: c} for c in (codes or [])]},
+    )
+
+
+async def test_tracking_setup_and_unload(hass):
+    entry = _tracking_entry(["3SXYZ0000000001"])
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    # No dedicated services for the tracking source — parcels are managed
+    # through this entry's own options flow instead.
+    assert not hass.services.has_service(DOMAIN, "track_parcel")
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+async def test_removing_a_tracking_entry_deletes_its_cache(hass, hass_storage):
+    entry = _tracking_entry(["3SXYZ0000000001"])
+    entry.add_to_hass(hass)
+    key = f"{TRACKING_STORAGE_KEY}.{entry.entry_id}"
+    hass_storage[key] = {"version": 1, "key": key, "data": {}}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert key not in hass_storage
+
+
+async def test_tracking_options_update_refreshes_without_reload(hass):
+    entry = _tracking_entry(["3SXYZ0000000001"])
+    entry.add_to_hass(hass)
+
+    fetch = AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")})
+    with patch("custom_components.dhl.tracking.coordinator.async_fetch_gateway", fetch):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        hass.config_entries.async_update_entry(
+            entry, options={CONF_PARCELS: [{CONF_TRACKING_CODE: "3SXYZ0000000002"}]}
+        )
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert fetch.await_count >= 2
 
 
 async def test_services_registered_and_removed_with_last_entry(hass):

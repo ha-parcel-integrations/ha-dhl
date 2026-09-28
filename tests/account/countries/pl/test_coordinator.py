@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.account.coordinator import DHLCoordinator
 from custom_components.dhl.const import (
     CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
@@ -11,7 +12,6 @@ from custom_components.dhl.const import (
     CONF_TRACKED_CODES,
     DOMAIN,
 )
-from custom_components.dhl.coordinator import DHLCoordinator
 
 
 def _pl_entry(*, cookies=None, **options) -> MockConfigEntry:
