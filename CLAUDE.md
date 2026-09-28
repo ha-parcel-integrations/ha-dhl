@@ -302,6 +302,14 @@ delivery; before that the parcel status is the newest checkpoint's, falling
 back to `in_transit` on a future EDD. A code with no checkpoints at all (the
 not-yet-fetched placeholder) is `unknown` without a warning.
 
+**Express times: the EDD is UTC, the checkpoints are local.** The backend
+converts `eddDate`/`eddTime` to the request's `timezoneOffset` (sent as
+`+00:00`), so `planned_from` is labelled UTC; change that offset and the EDD
+moves with it. Checkpoint `date`/`time` do not move — they are the facility's
+own clock — and the payload carries no zone. `_location_zone` takes it from the
+country the `location` ends in, for single-zone countries only; anything else
+stays offset-less rather than being passed off as UTC.
+
 **Interval scheduling stays split.** `tracking/coordinator.py` reuses
 `account/coordinator.py`'s `compute_poll_interval` for the whole coordinator's
 cadence (the gateway is cheap and unthrottled) and only overrides it when an

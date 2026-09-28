@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import aiohttp
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from homeassistant.util import dt as dt_util
 
 from ..const import (
     DHL_EXPRESS_APP_VERSION,
@@ -208,7 +209,65 @@ def _planned_from(raw: dict) -> str | None:
     if not edd_date:
         return None
     edd_time = _parse_edd_time(raw.get("eddTime")) or "00:00:00"
-    return f"{edd_date}T{edd_time}"
+    # The backend converts the EDD to the request's timezoneOffset, "+00:00".
+    return f"{edd_date}T{edd_time}+00:00"
+
+
+# Checkpoint times are the facility's local time, with no zone in the payload.
+# The zone comes from the country the location ends in, for countries with a
+# single zone only; anywhere else the time stays without an offset rather than
+# being passed off as UTC.
+_COUNTRY_ZONES = {
+    "AUSTRIA": "Europe/Vienna",
+    "BELGIUM": "Europe/Brussels",
+    "BULGARIA": "Europe/Sofia",
+    "CHINA": "Asia/Shanghai",
+    "CROATIA": "Europe/Zagreb",
+    "CYPRUS": "Asia/Nicosia",
+    "CZECH REPUBLIC": "Europe/Prague",
+    "DENMARK": "Europe/Copenhagen",
+    "ESTONIA": "Europe/Tallinn",
+    "FINLAND": "Europe/Helsinki",
+    "FRANCE": "Europe/Paris",
+    "GERMANY": "Europe/Berlin",
+    "GREECE": "Europe/Athens",
+    "HONG KONG": "Asia/Hong_Kong",
+    "HUNGARY": "Europe/Budapest",
+    "INDIA": "Asia/Kolkata",
+    "IRELAND": "Europe/Dublin",
+    "ISRAEL": "Asia/Jerusalem",
+    "ITALY": "Europe/Rome",
+    "JAPAN": "Asia/Tokyo",
+    "LATVIA": "Europe/Riga",
+    "LITHUANIA": "Europe/Vilnius",
+    "LUXEMBOURG": "Europe/Luxembourg",
+    "MALTA": "Europe/Malta",
+    "NETHERLANDS": "Europe/Amsterdam",
+    "NORWAY": "Europe/Oslo",
+    "POLAND": "Europe/Warsaw",
+    "PORTUGAL": "Europe/Lisbon",
+    "ROMANIA": "Europe/Bucharest",
+    "SINGAPORE": "Asia/Singapore",
+    "SLOVAKIA": "Europe/Bratislava",
+    "SLOVENIA": "Europe/Ljubljana",
+    "SOUTH AFRICA": "Africa/Johannesburg",
+    "SPAIN": "Europe/Madrid",
+    "SWEDEN": "Europe/Stockholm",
+    "SWITZERLAND": "Europe/Zurich",
+    "TURKEY": "Europe/Istanbul",
+    "UNITED ARAB EMIRATES": "Asia/Dubai",
+    "UNITED KINGDOM": "Europe/London",
+}
+
+
+def _location_zone(location: str | None):
+    """Return the zone of the country ``location`` ends in, if it has one."""
+    if not location:
+        return None
+    country = location.rsplit(" - ", 1)[-1].strip().upper()
+    country = country.removesuffix(", THE").removeprefix("THE ").strip()
+    name = _COUNTRY_ZONES.get(country)
+    return dt_util.get_time_zone(name) if name else None
 
 
 def _checkpoint_timestamp(checkpoint: dict) -> str | None:
@@ -219,7 +278,8 @@ def _checkpoint_timestamp(checkpoint: dict) -> str | None:
         parsed = datetime.strptime(f"{date} {time}", "%A, %B %d, %Y %H:%M")
     except ValueError:
         return None
-    return parsed.replace(tzinfo=timezone.utc).isoformat()
+    zone = _location_zone(checkpoint.get("location"))
+    return (parsed.replace(tzinfo=zone) if zone else parsed).isoformat()
 
 
 # Only descriptions confirmed on a real parcel. The checkpoints carry free
@@ -228,6 +288,10 @@ def _checkpoint_timestamp(checkpoint: dict) -> str | None:
 _CHECKPOINT_PREFIXES: tuple[tuple[str, ParcelStatus], ...] = (
     ("delivered", ParcelStatus.DELIVERED),
     ("shipment is out with courier for delivery", ParcelStatus.OUT_FOR_DELIVERY),
+    ("delivery attempt could not be completed", ParcelStatus.PROBLEM),
+    ("further consignee information needed", ParcelStatus.PROBLEM),
+    ("shipment is scheduled for delivery", ParcelStatus.IN_TRANSIT),
+    ("arrived at dhl delivery facility", ParcelStatus.IN_TRANSIT),
     ("shipment accepted", ParcelStatus.IN_TRANSIT),
     ("shipment picked up", ParcelStatus.IN_TRANSIT),
     ("processed at", ParcelStatus.IN_TRANSIT),

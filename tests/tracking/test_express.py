@@ -192,7 +192,7 @@ def test_planned_from_combines_edd_date_and_permissive_time_formats():
     raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = "1:07 PM"
     parcel = normalize_parcel_express(raw)
-    assert parcel["planned_from"] == "2026-08-01T13:07:00"
+    assert parcel["planned_from"] == "2026-08-01T13:07:00+00:00"
 
 
 def test_planned_from_falls_back_to_midnight_on_unparseable_time():
@@ -200,7 +200,7 @@ def test_planned_from_falls_back_to_midnight_on_unparseable_time():
     raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = "not a time"
     parcel = normalize_parcel_express(raw)
-    assert parcel["planned_from"] == "2026-08-01T00:00:00"
+    assert parcel["planned_from"] == "2026-08-01T00:00:00+00:00"
 
 
 def test_planned_from_falls_back_to_midnight_on_missing_time():
@@ -208,7 +208,7 @@ def test_planned_from_falls_back_to_midnight_on_missing_time():
     raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = ""
     parcel = normalize_parcel_express(raw)
-    assert parcel["planned_from"] == "2026-08-01T00:00:00"
+    assert parcel["planned_from"] == "2026-08-01T00:00:00+00:00"
 
 
 def test_planned_from_none_without_edd_date():
@@ -255,7 +255,8 @@ def test_never_present_fields_are_none():
 
 def test_a_delivered_parcel_has_its_delivery_moment_and_no_plan():
     parcel = normalize_parcel_express(express_delivered())
-    assert parcel["delivered_at"] == "2026-07-31T13:07:00+00:00"
+    # "EXAMPLE HUB" names no country, so the local time keeps no offset.
+    assert parcel["delivered_at"] == "2026-07-31T13:07:00"
     assert parcel["planned_from"] is None
     assert parcel["raw_status"] == "DELIVERED"
 
@@ -325,3 +326,39 @@ def test_an_unknown_checkpoint_warns_once_whatever_facility_it_names(caplog):
         include_history=True,
     )
     assert caplog.text.count("unrecognised checkpoint") == 1
+
+
+@pytest.mark.parametrize(
+    ("location", "expected"),
+    [
+        ("VALENCIA - Valencia - SPAIN", "2026-07-08T11:10:00+02:00"),
+        ("BRNO - CZECH REPUBLIC, THE", "2026-07-08T11:10:00+02:00"),
+        ("MILAN - MALPENSA - ITALY", "2026-07-08T11:10:00+02:00"),
+        ("NEW YORK - USA", "2026-07-08T11:10:00"),
+        (None, "2026-07-08T11:10:00"),
+    ],
+)
+def test_checkpoint_time_is_local_to_the_country_it_names(location, expected):
+    checkpoint = {"date": "Wednesday, July 08, 2026", "time": "11:10", "location": location}
+    assert _checkpoint_timestamp(checkpoint) == expected
+
+
+def test_later_real_checkpoints_map_too(caplog):
+    raw = _with_checkpoints(
+        [
+            "Shipment is scheduled for delivery",
+            "Delivery attempt could not be completed",
+            "Further consignee information needed",
+            "Arrived at DHL Delivery Facility  MONTEROTONDO - ITALY",
+        ]
+    )
+    parcel = normalize_parcel_express(raw, include_history=True)
+
+    assert [e["status"] for e in parcel["history"]] == [
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.PROBLEM,
+        ParcelStatus.PROBLEM,
+        ParcelStatus.IN_TRANSIT,
+    ]
+    assert parcel["status"] == ParcelStatus.IN_TRANSIT
+    assert "unrecognised" not in caplog.text
