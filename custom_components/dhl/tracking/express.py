@@ -120,7 +120,7 @@ async def async_fetch_express(session: aiohttp.ClientSession, awb: str) -> dict 
     try:
         async with session.post(
             f"{DHL_EXPRESS_URL}?appVersion={DHL_EXPRESS_APP_VERSION}"
-            "&service=tracking-shipments",
+            "&service=shipments-tracking",
             json=_request_envelope(awb),
             headers=headers,
             timeout=_TIMEOUT,

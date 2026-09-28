@@ -58,6 +58,17 @@ async def test_fetch_sends_the_derived_bearer_token_never_a_literal():
     assert kwargs["headers"]["Authorization"] == _derive_bearer_token()
 
 
+
+async def test_fetch_names_the_service_before_the_method_in_the_url():
+    # The backend 404s "Service URL params are not found/valid" on the
+    # reversed order.
+    session, resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
+    await async_fetch_express(session, "1000000001")
+
+    url = session.post.call_args.args[0]
+    assert "service=shipments-tracking" in url
+
+
 async def test_connection_error_raises_api_error():
     session = MagicMock()
     session.post = MagicMock(side_effect=aiohttp.ClientConnectionError("boom"))
