@@ -10,8 +10,7 @@ key set survives untouched.
 
 The tracking source shares the same shape (``incoming``/``delivered``/
 ``counts``), plus a ``tracking`` block reporting the Express half's
-budget/backoff state — never the shared bearer token itself, which this
-module never touches.
+budget/backoff state.
 """
 from __future__ import annotations
 
@@ -82,9 +81,6 @@ async def async_get_config_entry_diagnostics(
     is_tracking = entry.data.get(CONF_SOURCE) == SOURCE_TRACKING
     tracking_info = None
     if is_tracking:
-        # The Express bearer token itself never appears here — it is never
-        # attached to the coordinator, only decrypted per-request inside
-        # tracking/express.py.
         tracking_info = {
             "express_budget_available": coordinator.express_budget_available,
             "express_consecutive_failures": coordinator.express_consecutive_failures,

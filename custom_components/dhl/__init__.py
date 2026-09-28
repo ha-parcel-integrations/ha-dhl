@@ -55,8 +55,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     migration.
     """
     if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
-        # The tracking source needs no dedicated cookie jar (keyless gateway,
-        # static-secret Express backend) — HA's shared session is fine.
+        # The tracking source needs no dedicated cookie jar — HA's shared
+        # session is fine.
         session = async_get_clientsession(hass)
         client = session
         coordinator: DHLCoordinator | DHLTrackingCoordinator = DHLTrackingCoordinator(

@@ -76,3 +76,13 @@ def test_apply_delivered_filter_by_parcel_count():
     parcels = [{"barcode": "a"}, {"barcode": "b"}]
     filtered = apply_delivered_filter(parcels, entry)
     assert [p["barcode"] for p in filtered] == ["a"]
+
+
+def test_dispatch_strips_only_the_backend_marker_from_raw():
+    from custom_components.dhl.tracking.parcels import BACKEND_KEY, normalize_parcel
+
+    from .payloads import express_delivered, gateway_element
+
+    for payload, backend in ((gateway_element(), "gateway"), (express_delivered(), "express")):
+        parcel = normalize_parcel({**payload, BACKEND_KEY: backend})
+        assert parcel["raw"] == payload

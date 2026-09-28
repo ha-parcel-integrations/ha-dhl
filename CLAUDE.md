@@ -275,10 +275,27 @@ array position.** An unresolved code in a batch is silently dropped from the
 response, not erred — `tracking/gateway.py::async_fetch_gateway` builds its
 result dict keyed on each returned item's own `barcode`.
 
-**`RETURNED_TO_SHIPPER` overrides `category` and is checked on the *last*
-event only.** A return shipment's log has been observed to resume with
-further `UNDERWAY` events after a `RETURNED_TO_SHIPPER` event — its presence
-anywhere in the log is not "stop watching this parcel".
+**Gateway events map on the fine `status` first, then `category`.**
+`tracking/gateway.py::_map_event` drives both the parcel status (last event)
+and every history entry. `_STATUS_MAP` is ha-dhl-nl's ECOMMERCE table, because
+the category alone cannot express `at_pickup_point` or `returning`, and
+`INTERVENTION` covers both a harmless reschedule and a cancelled delivery.
+**Do not add `PARCEL_RETURNED_FROM_ROUTE` or `PARCEL_READY_FOR_RETURN_TO_HUB`
+back as `returning`.** On this gateway both show up in the normal outbound
+flow of a parcel dropped off at a ParcelShop, which then went on to be
+delivered (a real parcel, 2026-09-28). Only an unmapped *category* warns: the
+CDEx/Express fine statuses (`SCAN_OK_GATEWAY`, `PROCESSED_AT_LOCATION`, …)
+are not in the table and fall back to their category silently.
+
+**`RETURNED_TO_SHIPPER` is checked on the *last* event only.** A return
+shipment's log has been observed to resume with further `UNDERWAY` events
+after a `RETURNED_TO_SHIPPER` event — its presence anywhere in the log is not
+"stop watching this parcel".
+
+**Express history maps only checkpoint descriptions seen on a real parcel.**
+The checkpoints carry free English text and no code. Anything outside
+`_CHECKPOINT_MAP` is `unknown` with one WARNING per new description, so the
+vocabulary grows from reports, not guesses.
 
 **Interval scheduling stays split.** `tracking/coordinator.py` reuses
 `account/coordinator.py`'s `compute_poll_interval` for the whole coordinator's

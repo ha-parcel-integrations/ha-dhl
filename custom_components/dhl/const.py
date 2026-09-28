@@ -181,18 +181,18 @@ class DHLAuthError(DHLApiError):
 class DHLExpressThrottledError(DHLApiError):
     """Raised when the Express backend's abuse heuristic has tripped.
 
-    Never HA's reauth flow — nothing about a credential is wrong, the shared
-    secret just needs to rest. See ``tracking/coordinator.py``'s stand-down.
+    Never HA's reauth flow — nothing about a credential is wrong, the backend
+    just needs to rest. See ``tracking/coordinator.py``'s stand-down.
     """
 
 
 class DHLExpressCredentialError(DHLApiError):
-    """Raised on a 401/403 from the Express backend — likely rotation.
+    """Raised on a 401/403 from the Express backend.
 
     Deliberately **not** :class:`DHLAuthError`: there is no user credential to
-    reauthenticate with (the secret is static and shared), so this must never
-    reach Home Assistant's reauth flow. The coordinator aborts Express polling
-    for the entry and logs one WARNING instead.
+    reauthenticate with, so this must never reach Home Assistant's reauth flow.
+    The coordinator aborts Express polling for the entry and logs one WARNING
+    instead.
     """
 
 
@@ -264,7 +264,7 @@ NEW_ISSUE_URL = (
 
 # ---------------------------------------------------------------------------
 # Setup source — account (DE/PL browser-paste OIDC / phone+SMS) vs tracking
-# (keyless gateway + shared-secret Express app backend, code-based, modelled
+# (keyless gateway + Express app backend, code-based, modelled
 # on ha-bpost's SOURCE_ACCOUNT/SOURCE_TRACKING menu). An entry with no
 # CONF_SOURCE predates this split and is an account entry — never migrated,
 # just defaulted, everywhere this key is read.

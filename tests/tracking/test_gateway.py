@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import aiohttp
 import pytest
 
-from custom_components.dhl.const import ParcelStatus
+from custom_components.dhl.const import HISTORY_MAX_EVENTS, ParcelStatus
 from custom_components.dhl.tracking import gateway as gateway_module
 from custom_components.dhl.tracking.gateway import (
     DHLGatewayError,
@@ -193,3 +193,89 @@ def test_never_present_fields_are_none():
     assert parcel["weight"] is None
     assert parcel["dimensions"] is None
     assert parcel["url"] is None
+
+
+def test_every_history_event_gets_its_own_status():
+    raw = gateway_element(
+        category="DELIVERED",
+        status="DELIVERED",
+        delivered_at="2026-02-13T13:00:00+01:00",
+        extra_events=[
+            {"category": "UNDERWAY", "status": "PARCEL_SORTED_AT_HUB", "timestamp": "2026-02-12T01:00:00Z"},
+            {"category": "CUSTOMS", "status": "FACILITY_CHECK_IN", "timestamp": "2026-02-12T02:00:00Z"},
+            {"category": "PROBLEM", "status": "NOT_HOME_NEW_DELIVERY", "timestamp": "2026-02-12T03:00:00Z"},
+            {"category": "UNDERWAY", "status": "RETURNED_TO_SHIPPER", "timestamp": "2026-02-12T04:00:00Z"},
+            {"category": "IN_DELIVERY", "status": "LOAD_VEHICLE", "timestamp": "2026-02-12T05:00:00Z"},
+        ],
+    )
+
+    parcel = normalize_parcel_gateway(raw, include_history=True)
+
+    assert [e["status"] for e in parcel["history"]] == [
+        ParcelStatus.REGISTERED,
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.PROBLEM,
+        ParcelStatus.RETURNING,
+        ParcelStatus.OUT_FOR_DELIVERY,
+        ParcelStatus.DELIVERED,
+    ]
+
+
+def test_an_unmapped_history_category_warns_once_and_maps_to_unknown(caplog):
+    raw = gateway_element(
+        extra_events=[
+            {"category": "SOMETHING_NEW", "status": "X", "timestamp": "2026-02-12T01:00:00Z"},
+            {"category": "SOMETHING_NEW", "status": "Y", "timestamp": "2026-02-12T02:00:00Z"},
+        ],
+    )
+
+    parcel = normalize_parcel_gateway(raw, include_history=True)
+
+    assert parcel["history"][1]["status"] == ParcelStatus.UNKNOWN
+    assert parcel["history"][2]["status"] == ParcelStatus.UNKNOWN
+    assert caplog.text.count("'SOMETHING_NEW'") == 1
+
+
+def test_intervention_is_a_problem_unless_its_status_says_otherwise():
+    reschedule = gateway_element(
+        category="INTERVENTION",
+        status="INTERVENTION_RECEIVER_REQUESTS_DELIVERY_AT_ANOTHER_TIME/DATE",
+    )
+    cancelled = gateway_element(
+        category="INTERVENTION",
+        status="INTERVENTION_RECEIVER_REQUEST_DELIVERY_CANCELLED",
+    )
+    bare = gateway_element(category="INTERVENTION", status="INTERVENTION")
+
+    assert normalize_parcel_gateway(reschedule)["status"] == ParcelStatus.IN_TRANSIT
+    assert normalize_parcel_gateway(cancelled)["status"] == ParcelStatus.RETURNING
+    assert normalize_parcel_gateway(bare)["status"] == ParcelStatus.PROBLEM
+
+
+def test_a_parcelshop_drop_off_leg_is_not_mistaken_for_a_return():
+    for status in ("PARCEL_RETURNED_FROM_ROUTE", "PARCEL_READY_FOR_RETURN_TO_HUB"):
+        raw = gateway_element(category="UNDERWAY", status=status)
+        assert normalize_parcel_gateway(raw)["status"] == ParcelStatus.IN_TRANSIT
+
+
+def test_a_collection_notice_is_at_pickup_point():
+    raw = gateway_element(
+        category="UNDERWAY",
+        status="NOTIFICATION_FOR_PARCELSHOP_COLLECTION_HAS_BEEN_SENT",
+    )
+    assert normalize_parcel_gateway(raw)["status"] == ParcelStatus.AT_PICKUP_POINT
+
+
+def test_raw_keeps_every_event_even_when_history_is_capped():
+    extra = [
+        {"category": "UNDERWAY", "status": "PARCEL_SORTED_AT_HUB", "timestamp": f"2026-02-12T{i:02d}:00:00Z"}
+        for i in range(HISTORY_MAX_EVENTS + 5)
+    ]
+    raw = gateway_element(extra_events=extra)
+
+    parcel = normalize_parcel_gateway(raw, include_history=True)
+
+    assert parcel["raw"] == raw
+    assert len(parcel["raw"]["events"]) == len(extra) + 2
+    assert len(parcel["history"]) == HISTORY_MAX_EVENTS

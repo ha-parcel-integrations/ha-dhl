@@ -27,8 +27,10 @@ from .payloads import express_delivered, express_in_transit
 @pytest.fixture(autouse=True)
 def _reset_one_shot_state():
     express_module._warned_statuses.clear()
+    express_module._warned_checkpoints.clear()
     yield
     express_module._warned_statuses.clear()
+    express_module._warned_checkpoints.clear()
 
 
 def _mock_session(*, status: int, body: str):
@@ -43,8 +45,6 @@ def _mock_session(*, status: int, body: str):
 
 
 def test_bearer_token_derives_to_the_expected_shape():
-    """Never assert the literal secret — only that decryption round-trips
-    into the app's own documented ``Bearer <token>`` shape."""
     token = _derive_bearer_token()
     assert token.startswith("Bearer ")
     assert len(token) > len("Bearer ")
@@ -246,3 +246,16 @@ def test_never_present_fields_are_none():
     assert parcel["weight"] is None
     assert parcel["dimensions"] is None
     assert parcel["delivered_at"] is None
+
+
+def test_history_maps_known_checkpoints_and_warns_once_on_the_rest(caplog):
+    parcel = normalize_parcel_express(express_delivered(), include_history=True)
+    again = normalize_parcel_express(express_delivered(), include_history=True)
+
+    assert [e["status"] for e in parcel["history"]] == [
+        ParcelStatus.UNKNOWN,
+        ParcelStatus.DELIVERED,
+    ]
+    assert again["history"] == parcel["history"]
+    assert caplog.text.count("unrecognised checkpoint 'Picked up'") == 1
+    assert "'Delivered'" not in caplog.text

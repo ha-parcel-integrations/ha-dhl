@@ -466,19 +466,27 @@ async def test_gateway_request_failure_is_logged_and_treated_as_unresolved(hass)
     assert data[0]["status"] == ParcelStatus.UNKNOWN
 
 
-async def test_generic_express_api_error_is_logged_and_keeps_polling(hass):
+async def test_generic_express_api_error_is_logged_with_its_code_and_spends_the_budget(
+    hass, caplog
+):
     entry = _entry([EXPRESS_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
     from custom_components.dhl.const import DHLApiError
 
-    fetch = AsyncMock(side_effect=DHLApiError("HTTP 500"))
+    fetch = AsyncMock(side_effect=DHLApiError("HTTP 404"))
     with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", fetch):
         await coordinator._async_update_data()
+        await coordinator._async_update_data()
 
-    # A generic failure does not count as an attempt — the code is not
-    # marked as throttled or disabled, so the next cycle retries it.
+    assert f"DHL Express fetch failed for {EXPRESS_CODE}:" in caplog.text
+    assert "HTTP 404" in caplog.text
+    # The failed request reached the backend, so it costs the cycle's token:
+    # the next poll must not retry it outside the budget.
+    fetch.assert_awaited_once()
+    assert coordinator.express_budget_available == 0
+    assert EXPRESS_CODE in coordinator._attempted_codes
     assert coordinator.express_disabled is False
     assert coordinator.express_standing_down is False
 

@@ -4,7 +4,7 @@ Every poll batches the whole gateway-routed subset in one cheap, unthrottled
 request. The Express-routed subset shares ha-ups's throttled-queue model
 instead — one token bucket per entry, spent on at most one Express code per
 cycle, ranked by :data:`_QUEUE_PRIORITY` — because the Express backend's
-shared credential answers a handful of requests and then stands down with no
+ answers a handful of requests and then stands down with no
 advance warning (see ``express.py`` and the research this was sized from).
 """
 from __future__ import annotations
@@ -145,7 +145,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         )
         self._consecutive_failures = 0
         self._standdown_until_utc: float | None = None
-        # A 401/403 means the shared credential itself was rejected — not
+        # A 401/403 means the credential itself was rejected — not
         # recoverable by retrying, so Express fetching stops for the rest of
         # this running entry rather than repeating the failure every cycle.
         self._express_disabled = False
@@ -339,6 +339,11 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
 
         return sorted(candidates, key=sort_key)
 
+    def _record_express_attempt(self, code: str) -> None:
+        self._budget.try_spend()
+        self._attempted_codes.add(code)
+        self._last_fetch_by_code[code] = time.time()
+
     async def _async_fetch_one_express(self, code: str) -> None:
         """Spend the cycle's one Express request, if any, on ``code``."""
         try:
@@ -349,7 +354,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         except DHLExpressCredentialError as err:
             self._express_disabled = True
             _LOGGER.warning(
-                "DHL Express rejected the shared credential (%s) — Express "
+                "DHL Express rejected the credential (%s) — Express "
                 "tracking is disabled until this integration ships an "
                 "updated one. Existing Express parcels keep showing their "
                 "last known data.",
@@ -357,14 +362,16 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             )
             return
         except DHLApiError as err:
-            _LOGGER.warning("DHL Express fetch failed for a tracked code: %s", err)
+            _LOGGER.warning("DHL Express fetch failed for %s: %s", code, err)
+            # A failed request still reached the backend and counts towards
+            # its throttle. Without spending, the code stayed first in the
+            # queue and was retried on every poll, outside the budget.
+            self._record_express_attempt(code)
             return
 
-        self._budget.try_spend()
+        self._record_express_attempt(code)
         self._consecutive_failures = 0
         self._standdown_until_utc = None
-        self._attempted_codes.add(code)
-        self._last_fetch_by_code[code] = time.time()
         if payload is not None:
             self._raw_cache[code] = {**payload, BACKEND_KEY: "express"}
 

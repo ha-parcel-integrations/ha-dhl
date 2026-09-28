@@ -1,16 +1,4 @@
-"""The DHL Express app backend (dhle.dhl.com): fetch + normalize.
-
-Auth is a single static secret baked into the official app, not a credential
-issued to this project (see ``../../carrier-research/dhl/api/dhl/
-express-app-backend.md`` for the extraction — never referenced from code).
-It is stored here the same way the app itself stores it: AES-256-CBC
-ciphertext plus an XOR-obfuscated key/IV, decrypted once at runtime rather
-than committed as a bare plaintext string. This is obfuscation, not real
-protection — the point is only to avoid the secret sitting in the clear in
-this public repo's history, matching how the app ships it. The derived value
-must never be logged, and never appears in a config entry, in diagnostics, or
-in any exception message raised from this module.
-"""
+"""The DHL Express app backend (dhle.dhl.com): fetch + normalize."""
 from __future__ import annotations
 
 import base64
@@ -40,11 +28,6 @@ _LOGGER = logging.getLogger(__name__)
 
 _TIMEOUT = aiohttp.ClientTimeout(total=DHL_EXPRESS_REQUEST_TIMEOUT_SECONDS)
 
-# Two-layer obfuscation exactly as the app itself ships it: AES-256-CBC
-# ciphertext, with a key/IV that are themselves only XOR+base64-obfuscated in
-# the bundle. Both layers are already broken offline (no network call
-# needed) — reproduced here as the same encrypted constants rather than the
-# bare plaintext they decrypt to.
 _CIPHERTEXT_B64 = (
     "ArnvnwcNI+HBw27G2csnAMJGPW3qTpB5xaDSOeNfaEcIeQd9mlcT3C1vZIkWV9Ph"
 )
@@ -55,11 +38,6 @@ _bearer_token: str | None = None
 
 
 def _derive_bearer_token() -> str:
-    """Decrypt the static Express bearer token once, cached in-process.
-
-    The plaintext carries a 3-character random prefix the app strips before
-    use (``decryptAPIKey(t){ return decryptDataAES(t).slice(3) }``).
-    """
     cipher = Cipher(algorithms.AES(_AES_KEY), modes.CBC(_AES_IV))
     decryptor = cipher.decryptor()
     padded = decryptor.update(base64.b64decode(_CIPHERTEXT_B64)) + decryptor.finalize()
@@ -235,6 +213,31 @@ def _checkpoint_timestamp(checkpoint: dict) -> str | None:
     return parsed.replace(tzinfo=timezone.utc).isoformat()
 
 
+# Only descriptions confirmed on a real parcel. The checkpoints carry free
+# English text and no code, so anything else stays unknown until seen.
+_CHECKPOINT_MAP: dict[str, ParcelStatus] = {
+    "delivered": ParcelStatus.DELIVERED,
+}
+
+_warned_checkpoints: set[str] = set()
+
+
+def _map_checkpoint(description: str | None) -> ParcelStatus:
+    key = (description or "").strip().lower()
+    status = _CHECKPOINT_MAP.get(key)
+    if status is not None:
+        return status
+    if key not in _warned_checkpoints:
+        _warned_checkpoints.add(key)
+        _LOGGER.warning(
+            "DHL Express reported an unrecognised checkpoint %r — its history "
+            "entry is mapped to 'unknown'. Please report this: %s",
+            description,
+            NEW_ISSUE_URL,
+        )
+    return ParcelStatus.UNKNOWN
+
+
 def _build_history(checkpoints: list) -> list[dict]:
     # Newest-first on this backend, unlike the gateway — reverse to the
     # canonical oldest-first order.
@@ -248,7 +251,7 @@ def _build_history(checkpoints: list) -> list[dict]:
         entries.append(
             {
                 "timestamp": timestamp,
-                "status": None,
+                "status": _map_checkpoint(checkpoint.get("description")),
                 "raw_status": checkpoint.get("description"),
             }
         )

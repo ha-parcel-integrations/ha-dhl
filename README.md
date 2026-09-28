@@ -138,14 +138,7 @@ answer it — you never say which:
 
 **The DHL Express backend is intentionally slow to refresh — roughly once
 every 40 minutes per tracked Express code, shared across however many you
-track.** It runs on a credential extracted from DHL's own Express app rather
-than one issued to this integration, and that credential answers only a
-handful of requests before standing down with no advance warning. Polling it
-gently is what keeps it working at all: aggressive polling risks the shared
-credential being noticed and rotated for every install, not just one, and if
-DHL does rotate or revoke it an integration update — not a reauth — is what
-fixes it. DHL Parcel barcodes have none of this: the gateway is keyless and
-answers immediately on the integration's normal polling cadence.
+track.**
 
 ## Options
 
@@ -315,8 +308,6 @@ All third-party trademarks, trade names, product names, logos, and other brand a
 This integration may rely on public, unofficial, or undocumented carrier interfaces, accessed with your own account or API key where required. These may change or be withdrawn without notice and may be subject to DHL's terms. Data is sent only to DHL's own services or those of its group; this project operates no servers of its own. You are responsible for ensuring that your use complies with applicable law and those terms. Use is at your own risk; see the [licence](LICENSE) for warranty limitations.
 
 This integration uses the same account-inbox endpoint the DHL website uses once you are logged in. Your credentials never pass through this integration or any third party — sign-in happens directly in your own browser against DHL's own login page; only the resulting refresh token is stored in Home Assistant's own config-entry storage, the same way any other integration's credentials are.
-
-**The Express half of tracking-code lookups uses a static credential extracted from DHL's official Express app, not one issued to this project or to you.** It is never displayed, never stored in a config entry, and never appears in diagnostics or logs. DHL can revoke or rotate it without notice; if that happens, an integration update fixes it, not a reauth on your part. Its request budget is intentionally very conservative — roughly one request per tracked Express code every 40 minutes — specifically because aggressive polling risks that shared credential being noticed and rotated for every install, not just yours. The DHL Parcel gateway half of tracking-code lookups needs no credential of any kind.
 
 ## Contributing
 
