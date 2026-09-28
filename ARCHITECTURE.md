@@ -412,8 +412,11 @@ the credential itself, which this module never touches.
 
 `weight` and `dimensions` are always `None` on every source. `pickup_point` is
 populated for account/DE Packstation arrivals only — never on the tracking
-source, on either backend. `url` and `history` are populated on the tracking
-source's Express half; the gateway half never populates `url`.
+source, on either backend. `history` is populated on both tracking backends.
+`url` on the tracking source is always the dhl.com tracking page, localised
+from Home Assistant's country and language (`tracking/parcels.py::
+tracking_page_locale`) — set by the coordinator, not by either backend's
+normalizer. The Express ePOD link stays in `raw`.
 `delivery_window` is populated (as a single `planned_from` moment, never a
 true range) on both tracking backends. None of this changes `CAPABILITIES` in
 `const.py`, which already claimed all of these from the account source — keep

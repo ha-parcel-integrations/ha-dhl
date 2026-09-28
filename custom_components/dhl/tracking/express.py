@@ -258,14 +258,6 @@ def _build_history(checkpoints: list) -> list[dict]:
     return entries[-HISTORY_MAX_EVENTS:]
 
 
-def _url(raw: dict) -> str | None:
-    signature = raw.get("signature")
-    if not isinstance(signature, dict) or signature.get("type") != "epod":
-        return None
-    link = signature.get("link")
-    return link.get("url") if isinstance(link, dict) else None
-
-
 def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dict:
     """Map one Express app-backend response object onto the canonical shape."""
     status = _map_status(raw)
@@ -284,7 +276,7 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
         "planned_to": None,
         "pickup": False,
         "pickup_point": None,
-        "url": _url(raw),
+        "url": None,
         "weight": None,
         "dimensions": None,
         "history": _build_history(checkpoints) if include_history else None,

@@ -57,6 +57,8 @@ from .parcels import (
     apply_delivered_filter,
     normalize_parcel,
     sort_parcels_by_ts,
+    tracking_page_locale,
+    tracking_page_url,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -465,9 +467,11 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         normalized = [
             normalize_parcel(raw, include_history=include_history) for _, raw in raws
         ]
+        locale = tracking_page_locale(self.hass)
         for (code, _), parcel in zip(raws, normalized):
             if not parcel.get("barcode"):
                 parcel["barcode"] = code
+            parcel["url"] = tracking_page_url(code, locale)
 
         self._delivered_codes = {
             code for (code, _), parcel in zip(raws, normalized) if parcel["delivered"]

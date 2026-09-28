@@ -292,6 +292,31 @@ DEFAULT_DIRECTION = DIRECTION_INCOMING
 # ---------------------------------------------------------------------------
 
 DHL_GATEWAY_URL = "https://api-gw.dhlparcel.nl/track-trace"
+
+# dhl.com's tracking page, localised as ``{country}-{language}``. English
+# exists for every country site; a local language only where listed, so an
+# unlisted combination never lands on a page that does not exist.
+DHL_TRACKING_PAGE_URL = (
+    "https://www.dhl.com/{locale}/home/tracking.html?tracking-id={code}"
+)
+DHL_TRACKING_PAGE_DEFAULT_LOCALE = "global-en"
+DHL_TRACKING_PAGE_LANGUAGES = {
+    "at": {"de"},
+    "be": {"nl", "fr"},
+    "ch": {"de", "fr", "it"},
+    "cz": {"cs"},
+    "de": {"de"},
+    "dk": {"da"},
+    "es": {"es"},
+    "fi": {"fi"},
+    "fr": {"fr"},
+    "it": {"it"},
+    "nl": {"nl"},
+    "pl": {"pl"},
+    "pt": {"pt"},
+    "se": {"sv"},
+    "sk": {"sk"},
+}
 DHL_GATEWAY_HEADERS = {"accept": "*/*"}
 DHL_GATEWAY_REQUEST_TIMEOUT_SECONDS = 30
 

@@ -1,12 +1,16 @@
 """Tests for tracking/parcels.py's dispatcher and list helpers."""
 from unittest.mock import MagicMock
 
+import pytest
+
 from custom_components.dhl.tracking.parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
     normalize_parcel,
     parse_iso,
     sort_parcels_by_ts,
+    tracking_page_locale,
+    tracking_page_url,
 )
 
 from .payloads import express_delivered, gateway_element
@@ -86,3 +90,27 @@ def test_dispatch_strips_only_the_backend_marker_from_raw():
     for payload, backend in ((gateway_element(), "gateway"), (express_delivered(), "express")):
         parcel = normalize_parcel({**payload, BACKEND_KEY: backend})
         assert parcel["raw"] == payload
+
+
+@pytest.mark.parametrize(
+    ("country", "language", "expected"),
+    [
+        ("NL", "nl", "nl-nl"),
+        ("NL", "en", "nl-en"),
+        ("NL", "de", "nl-en"),
+        ("BE", "fr", "be-fr"),
+        ("DE", "de-CH", "de-de"),
+        ("US", "en", "us-en"),
+        (None, "nl", "global-en"),
+    ],
+)
+async def test_tracking_page_locale(hass, country, language, expected):
+    hass.config.country = country
+    hass.config.language = language
+    assert tracking_page_locale(hass) == expected
+
+
+def test_tracking_page_url_quotes_the_code():
+    assert tracking_page_url("A B", "nl-nl") == (
+        "https://www.dhl.com/nl-nl/home/tracking.html?tracking-id=A%20B"
+    )

@@ -10,14 +10,19 @@ regardless of which one produced it. Every raw payload carries a private
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from ..const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     DEFAULT_DELIVERED_FILTER_AMOUNT,
     DEFAULT_DELIVERED_FILTER_TYPE,
+    DHL_TRACKING_PAGE_DEFAULT_LOCALE,
+    DHL_TRACKING_PAGE_LANGUAGES,
+    DHL_TRACKING_PAGE_URL,
 )
 from .express import normalize_parcel_express
 from .gateway import normalize_parcel_gateway
@@ -39,6 +44,22 @@ def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
     backend = raw[BACKEND_KEY]
     payload = {k: v for k, v in raw.items() if k != BACKEND_KEY}
     return _NORMALIZERS[backend](payload, include_history=include_history)
+
+
+def tracking_page_locale(hass: HomeAssistant) -> str:
+    """Return the dhl.com locale for Home Assistant's country and language."""
+    country = (hass.config.country or "").lower()
+    if not country:
+        return DHL_TRACKING_PAGE_DEFAULT_LOCALE
+    language = (hass.config.language or "en").split("-")[0].lower()
+    if language in DHL_TRACKING_PAGE_LANGUAGES.get(country, ()):
+        return f"{country}-{language}"
+    return f"{country}-en"
+
+
+def tracking_page_url(code: str, locale: str) -> str:
+    """Return the public dhl.com tracking page for one code."""
+    return DHL_TRACKING_PAGE_URL.format(locale=locale, code=quote(code))
 
 
 def parse_iso(value: str | None) -> datetime | None:

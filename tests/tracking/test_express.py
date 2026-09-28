@@ -169,19 +169,10 @@ def test_history_omitted_when_not_requested():
     assert parcel["history"] is None
 
 
-def test_url_from_epod_signature():
+def test_the_epod_link_stays_in_raw_not_url():
     parcel = normalize_parcel_express(express_delivered())
-    assert parcel["url"] == "https://example.invalid/pod"
-
-
-def test_url_none_when_signature_missing_or_not_epod():
-    raw = express_delivered()
-    raw["signature"] = {"type": "something_else"}
-    assert normalize_parcel_express(raw)["url"] is None
-
-    raw2 = express_delivered()
-    del raw2["signature"]
-    assert normalize_parcel_express(raw2)["url"] is None
+    assert parcel["url"] is None
+    assert parcel["raw"]["signature"]["link"]["url"] == "https://example.invalid/pod"
 
 
 def test_planned_from_combines_edd_date_and_permissive_time_formats():

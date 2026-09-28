@@ -606,3 +606,30 @@ async def test_outgoing_events_fire_on_status_change_and_delivery(hass):
     assert len(delivered) == 1
     assert [p["barcode"] for p in coordinator.delivered_outgoing] == [GATEWAY_CODE]
     assert incoming == []
+
+
+async def test_every_parcel_links_to_the_dhl_tracking_page_in_the_ha_locale(hass):
+    hass.config.country = "NL"
+    hass.config.language = "en"
+    entry = _entry([GATEWAY_CODE, EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+        ),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=express_in_transit(EXPRESS_CODE)),
+        ),
+    ):
+        data = await coordinator._async_update_data()
+
+    assert {p["barcode"]: p["url"] for p in data} == {
+        GATEWAY_CODE: "https://www.dhl.com/nl-en/home/tracking.html"
+        f"?tracking-id={GATEWAY_CODE}",
+        EXPRESS_CODE: "https://www.dhl.com/nl-en/home/tracking.html"
+        f"?tracking-id={EXPRESS_CODE}",
+    }
