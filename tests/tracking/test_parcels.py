@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from custom_components.dhl.tracking import end_of_day
 from custom_components.dhl.tracking.parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -114,3 +115,16 @@ def test_tracking_page_url_quotes_the_code():
     assert tracking_page_url("A B", "nl-nl") == (
         "https://www.dhl.com/nl-nl/home/tracking.html?tracking-id=A%20B"
     )
+
+
+@pytest.mark.parametrize(
+    ("moment", "expected"),
+    [
+        ("2026-09-24T13:05:00+02:00", "2026-09-24T23:59:59+02:00"),
+        ("2026-07-07T21:59:00", "2026-07-07T23:59:59"),
+        ("2026-09-22T22:15:00Z", "2026-09-22T23:59:59+00:00"),
+        ("not a moment", None),
+    ],
+)
+def test_end_of_day_keeps_the_day_and_its_offset(moment, expected):
+    assert end_of_day(moment) == expected

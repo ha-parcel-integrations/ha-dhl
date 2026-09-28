@@ -419,7 +419,9 @@ tracking_page_locale`) — set by the coordinator, not by either backend's
 normalizer. The Express ePOD link stays in `raw`. A code DHL has not answered
 for yet (not fetched, or not found) has `raw: {}` — the placeholder the
 coordinator normalizes from is never published as if DHL had sent it.
-`delivery_window` is populated (as a single `planned_from` moment, never a
-true range) on both tracking backends. None of this changes `CAPABILITIES` in
+`delivery_window` is populated on both tracking backends. DHL gives a single
+moment, which becomes `planned_from`; the coordinator sets `planned_to` to
+23:59:59 on that day, in the same offset. A delivered parcel has neither —
+only `delivered_at`, as in ha-dhl-nl. None of this changes `CAPABILITIES` in
 `const.py`, which already claimed all of these from the account source — keep
 it in sync if that ever changes.

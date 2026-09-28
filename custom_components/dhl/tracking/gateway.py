@@ -228,6 +228,7 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
             for event in events[-HISTORY_MAX_EVENTS:]
         ]
 
+    delivered = bool(raw.get("deliveredAt"))
     return {
         "carrier": "DHL",
         "barcode": raw.get("barcode"),
@@ -235,9 +236,9 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
         "receiver": None,
         "status": status,
         "raw_status": raw_status,
-        "delivered": bool(raw.get("deliveredAt")),
+        "delivered": delivered,
         "delivered_at": raw.get("deliveredAt"),
-        "planned_from": last.get("momentIndication"),
+        "planned_from": None if delivered else last.get("momentIndication"),
         "planned_to": None,
         "pickup": False,
         "pickup_point": None,

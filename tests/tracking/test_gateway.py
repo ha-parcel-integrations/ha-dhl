@@ -166,6 +166,18 @@ def test_planned_from_is_the_last_events_moment_indication():
     assert parcel["planned_to"] is None
 
 
+def test_a_delivered_parcel_has_no_plan_left():
+    raw = gateway_element(
+        category="DELIVERED",
+        status="DELIVERED",
+        delivered_at="2026-02-13T13:00:00+01:00",
+    )
+    parcel = normalize_parcel_gateway(raw)
+
+    assert parcel["delivered_at"] == "2026-02-13T13:00:00+01:00"
+    assert parcel["planned_from"] is None
+
+
 def test_no_events_maps_to_unknown_without_crashing():
     parcel = normalize_parcel_gateway({"barcode": "X", "events": []})
     assert parcel["status"] == ParcelStatus.UNKNOWN

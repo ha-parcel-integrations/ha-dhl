@@ -143,7 +143,8 @@ def test_empty_status_with_checkpoints_and_future_edd_is_in_transit():
     parcel = normalize_parcel_express(express_in_transit())
     assert parcel["status"] == ParcelStatus.IN_TRANSIT
     assert parcel["delivered"] is False
-    assert parcel["raw_status"] == ""
+    # Empty top-level status: the newest checkpoint stands in.
+    assert parcel["raw_status"] == "In transit"
 
 
 def test_empty_status_with_past_edd_is_unknown_not_in_transit():
@@ -187,28 +188,31 @@ def test_the_epod_link_stays_in_raw_not_url():
 
 
 def test_planned_from_combines_edd_date_and_permissive_time_formats():
-    raw = express_delivered()
+    raw = express_in_transit()
+    raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = "1:07 PM"
     parcel = normalize_parcel_express(raw)
     assert parcel["planned_from"] == "2026-08-01T13:07:00"
 
 
 def test_planned_from_falls_back_to_midnight_on_unparseable_time():
-    raw = express_delivered()
+    raw = express_in_transit()
+    raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = "not a time"
     parcel = normalize_parcel_express(raw)
     assert parcel["planned_from"] == "2026-08-01T00:00:00"
 
 
 def test_planned_from_falls_back_to_midnight_on_missing_time():
-    raw = express_delivered()
+    raw = express_in_transit()
+    raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = ""
     parcel = normalize_parcel_express(raw)
     assert parcel["planned_from"] == "2026-08-01T00:00:00"
 
 
 def test_planned_from_none_without_edd_date():
-    raw = express_delivered()
+    raw = express_in_transit()
     del raw["eddDate"]
     assert normalize_parcel_express(raw)["planned_from"] is None
 
@@ -247,7 +251,13 @@ def test_never_present_fields_are_none():
     assert parcel["pickup_point"] is None
     assert parcel["weight"] is None
     assert parcel["dimensions"] is None
-    assert parcel["delivered_at"] is None
+
+
+def test_a_delivered_parcel_has_its_delivery_moment_and_no_plan():
+    parcel = normalize_parcel_express(express_delivered())
+    assert parcel["delivered_at"] == "2026-07-31T13:07:00+00:00"
+    assert parcel["planned_from"] is None
+    assert parcel["raw_status"] == "DELIVERED"
 
 
 def test_history_maps_known_checkpoints_and_warns_once_on_the_rest(caplog):

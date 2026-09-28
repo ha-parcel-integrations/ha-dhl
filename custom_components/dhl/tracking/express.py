@@ -182,8 +182,8 @@ def _map_status(raw: dict) -> ParcelStatus:
         return ParcelStatus.UNKNOWN
     # The top-level status is only ever filled in on delivery; until then the
     # newest checkpoint is the best signal.
-    latest = next((c for c in raw.get("checkpoints") or [] if isinstance(c, dict)), None)
-    if latest is None:
+    latest = _newest_checkpoint(raw)
+    if not latest:
         return ParcelStatus.UNKNOWN
     status = _map_checkpoint(latest.get("description"))
     if status is ParcelStatus.UNKNOWN and _edd_is_future(raw.get("eddDate")):
@@ -279,10 +279,18 @@ def _build_history(checkpoints: list) -> list[dict]:
     return entries[-HISTORY_MAX_EVENTS:]
 
 
+def _newest_checkpoint(raw: dict) -> dict:
+    return next(
+        (c for c in raw.get("checkpoints") or [] if isinstance(c, dict)), {}
+    )
+
+
 def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dict:
     """Map one Express app-backend response object onto the canonical shape."""
     status = _map_status(raw)
     checkpoints = raw.get("checkpoints") or []
+    newest = _newest_checkpoint(raw)
+    delivered = status is ParcelStatus.DELIVERED
 
     return {
         "carrier": "DHL",
@@ -290,10 +298,11 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
         "sender": None,
         "receiver": None,
         "status": status,
-        "raw_status": raw.get("status", ""),
-        "delivered": status is ParcelStatus.DELIVERED,
-        "delivered_at": None,
-        "planned_from": _planned_from(raw),
+        # The top-level status stays empty until delivery.
+        "raw_status": raw.get("status") or newest.get("description") or "",
+        "delivered": delivered,
+        "delivered_at": _checkpoint_timestamp(newest) if delivered else None,
+        "planned_from": None if delivered else _planned_from(raw),
         "planned_to": None,
         "pickup": False,
         "pickup_point": None,

@@ -47,6 +47,7 @@ from . import (
     BACKEND_GATEWAY,
     BACKEND_UNKNOWN,
     classify_shape,
+    end_of_day,
     tracked_direction,
 )
 from .budget import RequestBudget
@@ -472,6 +473,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             if not parcel.get("barcode"):
                 parcel["barcode"] = code
             parcel["url"] = tracking_page_url(code, locale)
+            if parcel["planned_from"] and not parcel["planned_to"]:
+                # A single moment from DHL means "that day", not "that second".
+                parcel["planned_to"] = end_of_day(parcel["planned_from"])
             if code not in self._raw_cache:
                 # Nothing from DHL yet; the placeholder is not a DHL record.
                 parcel["raw"] = {}

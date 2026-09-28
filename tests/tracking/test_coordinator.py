@@ -649,3 +649,24 @@ async def test_a_code_dhl_has_not_answered_for_has_an_empty_raw(hass):
 
     assert {p["barcode"]: p["raw"] for p in data} == {GATEWAY_CODE: {}, EXPRESS_CODE: {}}
     assert all(p["status"] == ParcelStatus.UNKNOWN for p in data)
+
+
+async def test_a_single_planned_moment_runs_to_the_end_of_that_day(hass):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(
+            return_value={
+                GATEWAY_CODE: gateway_element(
+                    barcode=GATEWAY_CODE, moment="2026-02-13T13:00:00+01:00"
+                )
+            }
+        ),
+    ):
+        data = await coordinator._async_update_data()
+
+    assert data[0]["planned_from"] == "2026-02-13T13:00:00+01:00"
+    assert data[0]["planned_to"] == "2026-02-13T23:59:59+01:00"
