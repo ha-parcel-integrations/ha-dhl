@@ -633,3 +633,19 @@ async def test_every_parcel_links_to_the_dhl_tracking_page_in_the_ha_locale(hass
         EXPRESS_CODE: "https://www.dhl.com/nl-en/home/tracking.html"
         f"?tracking-id={EXPRESS_CODE}",
     }
+
+
+async def test_a_code_dhl_has_not_answered_for_has_an_empty_raw(hass):
+    entry = _entry([GATEWAY_CODE, EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    coordinator._budget.tokens = 0.0
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={}),
+    ):
+        data = await coordinator._async_update_data()
+
+    assert {p["barcode"]: p["raw"] for p in data} == {GATEWAY_CODE: {}, EXPRESS_CODE: {}}
+    assert all(p["status"] == ParcelStatus.UNKNOWN for p in data)

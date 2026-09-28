@@ -472,6 +472,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             if not parcel.get("barcode"):
                 parcel["barcode"] = code
             parcel["url"] = tracking_page_url(code, locale)
+            if code not in self._raw_cache:
+                # Nothing from DHL yet; the placeholder is not a DHL record.
+                parcel["raw"] = {}
 
         self._delivered_codes = {
             code for (code, _), parcel in zip(raws, normalized) if parcel["delivered"]
