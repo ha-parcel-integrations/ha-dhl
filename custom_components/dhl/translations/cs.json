@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastavit DHL",
+        "menu_options": {
+          "account": "Účet",
+          "tracking": "Sledovací kódy"
+        }
+      },
+      "account": {
+        "title": "Přihlášení k účtu DHL",
+        "description": "Který účet DHL chcete přidat? Podporováno je Německo a Polsko. [Požádat o jinou zemi]({issue_url}). Hledáte DHL v Nizozemsku? To je samostatná integrace: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Země"
+        }
+      },
+      "de": {
+        "title": "Nastavení DHL (Německo)",
+        "description": "Otevřete tento odkaz v prohlížeči a přihlaste se svým DHL Kundenkonto: {authorize_url}\n\nProhlížeč nedokáže otevřít závěrečné přesměrování `dhllogin://…` — to je v pořádku. Tato adresa se nikdy neobjeví v adresním řádku; najdete ji na kartě Network ve vývojářských nástrojích prohlížeče — viz [návod krok za krokem]({docs_url}). Vložte celou adresu níže.\n\nPoznámka: sledovací rozhraní DHL správně odpovídá jen na německou IP adresu — tato integrace nebude fungovat, pokud se váš Home Assistant připojuje k internetu z jiné země.",
+        "data": {
+          "redirect_url": "Přesměrovací URL"
+        }
+      },
+      "pl": {
+        "title": "Nastavení DHL Parcel Polska",
+        "description": "Zadejte polské mobilní číslo registrované v Mój DHL. Přijímá se devět číslic, +48 i 0048; DHL obdrží devět místních číslic a pošle jeden SMS kód. Tato integrace jej nikdy automaticky neposílá znovu.",
+        "data": {
+          "phone": "Polské mobilní číslo"
+        }
+      },
+      "pl_sms": {
+        "title": "Ověření DHL Parcel Polska",
+        "description": "Zadejte SMS kód zaslaný službou Mój DHL.",
+        "data": {
+          "sms_code": "Kód SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Přihlášení k DHL vypršelo",
+        "description": "DHL už uloženou relaci nepřijímá. Otevřete tento odkaz, znovu se přihlaste a vložte přesměrovací URL, kterou zachytíte na kartě Network ve vývojářských nástrojích prohlížeče (viz [návod krok za krokem]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Přesměrovací URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Toto nevypadá jako přesměrovací adresa DHL — ujistěte se, že jste po přihlášení zkopírovali celou adresu.",
+      "invalid_auth": "DHL toto přihlášení odmítlo.",
+      "invalid_phone": "Zadejte platné polské mobilní číslo (devět číslic, volitelně s +48 nebo 0048).",
+      "invalid_sms_code": "Neplatný nebo prošlý kód SMS.",
+      "cannot_connect": "Nepodařilo se spojit s DHL. Zkuste to prosím znovu."
+    },
+    "abort": {
+      "already_configured": "Tento účet DHL je již nastaven.",
+      "cannot_connect": "Nepodařilo se spojit s DHL. Zkuste to prosím znovu.",
+      "reauth_successful": "DHL byla úspěšně znovu ověřena.",
+      "wrong_account": "Toto přihlášení patří k jinému účtu DHL. Přihlaste se účtem, pro který byl tento záznam nastaven.",
+      "unsupported_country": "Tato země zatím není podporována."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Možnosti DHL",
+        "menu_options": {
+          "incoming_parcels": "Příchozí zásilky",
+          "outgoing_parcels": "Odchozí zásilky",
+          "settings": "Nastavení"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Doručené zásilky",
+            "data": {
+              "delivered_filter_type": "Filtrovat podle",
+              "delivered_filter_amount": "Počet"
+            },
+            "data_description": {
+              "delivered_filter_type": "Zobrazit doručené zásilky za posledních X dní, nebo omezit na X nejnovějších.",
+              "delivered_filter_amount": "Počet dní nebo zásilek k zobrazení."
+            }
+          },
+          "history": {
+            "name": "Historie zásilky",
+            "data": {
+              "include_history": "Zahrnout historii stavů"
+            },
+            "data_description": {
+              "include_history": "Přidá u každé zásilky atribut s historií každé změny stavu (čas, stav, původní text). Ve výchozím nastavení vypnuto."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Správa příchozích zásilek",
+        "description": "Sledovací kódy zásilek, které očekáváte. Sledovací data DHL nedokážou odlišit zásilku, kterou jste odeslali, od zásilky, kterou přijímáte, proto zařaďte každý kód do správného seznamu. Každý kód je podle svého tvaru automaticky směrován do správného systému DHL — nemusíte uvádět kterého.",
+        "data": {
+          "tracking_codes": "Sledovací kódy"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Správa odchozích zásilek",
+        "description": "Sledovací kódy zásilek, které jste odeslali. Počítají se a hlásí zvlášť, takže se nezapočítávají do vašich příchozích zásilek.",
+        "data": {
+          "tracking_codes": "Sledovací kódy"
+        }
+      },
+      "settings": {
+        "title": "Nastavení sledování",
+        "sections": {
+          "delivered": {
+            "name": "Doručené zásilky",
+            "data": {
+              "delivered_filter_type": "Filtrovat podle",
+              "delivered_filter_amount": "Počet"
+            },
+            "data_description": {
+              "delivered_filter_type": "Zobrazit doručené zásilky za posledních X dní, nebo omezit na X nejnovějších.",
+              "delivered_filter_amount": "Počet dní nebo zásilek k zobrazení."
+            }
+          },
+          "history": {
+            "name": "Historie zásilky",
+            "data": {
+              "include_history": "Zahrnout historii stavů"
+            },
+            "data_description": {
+              "include_history": "Přidá u každé zásilky atribut s historií každé změny stavu (čas, stav, původní text). Ve výchozím nastavení vypnuto."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Jeden ze sledovacích kódů není platný."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Německo",
+        "pl": "Polsko"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dny",
+        "parcels": "Počet zásilek"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Sledovat zásilku",
+      "description": "Začne sledovat zásilku podle sledovacího čísla DHL, navíc k tomu, co už zobrazuje váš účet DHL.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledovací kód",
+          "description": "Sledovací číslo DHL."
+        },
+        "config_entry_id": {
+          "name": "Účet DHL",
+          "description": "Do kterého nastaveného účtu DHL tuto zásilku přidat. Potřeba jen tehdy, je-li jich nastaveno více."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Přestat sledovat zásilku",
+      "description": "Ukončí sledování ručně přidané zásilky DHL podle jejího sledovacího čísla.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledovací kód",
+          "description": "Sledovací číslo DHL, jehož sledování se má ukončit."
+        },
+        "config_entry_id": {
+          "name": "Účet DHL",
+          "description": "Ze kterého nastaveného účtu DHL tuto zásilku odebrat. Potřeba jen tehdy, je-li jich nastaveno více."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Zásilka byla zaregistrována",
+      "parcel_status_changed": "Stav zásilky se změnil",
+      "parcel_delivered": "Zásilka byla doručena",
+      "parcel_delivery_time_changed": "Očekávaný čas doručení zásilky se změnil",
+      "outgoing_parcel_status_changed": "Stav odchozí zásilky se změnil",
+      "outgoing_parcel_delivered": "Odchozí zásilka byla doručena"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Aktualizovat"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Doručení"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Příchozí zásilky",
+        "unit_of_measurement": "zásilky"
+      },
+      "next_delivery": {
+        "name": "Očekávané doručení"
+      },
+      "awaiting_pickup": {
+        "name": "Připraveno k vyzvednutí",
+        "unit_of_measurement": "zásilky"
+      },
+      "delivered_parcels": {
+        "name": "Doručené zásilky",
+        "unit_of_measurement": "zásilky"
+      },
+      "outgoing_parcels": {
+        "name": "Odchozí zásilky",
+        "unit_of_measurement": "zásilky"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Odchozí doručené zásilky",
+        "unit_of_measurement": "zásilky"
+      },
+      "last_update": {
+        "name": "Poslední úspěšná aktualizace"
+      },
+      "parcel": {
+        "name": "Zásilka {barcode}"
+      }
+    }
+  }
+}

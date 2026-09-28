@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nustatyti DHL",
+        "menu_options": {
+          "account": "Paskyra",
+          "tracking": "Sekimo kodai"
+        }
+      },
+      "account": {
+        "title": "Prisijungti prie DHL paskyros",
+        "description": "Kurią DHL paskyrą norite pridėti? Palaikomos Vokietija ir Lenkija. [Prašyti kitos šalies]({issue_url}). Ieškote DHL Nyderlanduose? Tai atskira integracija: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Šalis"
+        }
+      },
+      "de": {
+        "title": "DHL nustatymas (Vokietija)",
+        "description": "Atidarykite šią nuorodą naršyklėje ir prisijunkite su savo DHL Kundenkonto: {authorize_url}\n\nNaršyklei nepavyks atidaryti galutinio `dhllogin://…` peradresavimo — tai numatyta. Šis adresas niekada nepasirodo adreso juostoje; jį rasite naršyklės kūrėjo įrankių skirtuke Network — žr. [nuoseklias instrukcijas]({docs_url}). Įklijuokite visą adresą žemiau.\n\nPastaba: DHL sekimo sąsaja teisingai atsako tik į Vokietijos IP adresą — ši integracija neveiks, jei jūsų Home Assistant jungiasi prie interneto iš kitos šalies.",
+        "data": {
+          "redirect_url": "Peradresavimo URL"
+        }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska nustatymas",
+        "description": "Įveskite Lenkijos mobiliojo telefono numerį, užregistruotą Mój DHL. Priimami devyni skaitmenys, +48 ir 0048; DHL gauna devynis vietinius skaitmenis ir išsiunčia vieną SMS kodą. Ši integracija niekada jo nesiunčia pakartotinai automatiškai.",
+        "data": {
+          "phone": "Lenkijos mobiliojo telefono numeris"
+        }
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska patvirtinimas",
+        "description": "Įveskite Mój DHL atsiųstą SMS kodą.",
+        "data": {
+          "sms_code": "SMS kodas"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL prisijungimas baigė galioti",
+        "description": "DHL nebepriima išsaugotos sesijos. Atidarykite šią nuorodą, vėl prisijunkite ir įklijuokite peradresavimo URL, kurį pagausite naršyklės kūrėjo įrankių skirtuke Network (žr. [nuoseklias instrukcijas]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Peradresavimo URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Tai neatrodo kaip DHL peradresavimo URL — įsitikinkite, kad po prisijungimo nukopijavote visą adresą.",
+      "invalid_auth": "DHL atmetė šį prisijungimą.",
+      "invalid_phone": "Įveskite galiojantį Lenkijos mobiliojo telefono numerį (devyni skaitmenys, pasirinktinai su +48 arba 0048).",
+      "invalid_sms_code": "Neteisingas arba pasibaigęs SMS kodas.",
+      "cannot_connect": "Nepavyko susisiekti su DHL. Bandykite dar kartą."
+    },
+    "abort": {
+      "already_configured": "Ši DHL paskyra jau nustatyta.",
+      "cannot_connect": "Nepavyko susisiekti su DHL. Bandykite dar kartą.",
+      "reauth_successful": "DHL pakartotinai autentifikuotas sėkmingai.",
+      "wrong_account": "Šis prisijungimas skirtas kitai DHL paskyrai. Prisijunkite paskyra, kuriai buvo nustatytas šis įrašas.",
+      "unsupported_country": "Ši šalis dar nepalaikoma."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL parinktys",
+        "menu_options": {
+          "incoming_parcels": "Gaunamos siuntos",
+          "outgoing_parcels": "Išsiunčiamos siuntos",
+          "settings": "Nustatymai"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Pristatytos siuntos",
+            "data": {
+              "delivered_filter_type": "Filtruoti pagal",
+              "delivered_filter_amount": "Kiekis"
+            },
+            "data_description": {
+              "delivered_filter_type": "Rodyti pristatytas siuntas per pastarąsias X dienas arba apriboti iki X naujausių.",
+              "delivered_filter_amount": "Rodomų dienų arba siuntų skaičius."
+            }
+          },
+          "history": {
+            "name": "Siuntų istorija",
+            "data": {
+              "include_history": "Įtraukti būsenų istoriją"
+            },
+            "data_description": {
+              "include_history": "Prideda kiekvienai siuntai istorijos atributą, kuriame išvardijamas kiekvienas būsenos atnaujinimas (laiko žyma, būsena, originalus tekstas). Pagal numatytuosius nustatymus išjungta."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Tvarkyti gaunamus siuntinius",
+        "description": "Laukiamų siuntinių sekimo kodai. DHL sekimo duomenys negali atskirti jūsų išsiųsto siuntinio nuo gaunamo, todėl kiekvieną kodą įrašykite į tinkamą sąrašą. Kiekvienas kodas pagal formą automatiškai nukreipiamas į tinkamą DHL sistemą — nurodyti nereikia.",
+        "data": {
+          "tracking_codes": "Sekimo kodai"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Tvarkyti išsiunčiamus siuntinius",
+        "description": "Jūsų išsiųstų siuntinių sekimo kodai. Jie skaičiuojami ir rodomi atskirai, todėl neįeina į gaunamų siuntinių skaičių.",
+        "data": {
+          "tracking_codes": "Sekimo kodai"
+        }
+      },
+      "settings": {
+        "title": "Sekimo nustatymai",
+        "sections": {
+          "delivered": {
+            "name": "Pristatytos siuntos",
+            "data": {
+              "delivered_filter_type": "Filtruoti pagal",
+              "delivered_filter_amount": "Kiekis"
+            },
+            "data_description": {
+              "delivered_filter_type": "Rodyti pristatytas siuntas per pastarąsias X dienas arba apriboti iki X naujausių.",
+              "delivered_filter_amount": "Rodomų dienų arba siuntų skaičius."
+            }
+          },
+          "history": {
+            "name": "Siuntų istorija",
+            "data": {
+              "include_history": "Įtraukti būsenų istoriją"
+            },
+            "data_description": {
+              "include_history": "Prideda kiekvienai siuntai istorijos atributą, kuriame išvardijamas kiekvienas būsenos atnaujinimas (laiko žyma, būsena, originalus tekstas). Pagal numatytuosius nustatymus išjungta."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Vienas iš sekimo kodų negalioja."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Vokietija",
+        "pl": "Lenkija"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dienos",
+        "parcels": "Siuntų skaičius"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Sekti siuntinį",
+      "description": "Pradėti sekti siuntinį pagal DHL sekimo numerį, papildomai prie to, ką jau rodo jūsų DHL paskyra.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sekimo kodas",
+          "description": "DHL sekimo numeris."
+        },
+        "config_entry_id": {
+          "name": "DHL paskyra",
+          "description": "Į kurią nustatytą DHL paskyrą pridėti šį siuntinį. Reikia tik tada, kai nustatyta daugiau nei viena."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Nebesekti siuntinio",
+      "description": "Nustoti sekti rankiniu būdu pridėtą DHL siuntinį pagal jo sekimo numerį.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sekimo kodas",
+          "description": "DHL sekimo numeris, kurio nebereikia sekti."
+        },
+        "config_entry_id": {
+          "name": "DHL paskyra",
+          "description": "Iš kurios nustatytos DHL paskyros pašalinti šį siuntinį. Reikia tik tada, kai nustatyta daugiau nei viena."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Siunta buvo užregistruota",
+      "parcel_status_changed": "Siuntos būsena pasikeitė",
+      "parcel_delivered": "Siunta buvo pristatyta",
+      "parcel_delivery_time_changed": "Numatomas siuntos pristatymo laikas pasikeitė",
+      "outgoing_parcel_status_changed": "Išsiunčiamos siuntos būsena pasikeitė",
+      "outgoing_parcel_delivered": "Išsiunčiama siunta buvo pristatyta"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Atnaujinti"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Pristatymai"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Gaunamos siuntos",
+        "unit_of_measurement": "siuntos"
+      },
+      "next_delivery": {
+        "name": "Kitas pristatymas"
+      },
+      "awaiting_pickup": {
+        "name": "Paruošta atsiimti",
+        "unit_of_measurement": "siuntos"
+      },
+      "delivered_parcels": {
+        "name": "Pristatytos siuntos",
+        "unit_of_measurement": "siuntos"
+      },
+      "outgoing_parcels": {
+        "name": "Išsiunčiamos siuntos",
+        "unit_of_measurement": "siuntos"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Pristatytos išsiunčiamos siuntos",
+        "unit_of_measurement": "siuntos"
+      },
+      "last_update": {
+        "name": "Paskutinis sėkmingas atnaujinimas"
+      },
+      "parcel": {
+        "name": "Siunta {barcode}"
+      }
+    }
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seadista DHL",
+        "menu_options": {
+          "account": "Konto",
+          "tracking": "Jälgimiskoodid"
+        }
+      },
+      "account": {
+        "title": "Logi sisse DHL-i kontole",
+        "description": "Millise DHL-i konto soovid lisada? Toetatud on Saksamaa ja Poola. [Taotle teist riiki]({issue_url}). Otsid DHL-i Hollandis? See on eraldi integratsioon: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Riik"
+        }
+      },
+      "de": {
+        "title": "DHL-i seadistamine (Saksamaa)",
+        "description": "Ava see link brauseris ja logi sisse oma DHL Kundenkonto kontoga: {authorize_url}\n\nBrauser ei suuda avada viimast `dhllogin://…` ümbersuunamist — see on ootuspärane. See aadress ei ilmu kunagi aadressiribale; leiad selle brauseri arendajatööriistade vahekaardilt Network — vaata [samm-sammulisi juhiseid]({docs_url}). Kleebi kogu aadress allpool.\n\nMärkus: DHL-i jälgimisliides vastab õigesti ainult Saksamaa IP-aadressile — see integratsioon ei tööta, kui su Home Assistant pääseb internetti teisest riigist.",
+        "data": {
+          "redirect_url": "Ümbersuunamise URL"
+        }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska seadistamine",
+        "description": "Sisesta Mój DHL-is registreeritud Poola mobiilinumber. Sobivad üheksa numbrit, +48 ja 0048; DHL saab üheksa kohalikku numbrit ja saadab ühe SMS-koodi. See integratsioon ei saada seda kunagi automaatselt uuesti.",
+        "data": {
+          "phone": "Poola mobiilinumber"
+        }
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska kinnitamine",
+        "description": "Sisesta Mój DHL-i saadetud SMS-kood.",
+        "data": {
+          "sms_code": "SMS-kood"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL-i sisselogimine aegus",
+        "description": "DHL ei aktsepteeri enam salvestatud seanssi. Ava see link, logi uuesti sisse ja kleebi ümbersuunamise URL, mille leiad brauseri arendajatööriistade vahekaardilt Network (vaata [samm-sammulisi juhiseid]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Ümbersuunamise URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "See ei näe välja nagu DHL-i ümbersuunamisaadress — kontrolli, et kopeerisid pärast sisselogimist kogu aadressi.",
+      "invalid_auth": "DHL lükkas selle sisselogimise tagasi.",
+      "invalid_phone": "Sisesta kehtiv Poola mobiilinumber (üheksa numbrit, soovi korral eesliitega +48 või 0048).",
+      "invalid_sms_code": "Vigane või aegunud SMS-kood.",
+      "cannot_connect": "DHLiga ei saanud ühendust. Proovi uuesti."
+    },
+    "abort": {
+      "already_configured": "See DHL-i konto on juba seadistatud.",
+      "cannot_connect": "DHLiga ei saanud ühendust. Proovi uuesti.",
+      "reauth_successful": "DHLi uuesti autentimine õnnestus.",
+      "wrong_account": "See sisselogimine on teise DHL-i konto jaoks. Logi sisse kontoga, mille jaoks see kirje seadistati.",
+      "unsupported_country": "Seda riiki veel ei toetata."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHLi valikud",
+        "menu_options": {
+          "incoming_parcels": "Saabuvad pakid",
+          "outgoing_parcels": "Väljuvad pakid",
+          "settings": "Seaded"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Kohale toimetatud pakid",
+            "data": {
+              "delivered_filter_type": "Filtreeri",
+              "delivered_filter_amount": "Kogus"
+            },
+            "data_description": {
+              "delivered_filter_type": "Kuva viimase X päeva jooksul kohale toimetatud pakid või piira X uusimaga.",
+              "delivered_filter_amount": "Kuvatavate päevade või pakkide arv."
+            }
+          },
+          "history": {
+            "name": "Pakkide ajalugu",
+            "data": {
+              "include_history": "Kaasa staatuste ajalugu"
+            },
+            "data_description": {
+              "include_history": "Lisab igale pakile ajaloo atribuudi, mis loetleb iga staatuse muutuse (ajatempel, staatus, algne tekst). Vaikimisi väljas."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Halda sissetulevaid pakke",
+        "description": "Pakkide jälgimiskoodid, mida ootad. DHL-i jälgimisandmed ei erista sinu saadetud pakki vastuvõetavast, seega pane iga kood õigesse loendisse. Iga kood suunatakse kuju järgi automaatselt õigesse DHL-i süsteemi — pole vaja öelda, millisesse.",
+        "data": {
+          "tracking_codes": "Jälgimiskoodid"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Halda väljaminevaid pakke",
+        "description": "Sinu saadetud pakkide jälgimiskoodid. Neid loendatakse ja kajastatakse eraldi, nii et need ei lähe sissetulevate pakkide arvu hulka.",
+        "data": {
+          "tracking_codes": "Jälgimiskoodid"
+        }
+      },
+      "settings": {
+        "title": "Jälgimise seadistamine",
+        "sections": {
+          "delivered": {
+            "name": "Kohale toimetatud pakid",
+            "data": {
+              "delivered_filter_type": "Filtreeri",
+              "delivered_filter_amount": "Kogus"
+            },
+            "data_description": {
+              "delivered_filter_type": "Kuva viimase X päeva jooksul kohale toimetatud pakid või piira X uusimaga.",
+              "delivered_filter_amount": "Kuvatavate päevade või pakkide arv."
+            }
+          },
+          "history": {
+            "name": "Pakkide ajalugu",
+            "data": {
+              "include_history": "Kaasa oleku ajalugu"
+            },
+            "data_description": {
+              "include_history": "Lisab igale pakile ajaloo atribuudi, mis loetleb iga staatuse muutuse (ajatempel, staatus, algne tekst). Vaikimisi väljas."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Üks jälgimiskoodidest ei ole kehtiv."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Saksamaa",
+        "pl": "Poola"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Päevad",
+        "parcels": "Pakkide arv"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Jälgi pakki",
+      "description": "Alusta paki jälgimist DHL-i jälgimisnumbri järgi lisaks sellele, mida su DHL-i konto juba näitab.",
+      "fields": {
+        "tracking_code": {
+          "name": "Jälgimiskood",
+          "description": "DHL-i jälgimisnumber."
+        },
+        "config_entry_id": {
+          "name": "DHL-i konto",
+          "description": "Millisesse seadistatud DHL-i kontosse see pakk lisada. Vajalik ainult siis, kui neid on seadistatud rohkem kui üks."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Lõpeta paki jälgimine",
+      "description": "Lõpeta käsitsi lisatud DHL-i paki jälgimine selle jälgimisnumbri järgi.",
+      "fields": {
+        "tracking_code": {
+          "name": "Jälgimiskood",
+          "description": "DHL-i jälgimisnumber, mille jälgimine lõpetada."
+        },
+        "config_entry_id": {
+          "name": "DHL-i konto",
+          "description": "Millisest seadistatud DHL-i kontost see pakk eemaldada. Vajalik ainult siis, kui neid on seadistatud rohkem kui üks."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Pakk registreeriti",
+      "parcel_status_changed": "Paki staatus muutus",
+      "parcel_delivered": "Pakk toimetati kohale",
+      "parcel_delivery_time_changed": "Paki oodatav tarneaeg muutus",
+      "outgoing_parcel_status_changed": "Väljuva paki staatus muutus",
+      "outgoing_parcel_delivered": "Väljuv pakk toimetati kohale"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Värskenda"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Tarned"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Saabuvad pakid",
+        "unit_of_measurement": "pakki"
+      },
+      "next_delivery": {
+        "name": "Järgmine tarne"
+      },
+      "awaiting_pickup": {
+        "name": "Väljastuspunktis ootamas",
+        "unit_of_measurement": "pakki"
+      },
+      "delivered_parcels": {
+        "name": "Kohale toimetatud pakid",
+        "unit_of_measurement": "pakki"
+      },
+      "outgoing_parcels": {
+        "name": "Väljuvad pakid",
+        "unit_of_measurement": "pakki"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Kohale toimetatud väljuvad pakid",
+        "unit_of_measurement": "pakki"
+      },
+      "last_update": {
+        "name": "Viimane õnnestunud värskendus"
+      },
+      "parcel": {
+        "name": "Pakk {barcode}"
+      }
+    }
+  }
+}

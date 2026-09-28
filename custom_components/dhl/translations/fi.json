@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Määritä DHL",
+        "menu_options": {
+          "account": "Tili",
+          "tracking": "Seurantakoodit"
+        }
+      },
+      "account": {
+        "title": "Kirjaudu DHL-tilille",
+        "description": "Minkä DHL-tilin haluat lisätä? Saksa ja Puola ovat tuettuja. [Pyydä toista maata]({issue_url}). Etsitkö DHL:ää Alankomaissa? Se on erillinen integraatio: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Maa"
+        }
+      },
+      "de": {
+        "title": "Määritä DHL (Saksa)",
+        "description": "Avaa tämä linkki selaimessa ja kirjaudu DHL Kundenkonto -tililläsi: {authorize_url}\n\nSelain ei pysty avaamaan viimeistä `dhllogin://…`-uudelleenohjausta — se on odotettua. Tämä osoite ei koskaan näy osoiterivillä; löydät sen selaimen kehittäjätyökalujen Network-välilehdeltä — katso [vaiheittaiset ohjeet]({docs_url}). Liitä koko osoite alle.\n\nHuomautus: DHL:n seurantarajapinta vastaa oikein vain saksalaiseen IP-osoitteeseen — tämä integraatio ei toimi, jos Home Assistant käyttää internetiä toisesta maasta.",
+        "data": {
+          "redirect_url": "Uudelleenohjauksen URL"
+        }
+      },
+      "pl": {
+        "title": "Määritä DHL Parcel Polska",
+        "description": "Anna Mój DHL -palveluun rekisteröity puolalainen matkapuhelinnumero. Yhdeksän numeroa, +48 ja 0048 hyväksytään; DHL saa yhdeksän paikallista numeroa ja lähettää yhden SMS-koodin. Tämä integraatio ei koskaan lähetä sitä uudelleen automaattisesti.",
+        "data": {
+          "phone": "Puolalainen matkapuhelinnumero"
+        }
+      },
+      "pl_sms": {
+        "title": "Vahvista DHL Parcel Polska",
+        "description": "Anna Mój DHL:n lähettämä SMS-koodi.",
+        "data": {
+          "sms_code": "SMS-koodi"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL-kirjautuminen vanhentui",
+        "description": "DHL ei enää hyväksy tallennettua istuntoa. Avaa tämä linkki, kirjaudu uudelleen ja liitä uudelleenohjauksen URL, jonka löydät selaimen kehittäjätyökalujen Network-välilehdeltä (katso [vaiheittaiset ohjeet]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Uudelleenohjauksen URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Tämä ei näytä DHL:n uudelleenohjausosoitteelta — varmista, että kopioit koko osoitteen kirjautumisen jälkeen.",
+      "invalid_auth": "DHL hylkäsi tämän kirjautumisen.",
+      "invalid_phone": "Anna kelvollinen puolalainen matkapuhelinnumero (yhdeksän numeroa, valinnaisesti etuliitteellä +48 tai 0048).",
+      "invalid_sms_code": "Virheellinen tai vanhentunut SMS-koodi.",
+      "cannot_connect": "DHLiin ei saatu yhteyttä. Yritä uudelleen."
+    },
+    "abort": {
+      "already_configured": "Tämä DHL-tili on jo määritetty.",
+      "cannot_connect": "DHLiin ei saatu yhteyttä. Yritä uudelleen.",
+      "reauth_successful": "DHLin todennus uusittiin onnistuneesti.",
+      "wrong_account": "Tämä kirjautuminen on eri DHL-tilille. Kirjaudu tilillä, jolle tämä merkintä määritettiin.",
+      "unsupported_country": "Tätä maata ei vielä tueta."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL-asetukset",
+        "menu_options": {
+          "incoming_parcels": "Saapuvat paketit",
+          "outgoing_parcels": "Lähtevät paketit",
+          "settings": "Asetukset"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Toimitetut paketit",
+            "data": {
+              "delivered_filter_type": "Suodata",
+              "delivered_filter_amount": "Määrä"
+            },
+            "data_description": {
+              "delivered_filter_type": "Näytä viimeisten X päivän aikana toimitetut paketit tai rajoita X viimeisimpään.",
+              "delivered_filter_amount": "Näytettävien päivien tai pakettien määrä."
+            }
+          },
+          "history": {
+            "name": "Pakettihistoria",
+            "data": {
+              "include_history": "Sisällytä tilahistoria"
+            },
+            "data_description": {
+              "include_history": "Lisää jokaiselle paketille historia-attribuutin, joka listaa jokaisen statuspäivityksen (aikaleima, status, alkuperäinen teksti). Oletuksena pois päältä."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Hallitse saapuvia paketteja",
+        "description": "Odottamiesi pakettien seurantakoodit. DHL:n seurantatiedot eivät erota lähettämääsi pakettia vastaanottamastasi, joten sijoita jokainen koodi oikeaan luetteloon. Jokainen koodi ohjataan muotonsa perusteella automaattisesti oikeaan DHL-järjestelmään — sitä ei tarvitse kertoa.",
+        "data": {
+          "tracking_codes": "Seurantakoodit"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Hallitse lähteviä paketteja",
+        "description": "Lähettämiesi pakettien seurantakoodit. Ne lasketaan ja raportoidaan erikseen, joten ne eivät kasvata saapuvien pakettien määrää.",
+        "data": {
+          "tracking_codes": "Seurantakoodit"
+        }
+      },
+      "settings": {
+        "title": "Määritä seuranta-asetukset",
+        "sections": {
+          "delivered": {
+            "name": "Toimitetut paketit",
+            "data": {
+              "delivered_filter_type": "Suodata",
+              "delivered_filter_amount": "Määrä"
+            },
+            "data_description": {
+              "delivered_filter_type": "Näytä viimeisten X päivän aikana toimitetut paketit tai rajoita X viimeisimpään.",
+              "delivered_filter_amount": "Näytettävien päivien tai pakettien määrä."
+            }
+          },
+          "history": {
+            "name": "Pakettihistoria",
+            "data": {
+              "include_history": "Sisällytä tilahistoria"
+            },
+            "data_description": {
+              "include_history": "Lisää jokaiselle paketille historia-attribuutin, joka listaa jokaisen statuspäivityksen (aikaleima, status, alkuperäinen teksti). Oletuksena pois päältä."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Yksi seurantakoodeista ei ole kelvollinen."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Saksa",
+        "pl": "Puola"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Päivää",
+        "parcels": "Pakettien määrä"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Seuraa pakettia",
+      "description": "Aloita paketin seuraaminen DHL-seurantanumerolla sen lisäksi, mitä DHL-tilisi jo näyttää.",
+      "fields": {
+        "tracking_code": {
+          "name": "Seurantakoodi",
+          "description": "DHL-seurantanumero."
+        },
+        "config_entry_id": {
+          "name": "DHL-tili",
+          "description": "Mihin määritettyyn DHL-tiliin paketti lisätään. Tarvitaan vain, jos tilejä on useampi kuin yksi."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Lopeta paketin seuranta",
+      "description": "Lopeta käsin lisätyn DHL-paketin seuraaminen sen seurantanumerolla.",
+      "fields": {
+        "tracking_code": {
+          "name": "Seurantakoodi",
+          "description": "DHL-seurantanumero, jonka seuraaminen lopetetaan."
+        },
+        "config_entry_id": {
+          "name": "DHL-tili",
+          "description": "Mistä määritetystä DHL-tilistä paketti poistetaan. Tarvitaan vain, jos tilejä on useampi kuin yksi."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Paketti rekisteröitiin",
+      "parcel_status_changed": "Paketin tila muuttui",
+      "parcel_delivered": "Paketti toimitettiin",
+      "parcel_delivery_time_changed": "Paketin arvioitu toimitusaika muuttui",
+      "outgoing_parcel_status_changed": "Lähtevän paketin tila muuttui",
+      "outgoing_parcel_delivered": "Lähtevä paketti toimitettiin"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Päivitä"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Toimitukset"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Saapuvat paketit",
+        "unit_of_measurement": "pakettia"
+      },
+      "next_delivery": {
+        "name": "Seuraava toimitus"
+      },
+      "awaiting_pickup": {
+        "name": "Valmis noudettavaksi",
+        "unit_of_measurement": "pakettia"
+      },
+      "delivered_parcels": {
+        "name": "Toimitetut paketit",
+        "unit_of_measurement": "pakettia"
+      },
+      "outgoing_parcels": {
+        "name": "Lähtevät paketit",
+        "unit_of_measurement": "pakettia"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Lähtevät toimitetut paketit",
+        "unit_of_measurement": "pakettia"
+      },
+      "last_update": {
+        "name": "Viimeisin onnistunut päivitys"
+      },
+      "parcel": {
+        "name": "Paketti {barcode}"
+      }
+    }
+  }
+}

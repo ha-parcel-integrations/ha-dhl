@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Opsæt DHL",
+        "menu_options": {
+          "account": "Konto",
+          "tracking": "Sporingsnumre"
+        }
+      },
+      "account": {
+        "title": "Log ind på en DHL-konto",
+        "description": "Hvilken DHL-konto vil du tilføje? Tyskland og Polen understøttes. [Anmod om et andet land]({issue_url}). Leder du efter DHL i Holland? Det er en separat integration: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Land"
+        }
+      },
+      "de": {
+        "title": "Opsæt DHL (Tyskland)",
+        "description": "Åbn dette link i en browser, og log ind med din DHL Kundenkonto: {authorize_url}\n\nDin browser kan ikke åbne den sidste `dhllogin://…`-omdirigering — det er forventet. Adressen vises aldrig i adresselinjen; du finder den i stedet under fanen Network i browserens udviklerværktøjer — se [trin-for-trin-vejledningen]({docs_url}). Indsæt hele adressen nedenfor.\n\nBemærk: DHL's sporingsendpoint svarer kun korrekt til en tysk IP-adresse — integrationen virker ikke, hvis din Home Assistant går på internettet fra et andet land.",
+        "data": {
+          "redirect_url": "Omdirigerings-URL"
+        }
+      },
+      "pl": {
+        "title": "Opsæt DHL Parcel Polska",
+        "description": "Indtast det polske mobilnummer, der er registreret hos Mój DHL. Ni cifre, +48 og 0048 accepteres; DHL modtager de ni lokale cifre og sender én SMS-kode. Integrationen sender den aldrig igen automatisk.",
+        "data": {
+          "phone": "Polsk mobilnummer"
+        }
+      },
+      "pl_sms": {
+        "title": "Bekræft DHL Parcel Polska",
+        "description": "Indtast SMS-koden fra Mój DHL.",
+        "data": {
+          "sms_code": "SMS-kode"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL-login er udløbet",
+        "description": "DHL accepterer ikke længere den gemte session. Åbn dette link, log ind igen, og indsæt den omdirigerings-URL, du fanger under fanen Network i browserens udviklerværktøjer (se [trin-for-trin-vejledningen]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Omdirigerings-URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Det ligner ikke DHL's omdirigerings-URL — sørg for at kopiere hele adressen efter login.",
+      "invalid_auth": "DHL afviste dette login.",
+      "invalid_phone": "Indtast et gyldigt polsk mobilnummer (ni cifre, eventuelt med +48 eller 0048 foran).",
+      "invalid_sms_code": "Ugyldig eller udløbet SMS-kode.",
+      "cannot_connect": "Kunne ikke få forbindelse til DHL. Prøv igen."
+    },
+    "abort": {
+      "already_configured": "Denne DHL-konto er allerede sat op.",
+      "cannot_connect": "Kunne ikke få forbindelse til DHL. Prøv igen.",
+      "reauth_successful": "DHL blev godkendt igen.",
+      "wrong_account": "Dette login er til en anden DHL-konto. Log ind med den konto, denne post blev sat op til.",
+      "unsupported_country": "Dette land understøttes endnu ikke."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL-indstillinger",
+        "menu_options": {
+          "incoming_parcels": "Indkommende pakker",
+          "outgoing_parcels": "Udgående pakker",
+          "settings": "Indstillinger"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Leverede pakker",
+            "data": {
+              "delivered_filter_type": "Filtrer efter",
+              "delivered_filter_amount": "Antal"
+            },
+            "data_description": {
+              "delivered_filter_type": "Vis leverede pakker fra de sidste X dage, eller begræns til de X seneste.",
+              "delivered_filter_amount": "Antal dage eller pakker der skal vises."
+            }
+          },
+          "history": {
+            "name": "Pakkehistorik",
+            "data": {
+              "include_history": "Inkluder statushistorik"
+            },
+            "data_description": {
+              "include_history": "Tilføj en historikattribut pr. pakke, der viser hver statusopdatering (tidsstempel, status, originaltekst). Slået fra som standard."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Administrer indgående pakker",
+        "description": "Sporingskoder for pakker, du venter på. DHL's sporingsdata kan ikke skelne en pakke, du har sendt, fra en, du modtager, så placer hver kode på den rigtige liste. Hver kode sendes automatisk til den rigtige DHL-backend ud fra sin form — du behøver ikke angive hvilken.",
+        "data": {
+          "tracking_codes": "Sporingskoder"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Administrer udgående pakker",
+        "description": "Sporingskoder for pakker, du har sendt. De tælles og rapporteres separat, så de ikke indgår i antallet af indgående pakker.",
+        "data": {
+          "tracking_codes": "Sporingskoder"
+        }
+      },
+      "settings": {
+        "title": "Konfigurer sporingsindstillinger",
+        "sections": {
+          "delivered": {
+            "name": "Leverede pakker",
+            "data": {
+              "delivered_filter_type": "Filtrer efter",
+              "delivered_filter_amount": "Antal"
+            },
+            "data_description": {
+              "delivered_filter_type": "Vis leverede pakker fra de sidste X dage, eller begræns til de X seneste.",
+              "delivered_filter_amount": "Antal dage eller pakker der skal vises."
+            }
+          },
+          "history": {
+            "name": "Pakkehistorik",
+            "data": {
+              "include_history": "Medtag statushistorik"
+            },
+            "data_description": {
+              "include_history": "Tilføj en historikattribut pr. pakke, der viser hver statusopdatering (tidsstempel, status, originaltekst). Slået fra som standard."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "En af sporingskoderne er ikke gyldig."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Tyskland",
+        "pl": "Polen"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dage",
+        "parcels": "Antal pakker"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Spor pakke",
+      "description": "Begynd at spore en pakke via dens DHL-sporingsnummer, ud over det, din DHL-konto allerede viser.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sporingskode",
+          "description": "DHL-sporingsnummeret."
+        },
+        "config_entry_id": {
+          "name": "DHL-konto",
+          "description": "Hvilken konfigureret DHL-konto pakken skal tilføjes til. Kun nødvendigt, hvis der er sat mere end én op."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Stop sporing af pakke",
+      "description": "Stop sporingen af en manuelt tilføjet DHL-pakke via dens sporingsnummer.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sporingskode",
+          "description": "DHL-sporingsnummeret, der ikke længere skal spores."
+        },
+        "config_entry_id": {
+          "name": "DHL-konto",
+          "description": "Hvilken konfigureret DHL-konto pakken skal fjernes fra. Kun nødvendigt, hvis der er sat mere end én op."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "En pakke blev registreret",
+      "parcel_status_changed": "En pakkes status ændrede sig",
+      "parcel_delivered": "En pakke blev leveret",
+      "parcel_delivery_time_changed": "En pakkes forventede leveringstid ændrede sig",
+      "outgoing_parcel_status_changed": "En udgående pakkes status ændrede sig",
+      "outgoing_parcel_delivered": "En udgående pakke blev leveret"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Opdater"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Leveringer"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Indkommende pakker",
+        "unit_of_measurement": "pakker"
+      },
+      "next_delivery": {
+        "name": "Næste levering"
+      },
+      "awaiting_pickup": {
+        "name": "Klar til afhentning",
+        "unit_of_measurement": "pakker"
+      },
+      "delivered_parcels": {
+        "name": "Leverede pakker",
+        "unit_of_measurement": "pakker"
+      },
+      "outgoing_parcels": {
+        "name": "Udgående pakker",
+        "unit_of_measurement": "pakker"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Udgående leverede pakker",
+        "unit_of_measurement": "pakker"
+      },
+      "last_update": {
+        "name": "Sidste vellykkede opdatering"
+      },
+      "parcel": {
+        "name": "Pakke {barcode}"
+      }
+    }
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Siapkan DHL",
+        "menu_options": {
+          "account": "Akun",
+          "tracking": "Kode pelacakan"
+        }
+      },
+      "account": {
+        "title": "Masuk ke akun DHL",
+        "description": "Akun DHL mana yang ingin Anda tambahkan? Jerman dan Polandia didukung. [Minta negara lain]({issue_url}). Mencari DHL di Belanda? Itu integrasi terpisah: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Negara"
+        }
+      },
+      "de": {
+        "title": "Siapkan DHL (Jerman)",
+        "description": "Buka tautan ini di browser dan masuk dengan DHL Kundenkonto Anda: {authorize_url}\n\nBrowser Anda akan gagal membuka pengalihan terakhir `dhllogin://…` — itu memang diharapkan. Alamat ini tidak pernah muncul di bilah alamat; Anda menemukannya di tab Network pada alat pengembang browser — lihat [petunjuk langkah demi langkah]({docs_url}). Tempel alamat lengkapnya di bawah.\n\nCatatan: endpoint pelacakan DHL hanya merespons dengan benar ke alamat IP Jerman — integrasi ini tidak akan berfungsi jika Home Assistant Anda terhubung ke internet dari negara lain.",
+        "data": {
+          "redirect_url": "URL pengalihan"
+        }
+      },
+      "pl": {
+        "title": "Siapkan DHL Parcel Polska",
+        "description": "Masukkan nomor ponsel Polandia yang terdaftar di Mój DHL. Sembilan digit, +48, dan 0048 diterima; DHL menerima sembilan digit lokal dan mengirim satu kode SMS. Integrasi ini tidak pernah mengirimkannya ulang secara otomatis.",
+        "data": {
+          "phone": "Nomor ponsel Polandia"
+        }
+      },
+      "pl_sms": {
+        "title": "Verifikasi DHL Parcel Polska",
+        "description": "Masukkan kode SMS yang dikirim oleh Mój DHL.",
+        "data": {
+          "sms_code": "Kode SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sesi masuk DHL kedaluwarsa",
+        "description": "DHL tidak lagi menerima sesi yang tersimpan. Buka tautan ini, masuk lagi, lalu tempel URL pengalihan yang Anda tangkap di tab Network pada alat pengembang browser (lihat [petunjuk langkah demi langkah]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "URL pengalihan"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Itu tidak tampak seperti URL pengalihan DHL — pastikan Anda menyalin alamat lengkap setelah masuk.",
+      "invalid_auth": "DHL menolak proses masuk ini.",
+      "invalid_phone": "Masukkan nomor ponsel Polandia yang valid (sembilan digit, opsional dengan awalan +48 atau 0048).",
+      "invalid_sms_code": "Kode SMS tidak valid atau kedaluwarsa.",
+      "cannot_connect": "Tidak dapat menghubungi DHL. Silakan coba lagi."
+    },
+    "abort": {
+      "already_configured": "Akun DHL tersebut sudah disiapkan.",
+      "cannot_connect": "Tidak dapat menghubungi DHL. Silakan coba lagi.",
+      "reauth_successful": "DHL berhasil diautentikasi ulang.",
+      "wrong_account": "Proses masuk itu untuk akun DHL lain. Masuk dengan akun yang digunakan saat entri ini disiapkan.",
+      "unsupported_country": "Negara tersebut belum didukung."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opsi DHL",
+        "menu_options": {
+          "incoming_parcels": "Paket masuk",
+          "outgoing_parcels": "Paket keluar",
+          "settings": "Pengaturan"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Paket terkirim",
+            "data": {
+              "delivered_filter_type": "Filter berdasarkan",
+              "delivered_filter_amount": "Jumlah"
+            },
+            "data_description": {
+              "delivered_filter_type": "Tampilkan paket terkirim dari X hari terakhir, atau batasi hingga X paket terbaru.",
+              "delivered_filter_amount": "Jumlah hari atau paket yang ditampilkan."
+            }
+          },
+          "history": {
+            "name": "Riwayat paket",
+            "data": {
+              "include_history": "Sertakan riwayat status"
+            },
+            "data_description": {
+              "include_history": "Menambahkan atribut riwayat per paket yang mencantumkan setiap pembaruan status (waktu, status, teks asli). Nonaktif secara default."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Kelola paket masuk",
+        "description": "Kode pelacakan paket yang Anda tunggu. Data pelacakan DHL tidak dapat membedakan paket yang Anda kirim dari paket yang Anda terima, jadi masukkan setiap kode ke daftar yang sesuai. Setiap kode diarahkan otomatis ke sistem DHL yang tepat berdasarkan bentuknya — tidak perlu menyebutkan yang mana.",
+        "data": {
+          "tracking_codes": "Kode pelacakan"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Kelola paket keluar",
+        "description": "Kode pelacakan paket yang Anda kirim. Paket ini dihitung dan dilaporkan terpisah, sehingga tidak masuk ke jumlah paket masuk Anda.",
+        "data": {
+          "tracking_codes": "Kode pelacakan"
+        }
+      },
+      "settings": {
+        "title": "Konfigurasikan pengaturan pelacakan",
+        "sections": {
+          "delivered": {
+            "name": "Paket terkirim",
+            "data": {
+              "delivered_filter_type": "Filter berdasarkan",
+              "delivered_filter_amount": "Jumlah"
+            },
+            "data_description": {
+              "delivered_filter_type": "Tampilkan paket terkirim dari X hari terakhir, atau batasi hingga X paket terbaru.",
+              "delivered_filter_amount": "Jumlah hari atau paket yang ditampilkan."
+            }
+          },
+          "history": {
+            "name": "Riwayat paket",
+            "data": {
+              "include_history": "Sertakan riwayat status"
+            },
+            "data_description": {
+              "include_history": "Menambahkan atribut riwayat per paket yang mencantumkan setiap pembaruan status (waktu, status, teks asli). Nonaktif secara default."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Salah satu kode pelacakan tidak valid."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Jerman",
+        "pl": "Polandia"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Hari",
+        "parcels": "Jumlah paket"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Lacak paket",
+      "description": "Mulai melacak paket dengan nomor pelacakan DHL-nya, selain yang sudah ditampilkan akun DHL Anda.",
+      "fields": {
+        "tracking_code": {
+          "name": "Kode resi",
+          "description": "Nomor pelacakan DHL."
+        },
+        "config_entry_id": {
+          "name": "Akun DHL",
+          "description": "Akun DHL terkonfigurasi mana yang akan ditambahi paket ini. Hanya diperlukan jika ada lebih dari satu."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Berhenti melacak paket",
+      "description": "Berhenti melacak paket DHL yang ditambahkan secara manual berdasarkan nomor pelacakannya.",
+      "fields": {
+        "tracking_code": {
+          "name": "Kode resi",
+          "description": "Nomor pelacakan DHL yang tidak lagi dilacak."
+        },
+        "config_entry_id": {
+          "name": "Akun DHL",
+          "description": "Akun DHL terkonfigurasi mana yang akan dihapus paketnya. Hanya diperlukan jika ada lebih dari satu."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Paket telah terdaftar",
+      "parcel_status_changed": "Status paket berubah",
+      "parcel_delivered": "Paket telah terkirim",
+      "parcel_delivery_time_changed": "Perkiraan waktu pengiriman paket berubah",
+      "outgoing_parcel_status_changed": "Status paket keluar berubah",
+      "outgoing_parcel_delivered": "Paket keluar telah dikirim"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Segarkan"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Pengiriman"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Paket masuk",
+        "unit_of_measurement": "paket"
+      },
+      "next_delivery": {
+        "name": "Pengiriman berikutnya"
+      },
+      "awaiting_pickup": {
+        "name": "Menunggu diambil",
+        "unit_of_measurement": "paket"
+      },
+      "delivered_parcels": {
+        "name": "Paket terkirim",
+        "unit_of_measurement": "paket"
+      },
+      "outgoing_parcels": {
+        "name": "Paket keluar",
+        "unit_of_measurement": "paket"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Paket keluar yang terkirim",
+        "unit_of_measurement": "paket"
+      },
+      "last_update": {
+        "name": "Pembaruan berhasil terakhir"
+      },
+      "parcel": {
+        "name": "Paket {barcode}"
+      }
+    }
+  }
+}

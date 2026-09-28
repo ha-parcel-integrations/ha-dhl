@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nastavitev DHL",
+        "menu_options": {
+          "account": "Račun",
+          "tracking": "Sledilne kode"
+        }
+      },
+      "account": {
+        "title": "Prijava v račun DHL",
+        "description": "Kateri račun DHL želite dodati? Podprti sta Nemčija in Poljska. [Zaprosite za drugo državo]({issue_url}). Iščete DHL na Nizozemskem? To je ločena integracija: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Država"
+        }
+      },
+      "de": {
+        "title": "Nastavitev DHL (Nemčija)",
+        "description": "Odprite to povezavo v brskalniku in se prijavite s svojim DHL Kundenkonto: {authorize_url}\n\nBrskalnik ne bo mogel odpreti končne preusmeritve `dhllogin://…` — to je pričakovano. Ta naslov se nikoli ne prikaže v naslovni vrstici; najdete ga na zavihku Network v razvijalskih orodjih brskalnika — glejte [navodila po korakih]({docs_url}). Spodaj prilepite celoten naslov.\n\nOpomba: DHL-ov vmesnik za sledenje pravilno odgovarja le na nemški naslov IP — ta integracija ne bo delovala, če vaš Home Assistant dostopa do interneta iz druge države.",
+        "data": {
+          "redirect_url": "Preusmeritveni URL"
+        }
+      },
+      "pl": {
+        "title": "Nastavitev DHL Parcel Polska",
+        "description": "Vnesite poljsko mobilno številko, registrirano pri Mój DHL. Sprejeti so devet števk, +48 in 0048; DHL prejme devet lokalnih števk in pošlje eno kodo SMS. Ta integracija je nikoli samodejno ne pošlje znova.",
+        "data": {
+          "phone": "Poljska mobilna številka"
+        }
+      },
+      "pl_sms": {
+        "title": "Preverjanje DHL Parcel Polska",
+        "description": "Vnesite kodo SMS, ki jo je poslal Mój DHL.",
+        "data": {
+          "sms_code": "SMS-koda"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Prijava v DHL je potekla",
+        "description": "DHL ne sprejema več shranjene seje. Odprite to povezavo, se znova prijavite in prilepite preusmeritveni URL, ki ga ujamete na zavihku Network v razvijalskih orodjih brskalnika (glejte [navodila po korakih]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Preusmeritveni URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "To ni videti kot DHL-ov preusmeritveni URL — preverite, ali ste po prijavi kopirali celoten naslov.",
+      "invalid_auth": "DHL je zavrnil to prijavo.",
+      "invalid_phone": "Vnesite veljavno poljsko mobilno številko (devet številk, po želji s predpono +48 ali 0048).",
+      "invalid_sms_code": "Neveljavna ali potekla SMS-koda.",
+      "cannot_connect": "DHLa ni bilo mogoče doseči. Poskusite znova."
+    },
+    "abort": {
+      "already_configured": "Ta račun DHL je že nastavljen.",
+      "cannot_connect": "DHLa ni bilo mogoče doseči. Poskusite znova.",
+      "reauth_successful": "Ponovno preverjanje pristnosti DHL je uspelo.",
+      "wrong_account": "Ta prijava pripada drugemu računu DHL. Prijavite se z računom, za katerega je bil ta vnos nastavljen.",
+      "unsupported_country": "Ta država še ni podprta."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Možnosti DHL",
+        "menu_options": {
+          "incoming_parcels": "Prihajajoči paketi",
+          "outgoing_parcels": "Odhodni paketi",
+          "settings": "Nastavitve"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Dostavljeni paketi",
+            "data": {
+              "delivered_filter_type": "Filtriraj po",
+              "delivered_filter_amount": "Količina"
+            },
+            "data_description": {
+              "delivered_filter_type": "Prikaži dostavljene pakete iz zadnjih X dni ali omeji na X najnovejših.",
+              "delivered_filter_amount": "Število dni ali paketov za prikaz."
+            }
+          },
+          "history": {
+            "name": "Zgodovina paketov",
+            "data": {
+              "include_history": "Vključi zgodovino stanj"
+            },
+            "data_description": {
+              "include_history": "Vsakemu paketu doda atribut zgodovine s seznamom vsake posodobitve stanja (časovni žig, stanje, izvirno besedilo). Privzeto izklopljeno."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Upravljanje prihajajočih paketov",
+        "description": "Kode za sledenje paketov, ki jih pričakujete. DHL-ovi podatki o sledenju ne ločijo paketa, ki ste ga poslali, od paketa, ki ga prejemate, zato vsako kodo uvrstite na pravi seznam. Vsaka koda je glede na obliko samodejno usmerjena v pravi DHL-ov sistem — ni vam treba navesti, v katerega.",
+        "data": {
+          "tracking_codes": "Kode za sledenje"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Upravljanje odhodnih paketov",
+        "description": "Kode za sledenje paketov, ki ste jih poslali. Štejejo in prikazujejo se ločeno, zato ne vplivajo na število dohodnih paketov.",
+        "data": {
+          "tracking_codes": "Kode za sledenje"
+        }
+      },
+      "settings": {
+        "title": "Nastavitve sledenja",
+        "sections": {
+          "delivered": {
+            "name": "Dostavljeni paketi",
+            "data": {
+              "delivered_filter_type": "Filtriraj po",
+              "delivered_filter_amount": "Količina"
+            },
+            "data_description": {
+              "delivered_filter_type": "Prikaži dostavljene pakete iz zadnjih X dni ali omeji na X najnovejših.",
+              "delivered_filter_amount": "Število dni ali paketov za prikaz."
+            }
+          },
+          "history": {
+            "name": "Zgodovina paketov",
+            "data": {
+              "include_history": "Vključi zgodovino statusov"
+            },
+            "data_description": {
+              "include_history": "Vsakemu paketu doda atribut zgodovine s seznamom vsake posodobitve stanja (časovni žig, stanje, izvirno besedilo). Privzeto izklopljeno."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Ena od kod za sledenje ni veljavna."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Nemčija",
+        "pl": "Poljska"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dnevi",
+        "parcels": "Število paketov"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Sledi pošiljki",
+      "description": "Začnite slediti paketu po njegovi številki za sledenje DHL, poleg tega, kar že prikazuje vaš račun DHL.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledilna koda",
+          "description": "Številka za sledenje DHL."
+        },
+        "config_entry_id": {
+          "name": "Račun DHL",
+          "description": "V kateri nastavljeni račun DHL dodati ta paket. Potrebno le, če jih je nastavljenih več."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Prenehaj slediti pošiljki",
+      "description": "Prenehajte slediti ročno dodanemu paketu DHL po njegovi številki za sledenje.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledilna koda",
+          "description": "Sledilna številka DHL, ki ji naj se preneha slediti."
+        },
+        "config_entry_id": {
+          "name": "Račun DHL",
+          "description": "Iz katerega nastavljenega računa DHL odstraniti ta paket. Potrebno le, če jih je nastavljenih več."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Paket je bil registriran",
+      "parcel_status_changed": "Stanje paketa se je spremenilo",
+      "parcel_delivered": "Paket je bil dostavljen",
+      "parcel_delivery_time_changed": "Pričakovani čas dostave paketa se je spremenil",
+      "outgoing_parcel_status_changed": "Stanje odhodnega paketa se je spremenilo",
+      "outgoing_parcel_delivered": "Odhodni paket je bil dostavljen"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Osveži"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Dostave"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Prihajajoči paketi",
+        "unit_of_measurement": "paketov"
+      },
+      "next_delivery": {
+        "name": "Naslednja dostava"
+      },
+      "awaiting_pickup": {
+        "name": "Pripravljeno za prevzem",
+        "unit_of_measurement": "paketov"
+      },
+      "delivered_parcels": {
+        "name": "Dostavljeni paketi",
+        "unit_of_measurement": "paketov"
+      },
+      "outgoing_parcels": {
+        "name": "Odhodni paketi",
+        "unit_of_measurement": "paketov"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Odhodni dostavljeni paketi",
+        "unit_of_measurement": "paketov"
+      },
+      "last_update": {
+        "name": "Zadnja uspešna posodobitev"
+      },
+      "parcel": {
+        "name": "Paket {barcode}"
+      }
+    }
+  }
+}

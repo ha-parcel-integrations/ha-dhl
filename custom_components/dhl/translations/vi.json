@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Thiết lập DHL",
+        "menu_options": {
+          "account": "Tài khoản",
+          "tracking": "Mã vận đơn"
+        }
+      },
+      "account": {
+        "title": "Đăng nhập tài khoản DHL",
+        "description": "Bạn muốn thêm tài khoản DHL nào? Hỗ trợ Đức và Ba Lan. [Yêu cầu quốc gia khác]({issue_url}). Đang tìm DHL ở Hà Lan? Đó là một tích hợp riêng: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Quốc gia"
+        }
+      },
+      "de": {
+        "title": "Thiết lập DHL (Đức)",
+        "description": "Mở liên kết này trong trình duyệt và đăng nhập bằng DHL Kundenkonto của bạn: {authorize_url}\n\nTrình duyệt sẽ không mở được lần chuyển hướng cuối `dhllogin://…` — điều này là bình thường. Địa chỉ này không bao giờ xuất hiện trên thanh địa chỉ; bạn tìm nó trong tab Network của công cụ dành cho nhà phát triển của trình duyệt — xem [hướng dẫn từng bước]({docs_url}). Dán toàn bộ địa chỉ vào bên dưới.\n\nLưu ý: dịch vụ theo dõi của DHL chỉ phản hồi đúng với địa chỉ IP ở Đức — tích hợp này sẽ không hoạt động nếu Home Assistant của bạn truy cập internet từ quốc gia khác.",
+        "data": {
+          "redirect_url": "URL chuyển hướng"
+        }
+      },
+      "pl": {
+        "title": "Thiết lập DHL Parcel Polska",
+        "description": "Nhập số điện thoại di động Ba Lan đã đăng ký với Mój DHL. Chấp nhận chín chữ số, +48 và 0048; DHL nhận chín chữ số nội địa và gửi một mã SMS. Tích hợp này không bao giờ tự động gửi lại mã.",
+        "data": {
+          "phone": "Số điện thoại di động Ba Lan"
+        }
+      },
+      "pl_sms": {
+        "title": "Xác minh DHL Parcel Polska",
+        "description": "Nhập mã SMS do Mój DHL gửi.",
+        "data": {
+          "sms_code": "Mã SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Phiên đăng nhập DHL đã hết hạn",
+        "description": "DHL không còn chấp nhận phiên đã lưu. Mở liên kết này, đăng nhập lại, rồi dán URL chuyển hướng bạn bắt được trong tab Network của công cụ dành cho nhà phát triển của trình duyệt (xem [hướng dẫn từng bước]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "URL chuyển hướng"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Đó có vẻ không phải là URL chuyển hướng của DHL — hãy chắc chắn bạn đã sao chép toàn bộ địa chỉ sau khi đăng nhập.",
+      "invalid_auth": "DHL đã từ chối lần đăng nhập này.",
+      "invalid_phone": "Nhập số điện thoại di động Ba Lan hợp lệ (chín chữ số, có thể thêm tiền tố +48 hoặc 0048).",
+      "invalid_sms_code": "Mã SMS không hợp lệ hoặc đã hết hạn.",
+      "cannot_connect": "Không thể kết nối tới DHL. Vui lòng thử lại."
+    },
+    "abort": {
+      "already_configured": "Tài khoản DHL này đã được thiết lập.",
+      "cannot_connect": "Không thể kết nối tới DHL. Vui lòng thử lại.",
+      "reauth_successful": "Đã xác thực lại DHL thành công.",
+      "wrong_account": "Lần đăng nhập đó thuộc về một tài khoản DHL khác. Hãy đăng nhập bằng tài khoản đã dùng để thiết lập mục này.",
+      "unsupported_country": "Quốc gia này chưa được hỗ trợ."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tùy chọn DHL",
+        "menu_options": {
+          "incoming_parcels": "Kiện hàng đang đến",
+          "outgoing_parcels": "Bưu kiện gửi đi",
+          "settings": "Cài đặt"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Kiện hàng đã giao",
+            "data": {
+              "delivered_filter_type": "Lọc theo",
+              "delivered_filter_amount": "Số lượng"
+            },
+            "data_description": {
+              "delivered_filter_type": "Hiển thị các kiện hàng đã giao trong X ngày gần nhất, hoặc giới hạn ở X kiện gần đây nhất.",
+              "delivered_filter_amount": "Số ngày hoặc số kiện hàng cần hiển thị."
+            }
+          },
+          "history": {
+            "name": "Lịch sử kiện hàng",
+            "data": {
+              "include_history": "Bao gồm lịch sử trạng thái"
+            },
+            "data_description": {
+              "include_history": "Thêm một thuộc tính lịch sử cho mỗi kiện hàng, liệt kê từng lần cập nhật trạng thái (thời gian, trạng thái, văn bản gốc). Mặc định tắt."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Quản lý bưu kiện đến",
+        "description": "Mã theo dõi của các bưu kiện bạn đang chờ. Dữ liệu theo dõi của DHL không phân biệt được bưu kiện bạn gửi với bưu kiện bạn nhận, vì vậy hãy đặt mỗi mã vào đúng danh sách. Mỗi mã được tự động chuyển đến đúng hệ thống DHL dựa trên dạng của nó — không cần chỉ định.",
+        "data": {
+          "tracking_codes": "Mã vận đơn"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Quản lý bưu kiện gửi đi",
+        "description": "Mã theo dõi của các bưu kiện bạn đã gửi. Chúng được đếm và báo cáo riêng, nên không tính vào số bưu kiện đến của bạn.",
+        "data": {
+          "tracking_codes": "Mã vận đơn"
+        }
+      },
+      "settings": {
+        "title": "Cấu hình cài đặt theo dõi",
+        "sections": {
+          "delivered": {
+            "name": "Kiện hàng đã giao",
+            "data": {
+              "delivered_filter_type": "Lọc theo",
+              "delivered_filter_amount": "Số lượng"
+            },
+            "data_description": {
+              "delivered_filter_type": "Hiển thị các kiện hàng đã giao trong X ngày gần nhất, hoặc giới hạn ở X kiện gần đây nhất.",
+              "delivered_filter_amount": "Số ngày hoặc số kiện hàng cần hiển thị."
+            }
+          },
+          "history": {
+            "name": "Lịch sử kiện hàng",
+            "data": {
+              "include_history": "Bao gồm lịch sử trạng thái"
+            },
+            "data_description": {
+              "include_history": "Thêm một thuộc tính lịch sử cho mỗi kiện hàng, liệt kê từng lần cập nhật trạng thái (thời gian, trạng thái, văn bản gốc). Mặc định tắt."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Một trong các mã theo dõi không hợp lệ."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Đức",
+        "pl": "Ba Lan"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Ngày",
+        "parcels": "Số lượng kiện hàng"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Theo dõi kiện hàng",
+      "description": "Bắt đầu theo dõi một bưu kiện bằng mã theo dõi DHL, ngoài những gì tài khoản DHL của bạn đã hiển thị.",
+      "fields": {
+        "tracking_code": {
+          "name": "Mã vận đơn",
+          "description": "Mã theo dõi DHL."
+        },
+        "config_entry_id": {
+          "name": "Tài khoản DHL",
+          "description": "Tài khoản DHL đã cấu hình để thêm bưu kiện này vào. Chỉ cần khi có nhiều hơn một tài khoản."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Ngừng theo dõi kiện hàng",
+      "description": "Ngừng theo dõi một bưu kiện DHL được thêm thủ công bằng mã theo dõi của nó.",
+      "fields": {
+        "tracking_code": {
+          "name": "Mã vận đơn",
+          "description": "Mã theo dõi DHL sẽ ngừng theo dõi."
+        },
+        "config_entry_id": {
+          "name": "Tài khoản DHL",
+          "description": "Tài khoản DHL đã cấu hình để xóa bưu kiện này khỏi. Chỉ cần khi có nhiều hơn một tài khoản."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Một kiện hàng đã được đăng ký",
+      "parcel_status_changed": "Trạng thái của một kiện hàng đã thay đổi",
+      "parcel_delivered": "Một kiện hàng đã được giao",
+      "parcel_delivery_time_changed": "Thời gian giao hàng dự kiến của một kiện hàng đã thay đổi",
+      "outgoing_parcel_status_changed": "Trạng thái của một bưu kiện gửi đi đã thay đổi",
+      "outgoing_parcel_delivered": "Một bưu kiện gửi đi đã được giao"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Làm mới"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Giao hàng"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Kiện hàng đang đến",
+        "unit_of_measurement": "kiện hàng"
+      },
+      "next_delivery": {
+        "name": "Lần giao hàng tiếp theo"
+      },
+      "awaiting_pickup": {
+        "name": "Chờ nhận hàng",
+        "unit_of_measurement": "bưu kiện"
+      },
+      "delivered_parcels": {
+        "name": "Kiện hàng đã giao",
+        "unit_of_measurement": "kiện hàng"
+      },
+      "outgoing_parcels": {
+        "name": "Bưu kiện gửi đi",
+        "unit_of_measurement": "kiện hàng"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Bưu kiện gửi đi đã giao",
+        "unit_of_measurement": "kiện hàng"
+      },
+      "last_update": {
+        "name": "Cập nhật thành công gần nhất"
+      },
+      "parcel": {
+        "name": "Kiện hàng {barcode}"
+      }
+    }
+  }
+}

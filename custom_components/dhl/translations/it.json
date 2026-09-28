@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura DHL",
+        "menu_options": {
+          "account": "Account",
+          "tracking": "Codici di tracciamento"
+        }
+      },
+      "account": {
+        "title": "Accedi a un account DHL",
+        "description": "Quale account DHL vuoi aggiungere? Sono supportate Germania e Polonia. [Richiedi un altro paese]({issue_url}). Cerchi DHL nei Paesi Bassi? È un'integrazione separata: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Paese"
+        }
+      },
+      "de": {
+        "title": "Configura DHL (Germania)",
+        "description": "Apri questo link in un browser e accedi con il tuo DHL Kundenkonto: {authorize_url}\n\nIl browser non riuscirà ad aprire il reindirizzamento finale `dhllogin://…`: è previsto. Questo indirizzo non compare mai nella barra degli indirizzi; lo trovi nella scheda Network degli strumenti per sviluppatori del browser — vedi le [istruzioni passo passo]({docs_url}). Incolla qui sotto l'indirizzo completo.\n\nNota: il servizio di tracciamento di DHL risponde correttamente solo a un indirizzo IP tedesco: questa integrazione non funzionerà se il tuo Home Assistant accede a Internet da un altro paese.",
+        "data": {
+          "redirect_url": "URL di reindirizzamento"
+        }
+      },
+      "pl": {
+        "title": "Configura DHL Parcel Polska",
+        "description": "Inserisci il numero di cellulare polacco registrato su Mój DHL. Sono accettati nove cifre, +48 e 0048; DHL riceve le nove cifre locali e invia un codice SMS. Questa integrazione non lo reinvia mai automaticamente.",
+        "data": {
+          "phone": "Numero di cellulare polacco"
+        }
+      },
+      "pl_sms": {
+        "title": "Verifica DHL Parcel Polska",
+        "description": "Inserisci il codice SMS inviato da Mój DHL.",
+        "data": {
+          "sms_code": "Codice SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Accesso DHL scaduto",
+        "description": "DHL non accetta più la sessione salvata. Apri questo link, accedi di nuovo e incolla l'URL di reindirizzamento che trovi nella scheda Network degli strumenti per sviluppatori del browser (vedi le [istruzioni passo passo]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "URL di reindirizzamento"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Non sembra l'URL di reindirizzamento di DHL: assicurati di aver copiato l'indirizzo completo dopo l'accesso.",
+      "invalid_auth": "DHL ha rifiutato questo accesso.",
+      "invalid_phone": "Inserisci un numero di cellulare polacco valido (nove cifre, facoltativamente precedute da +48 o 0048).",
+      "invalid_sms_code": "Codice SMS non valido o scaduto.",
+      "cannot_connect": "Impossibile raggiungere DHL. Riprova."
+    },
+    "abort": {
+      "already_configured": "Questo account DHL è già configurato.",
+      "cannot_connect": "Impossibile raggiungere DHL. Riprova.",
+      "reauth_successful": "DHL è stato riautenticato correttamente.",
+      "wrong_account": "Questo accesso riguarda un altro account DHL. Accedi con l'account per cui è stata configurata questa voce.",
+      "unsupported_country": "Questo paese non è ancora supportato."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni DHL",
+        "menu_options": {
+          "incoming_parcels": "Pacchi in arrivo",
+          "outgoing_parcels": "Pacchi in uscita",
+          "settings": "Impostazioni"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Pacchi consegnati",
+            "data": {
+              "delivered_filter_type": "Filtra per",
+              "delivered_filter_amount": "Quantità"
+            },
+            "data_description": {
+              "delivered_filter_type": "Mostra i pacchi consegnati negli ultimi X giorni, oppure limita ai X più recenti.",
+              "delivered_filter_amount": "Numero di giorni o pacchi da mostrare."
+            }
+          },
+          "history": {
+            "name": "Cronologia pacchi",
+            "data": {
+              "include_history": "Includi cronologia degli stati"
+            },
+            "data_description": {
+              "include_history": "Aggiunge a ogni pacco un attributo di cronologia con ogni aggiornamento di stato (data e ora, stato, testo originale). Disattivato per impostazione predefinita."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Gestisci pacchi in arrivo",
+        "description": "Codici di tracciamento dei pacchi che aspetti. I dati di tracciamento di DHL non distinguono un pacco che hai spedito da uno che ricevi, quindi inserisci ogni codice nell'elenco giusto. Ogni codice viene indirizzato automaticamente al sistema DHL corretto in base al suo formato: non serve indicare quale.",
+        "data": {
+          "tracking_codes": "Codici di tracciamento"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Gestisci pacchi in uscita",
+        "description": "Codici di tracciamento dei pacchi che hai spedito. Vengono conteggiati e riportati separatamente, quindi non rientrano nel conteggio dei pacchi in arrivo.",
+        "data": {
+          "tracking_codes": "Codici di tracciamento"
+        }
+      },
+      "settings": {
+        "title": "Configura il tracciamento",
+        "sections": {
+          "delivered": {
+            "name": "Pacchi consegnati",
+            "data": {
+              "delivered_filter_type": "Filtra per",
+              "delivered_filter_amount": "Quantità"
+            },
+            "data_description": {
+              "delivered_filter_type": "Mostra i pacchi consegnati negli ultimi X giorni oppure limita ai X più recenti.",
+              "delivered_filter_amount": "Numero di giorni o pacchi da mostrare."
+            }
+          },
+          "history": {
+            "name": "Cronologia del pacco",
+            "data": {
+              "include_history": "Includi cronologia degli stati"
+            },
+            "data_description": {
+              "include_history": "Aggiunge a ogni pacco un attributo con tutti gli aggiornamenti di stato (orario, stato, testo originale). Disattivato per impostazione predefinita."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Uno dei codici di tracciamento non è valido."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Germania",
+        "pl": "Polonia"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Giorni",
+        "parcels": "Numero di pacchi"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Traccia pacco",
+      "description": "Inizia a tracciare un pacco tramite il suo numero di tracciamento DHL, oltre a ciò che il tuo account DHL mostra già.",
+      "fields": {
+        "tracking_code": {
+          "name": "Codice di tracciamento",
+          "description": "Il numero di tracciamento DHL."
+        },
+        "config_entry_id": {
+          "name": "Account DHL",
+          "description": "L'account DHL configurato a cui aggiungere questo pacco. Necessario solo se ne è configurato più di uno."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Interrompi tracciamento pacco",
+      "description": "Smetti di tracciare un pacco DHL aggiunto manualmente tramite il suo numero di tracciamento.",
+      "fields": {
+        "tracking_code": {
+          "name": "Codice di tracciamento",
+          "description": "Il numero di tracciamento DHL da smettere di monitorare."
+        },
+        "config_entry_id": {
+          "name": "Account DHL",
+          "description": "L'account DHL configurato da cui rimuovere questo pacco. Necessario solo se ne è configurato più di uno."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Un pacco è stato registrato",
+      "parcel_status_changed": "Lo stato di un pacco è cambiato",
+      "parcel_delivered": "Un pacco è stato consegnato",
+      "parcel_delivery_time_changed": "L'orario di consegna previsto di un pacco è cambiato",
+      "outgoing_parcel_status_changed": "Lo stato di un pacco in uscita è cambiato",
+      "outgoing_parcel_delivered": "Un pacco in uscita è stato consegnato"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Aggiorna"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Consegne"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Pacchi in arrivo",
+        "unit_of_measurement": "pacchi"
+      },
+      "next_delivery": {
+        "name": "Prossima consegna"
+      },
+      "awaiting_pickup": {
+        "name": "Pronto per il ritiro",
+        "unit_of_measurement": "pacchi"
+      },
+      "delivered_parcels": {
+        "name": "Pacchi consegnati",
+        "unit_of_measurement": "pacchi"
+      },
+      "outgoing_parcels": {
+        "name": "Pacchi in uscita",
+        "unit_of_measurement": "pacchi"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Pacchi in uscita consegnati",
+        "unit_of_measurement": "pacchi"
+      },
+      "last_update": {
+        "name": "Ultimo aggiornamento riuscito"
+      },
+      "parcel": {
+        "name": "Pacco {barcode}"
+      }
+    }
+  }
+}

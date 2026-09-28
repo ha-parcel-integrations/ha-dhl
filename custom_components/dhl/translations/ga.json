@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Socraigh DHL",
+        "menu_options": {
+          "account": "Cuntas",
+          "tracking": "Cóid rianaithe"
+        }
+      },
+      "account": {
+        "title": "Sínigh isteach i gcuntas DHL",
+        "description": "Cén cuntas DHL is mian leat a chur leis? Tacaítear leis an nGearmáin agus leis an bPolainn. [Iarr tír eile]({issue_url}). Ag lorg DHL san Ísiltír? Comhtháthú ar leith é sin: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Tír"
+        }
+      },
+      "de": {
+        "title": "Socraigh DHL (an Ghearmáin)",
+        "description": "Oscail an nasc seo i mbrabhsálaí agus sínigh isteach le do DHL Kundenkonto: {authorize_url}\n\nNí éireoidh le do bhrabhsálaí an t-atreorú deiridh `dhllogin://…` a oscailt — tá sé sin le súil. Ní fheictear an seoladh seo riamh sa bharra seoltaí; aimsíonn tú é sa chluaisín Network in uirlisí forbróra do bhrabhsálaí — féach na [treoracha céim ar chéim]({docs_url}). Greamaigh an seoladh iomlán thíos.\n\nNóta: ní fhreagraíonn seirbhís rianaithe DHL i gceart ach do sheoladh IP Gearmánach — ní oibreoidh an comhtháthú seo má théann do Home Assistant ar an idirlíon ó thír eile.",
+        "data": {
+          "redirect_url": "URL atreoraithe"
+        }
+      },
+      "pl": {
+        "title": "Socraigh DHL Parcel Polska",
+        "description": "Cuir isteach an uimhir fón póca Pholannach atá cláraithe le Mój DHL. Glactar le naoi ndigit, +48 agus 0048; faigheann DHL na naoi ndigit áitiúla agus seolann sé cód SMS amháin. Ní athsheolann an comhtháthú seo go huathoibríoch é riamh.",
+        "data": {
+          "phone": "Uimhir fón póca Pholannach"
+        }
+      },
+      "pl_sms": {
+        "title": "Fíoraigh DHL Parcel Polska",
+        "description": "Cuir isteach an cód SMS a sheol Mój DHL.",
+        "data": {
+          "sms_code": "Cód SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Tá síniú isteach DHL as feidhm",
+        "description": "Ní ghlacann DHL leis an seisiún stóráilte a thuilleadh. Oscail an nasc seo, sínigh isteach arís, agus greamaigh an URL atreoraithe a aimsíonn tú sa chluaisín Network in uirlisí forbróra do bhrabhsálaí (féach na [treoracha céim ar chéim]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "URL atreoraithe"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Ní cosúil gurb é sin URL atreoraithe DHL — déan cinnte gur chóipeáil tú an seoladh iomlán tar éis síniú isteach.",
+      "invalid_auth": "Dhiúltaigh DHL don síniú isteach seo.",
+      "invalid_phone": "Cuir isteach uimhir fón póca Pholannach bhailí (naoi ndigit, le +48 nó 0048 roimpi más mian leat).",
+      "invalid_sms_code": "Cód SMS neamhbhailí nó as feidhm.",
+      "cannot_connect": "Níorbh fhéidir teagmháil a dhéanamh le DHL. Bain triail eile as."
+    },
+    "abort": {
+      "already_configured": "Tá an cuntas DHL sin socraithe cheana féin.",
+      "cannot_connect": "Níorbh fhéidir teagmháil a dhéanamh le DHL. Bain triail eile as.",
+      "reauth_successful": "D'éirigh le hathfhíordheimhniú DHL.",
+      "wrong_account": "Is do chuntas DHL eile an síniú isteach sin. Sínigh isteach leis an gcuntas ar socraíodh an iontráil seo dó.",
+      "unsupported_country": "Ní thacaítear leis an tír sin fós."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Roghanna DHL",
+        "menu_options": {
+          "incoming_parcels": "Pacáistí ag teacht isteach",
+          "outgoing_parcels": "Beartanna amach",
+          "settings": "Socruithe"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Pacáistí seachadta",
+            "data": {
+              "delivered_filter_type": "Scag de réir",
+              "delivered_filter_amount": "Méid"
+            },
+            "data_description": {
+              "delivered_filter_type": "Taispeáin pacáistí a seachadadh sna X lá is déanaí, nó teorannaigh do na X is déanaí.",
+              "delivered_filter_amount": "Líon na laethanta nó na bpacáistí le taispeáint."
+            }
+          },
+          "history": {
+            "name": "Stair an bheartáin",
+            "data": {
+              "include_history": "Cuir stair na stádas san áireamh"
+            },
+            "data_description": {
+              "include_history": "Cuireann sé aitreabúid staire le gach beartán ina liostaítear gach athrú stádais (stampa ama, stádas, buntéacs). Múchta de réir réamhshocraithe."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Bainistigh beartanna isteach",
+        "description": "Cóid rianaithe na mbeartanna a bhfuil tú ag súil leo. Ní féidir le sonraí rianaithe DHL beart a sheol tú a aithint ó bheart atá á fháil agat, mar sin cuir gach cód sa liosta ceart. Seoltar gach cód go huathoibríoch chuig an gcóras DHL ceart de réir a chrutha — ní gá a rá cé acu.",
+        "data": {
+          "tracking_codes": "Cóid rianaithe"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Bainistigh beartanna amach",
+        "description": "Cóid rianaithe na mbeartanna a sheol tú. Áirítear agus tuairiscítear iad ar leith, mar sin ní chuirtear le líon do bheartanna isteach iad.",
+        "data": {
+          "tracking_codes": "Cóid rianaithe"
+        }
+      },
+      "settings": {
+        "title": "Cumraigh socruithe rianaithe",
+        "sections": {
+          "delivered": {
+            "name": "Pacáistí seachadta",
+            "data": {
+              "delivered_filter_type": "Scag de réir",
+              "delivered_filter_amount": "Méid"
+            },
+            "data_description": {
+              "delivered_filter_type": "Taispeáin pacáistí a seachadadh sna X lá is déanaí, nó teorannaigh do na X is déanaí.",
+              "delivered_filter_amount": "Líon na laethanta nó na bpacáistí le taispeáint."
+            }
+          },
+          "history": {
+            "name": "Stair an bheartáin",
+            "data": {
+              "include_history": "Cuir stair na stádas san áireamh"
+            },
+            "data_description": {
+              "include_history": "Cuireann sé aitreabúid staire le gach beartán ina liostaítear gach athrú stádais (stampa ama, stádas, buntéacs). Múchta de réir réamhshocraithe."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Níl ceann de na cóid rianaithe bailí."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "An Ghearmáin",
+        "pl": "An Pholainn"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Laethanta",
+        "parcels": "Líon na bpacáistí"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Rian pacáiste",
+      "description": "Tosaigh ag rianú beart de réir a uimhir rianaithe DHL, chomh maith leis an méid a thaispeánann do chuntas DHL cheana.",
+      "fields": {
+        "tracking_code": {
+          "name": "Cód rianaithe",
+          "description": "An uimhir rianaithe DHL."
+        },
+        "config_entry_id": {
+          "name": "Cuntas DHL",
+          "description": "Cén cuntas DHL cumraithe ar cheart an beart seo a chur leis. Ní gá ach nuair atá níos mó ná ceann amháin socraithe."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Ná rian pacáiste a thuilleadh",
+      "description": "Stop ag rianú beart DHL a cuireadh leis de láimh, de réir a uimhir rianaithe.",
+      "fields": {
+        "tracking_code": {
+          "name": "Cód rianaithe",
+          "description": "An uimhir rianaithe DHL nach bhfuil le rianú a thuilleadh."
+        },
+        "config_entry_id": {
+          "name": "Cuntas DHL",
+          "description": "Cén cuntas DHL cumraithe ar cheart an beart seo a bhaint de. Ní gá ach nuair atá níos mó ná ceann amháin socraithe."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Cláraíodh pacáiste",
+      "parcel_status_changed": "D'athraigh stádas pacáiste",
+      "parcel_delivered": "Seachadadh pacáiste",
+      "parcel_delivery_time_changed": "D'athraigh am seachadta measta pacáiste",
+      "outgoing_parcel_status_changed": "D'athraigh stádas beart amach",
+      "outgoing_parcel_delivered": "Seachadadh beart amach"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Athnuaigh"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Seachadtaí"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Pacáistí ag teacht isteach",
+        "unit_of_measurement": "pacáistí"
+      },
+      "next_delivery": {
+        "name": "An chéad seachadadh eile"
+      },
+      "awaiting_pickup": {
+        "name": "Ag fanacht le bailiú",
+        "unit_of_measurement": "beartán"
+      },
+      "delivered_parcels": {
+        "name": "Pacáistí seachadta",
+        "unit_of_measurement": "pacáistí"
+      },
+      "outgoing_parcels": {
+        "name": "Beartanna amach",
+        "unit_of_measurement": "pacáistí"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Beartanna amach seachadta",
+        "unit_of_measurement": "pacáistí"
+      },
+      "last_update": {
+        "name": "An nuashonrú rathúil is déanaí"
+      },
+      "parcel": {
+        "name": "Pacáiste {barcode}"
+      }
+    }
+  }
+}

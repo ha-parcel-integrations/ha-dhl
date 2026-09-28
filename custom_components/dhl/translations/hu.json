@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "DHL beállítása",
+        "menu_options": {
+          "account": "Fiók",
+          "tracking": "Követési kódok"
+        }
+      },
+      "account": {
+        "title": "Bejelentkezés DHL-fiókba",
+        "description": "Melyik DHL-fiókot szeretné hozzáadni? Németország és Lengyelország támogatott. [Másik ország kérése]({issue_url}). DHL-t keres Hollandiában? Az egy külön integráció: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Ország"
+        }
+      },
+      "de": {
+        "title": "DHL beállítása (Németország)",
+        "description": "Nyissa meg ezt a hivatkozást egy böngészőben, és jelentkezzen be DHL Kundenkonto fiókjával: {authorize_url}\n\nA böngésző nem tudja megnyitni az utolsó `dhllogin://…` átirányítást — ez várható. Ez a cím sosem jelenik meg a címsorban; a böngésző fejlesztői eszközeinek Network lapján találja meg — lásd a [lépésenkénti útmutatót]({docs_url}). Illessze be alább a teljes címet.\n\nMegjegyzés: a DHL nyomkövetési végpontja csak német IP-címre válaszol helyesen — ez az integráció nem fog működni, ha a Home Assistant másik országból csatlakozik az internethez.",
+        "data": {
+          "redirect_url": "Átirányítási URL"
+        }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska beállítása",
+        "description": "Adja meg a Mój DHL-ben regisztrált lengyel mobilszámot. Kilenc számjegy, +48 és 0048 is elfogadott; a DHL a kilenc helyi számjegyet kapja meg, és egy SMS-kódot küld. Ez az integráció soha nem küldi újra automatikusan.",
+        "data": {
+          "phone": "Lengyel mobilszám"
+        }
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska ellenőrzése",
+        "description": "Adja meg a Mój DHL által küldött SMS-kódot.",
+        "data": {
+          "sms_code": "SMS-kód"
+        }
+      },
+      "reauth_confirm": {
+        "title": "A DHL-bejelentkezés lejárt",
+        "description": "A DHL már nem fogadja el a tárolt munkamenetet. Nyissa meg ezt a hivatkozást, jelentkezzen be újra, majd illessze be a böngésző fejlesztői eszközeinek Network lapján elkapott átirányítási URL-t (lásd a [lépésenkénti útmutatót]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Átirányítási URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Ez nem úgy néz ki, mint a DHL átirányítási URL-je — győződjön meg róla, hogy bejelentkezés után a teljes címet másolta ki.",
+      "invalid_auth": "A DHL elutasította ezt a bejelentkezést.",
+      "invalid_phone": "Adjon meg érvényes lengyel mobilszámot (kilenc számjegy, opcionálisan +48 vagy 0048 előtaggal).",
+      "invalid_sms_code": "Érvénytelen vagy lejárt SMS-kód.",
+      "cannot_connect": "A DHL nem érhető el. Próbáld újra."
+    },
+    "abort": {
+      "already_configured": "Ez a DHL-fiók már be van állítva.",
+      "cannot_connect": "A DHL nem érhető el. Próbáld újra.",
+      "reauth_successful": "A DHL újbóli hitelesítése sikerült.",
+      "wrong_account": "Ez a bejelentkezés egy másik DHL-fiókhoz tartozik. Jelentkezzen be azzal a fiókkal, amelyhez ezt a bejegyzést beállították.",
+      "unsupported_country": "Ez az ország még nem támogatott."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL beállítások",
+        "menu_options": {
+          "incoming_parcels": "Érkező csomagok",
+          "outgoing_parcels": "Feladott csomagok",
+          "settings": "Beállítások"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Kézbesített csomagok",
+            "data": {
+              "delivered_filter_type": "Szűrés",
+              "delivered_filter_amount": "Mennyiség"
+            },
+            "data_description": {
+              "delivered_filter_type": "Az elmúlt X nap kézbesített csomagjainak megjelenítése, vagy korlátozás a legutóbbi X darabra.",
+              "delivered_filter_amount": "A megjelenítendő napok vagy csomagok száma."
+            }
+          },
+          "history": {
+            "name": "Csomagelőzmények",
+            "data": {
+              "include_history": "Állapotelőzmények megjelenítése"
+            },
+            "data_description": {
+              "include_history": "Minden csomaghoz hozzáad egy előzmény attribútumot, amely felsorolja az egyes állapotfrissítéseket (időbélyeg, állapot, eredeti szöveg). Alapértelmezés szerint kikapcsolva."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Érkező csomagok kezelése",
+        "description": "A várt csomagok nyomkövetési kódjai. A DHL nyomkövetési adatai nem tudják megkülönböztetni az Ön által küldött csomagot a kapottól, ezért minden kódot a megfelelő listába tegyen. Minden kódot a formája alapján automatikusan a megfelelő DHL-rendszerhez irányítunk — nem kell megadnia, melyikhez.",
+        "data": {
+          "tracking_codes": "Követési kódok"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Feladott csomagok kezelése",
+        "description": "Az Ön által feladott csomagok nyomkövetési kódjai. Ezeket külön számoljuk és jelenítjük meg, így nem számítanak bele a bejövő csomagok számába.",
+        "data": {
+          "tracking_codes": "Követési kódok"
+        }
+      },
+      "settings": {
+        "title": "Nyomkövetési beállítások",
+        "sections": {
+          "delivered": {
+            "name": "Kézbesített csomagok",
+            "data": {
+              "delivered_filter_type": "Szűrés",
+              "delivered_filter_amount": "Mennyiség"
+            },
+            "data_description": {
+              "delivered_filter_type": "Az elmúlt X nap kézbesített csomagjainak megjelenítése, vagy korlátozás a legutóbbi X darabra.",
+              "delivered_filter_amount": "A megjelenítendő napok vagy csomagok száma."
+            }
+          },
+          "history": {
+            "name": "Csomagelőzmények",
+            "data": {
+              "include_history": "Állapotelőzmények megjelenítése"
+            },
+            "data_description": {
+              "include_history": "Minden csomaghoz hozzáad egy előzmény attribútumot, amely felsorolja az egyes állapotfrissítéseket (időbélyeg, állapot, eredeti szöveg). Alapértelmezés szerint kikapcsolva."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Az egyik nyomkövetési kód érvénytelen."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Németország",
+        "pl": "Lengyelország"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Nap",
+        "parcels": "Csomagok száma"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Csomag követése",
+      "description": "Csomag követésének indítása DHL-nyomkövetési szám alapján, azon felül, amit a DHL-fiókja már mutat.",
+      "fields": {
+        "tracking_code": {
+          "name": "Nyomkövetési kód",
+          "description": "A DHL-nyomkövetési szám."
+        },
+        "config_entry_id": {
+          "name": "DHL-fiók",
+          "description": "Melyik beállított DHL-fiókhoz adja hozzá ezt a csomagot. Csak akkor szükséges, ha több is be van állítva."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Csomag követésének leállítása",
+      "description": "Egy kézzel hozzáadott DHL-csomag követésének leállítása a nyomkövetési száma alapján.",
+      "fields": {
+        "tracking_code": {
+          "name": "Nyomkövetési kód",
+          "description": "A DHL-nyomkövetési szám, amelynek követését le kell állítani."
+        },
+        "config_entry_id": {
+          "name": "DHL-fiók",
+          "description": "Melyik beállított DHL-fiókból távolítsa el ezt a csomagot. Csak akkor szükséges, ha több is be van állítva."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Egy csomagot regisztráltak",
+      "parcel_status_changed": "Egy csomag állapota megváltozott",
+      "parcel_delivered": "Egy csomagot kézbesítettek",
+      "parcel_delivery_time_changed": "Egy csomag várható kézbesítési ideje megváltozott",
+      "outgoing_parcel_status_changed": "Egy feladott csomag állapota megváltozott",
+      "outgoing_parcel_delivered": "Egy feladott csomag kézbesítve lett"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Frissítés"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Kézbesítések"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Érkező csomagok",
+        "unit_of_measurement": "csomag"
+      },
+      "next_delivery": {
+        "name": "Következő kézbesítés"
+      },
+      "awaiting_pickup": {
+        "name": "Átvételre kész",
+        "unit_of_measurement": "csomag"
+      },
+      "delivered_parcels": {
+        "name": "Kézbesített csomagok",
+        "unit_of_measurement": "csomag"
+      },
+      "outgoing_parcels": {
+        "name": "Feladott csomagok",
+        "unit_of_measurement": "csomag"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Feladott kézbesített csomagok",
+        "unit_of_measurement": "csomag"
+      },
+      "last_update": {
+        "name": "Utolsó sikeres frissítés"
+      },
+      "parcel": {
+        "name": "Csomag {barcode}"
+      }
+    }
+  }
+}

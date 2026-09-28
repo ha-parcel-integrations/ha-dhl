@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "DHL सेट अप करें",
+        "menu_options": {
+          "account": "खाता",
+          "tracking": "ट्रैकिंग कोड"
+        }
+      },
+      "account": {
+        "title": "DHL खाते में लॉग इन करें",
+        "description": "आप कौन-सा DHL खाता जोड़ना चाहते हैं? जर्मनी और पोलैंड समर्थित हैं। [दूसरे देश का अनुरोध करें]({issue_url})। नीदरलैंड में DHL ढूंढ रहे हैं? वह एक अलग इंटीग्रेशन है: [ha-dhl-nl]({dhl_nl_url})।",
+        "data": {
+          "country": "देश"
+        }
+      },
+      "de": {
+        "title": "DHL सेट करें (जर्मनी)",
+        "description": "यह लिंक ब्राउज़र में खोलें और अपने DHL Kundenkonto से लॉग इन करें: {authorize_url}\n\nआपका ब्राउज़र अंतिम `dhllogin://…` रीडायरेक्ट नहीं खोल पाएगा — यह अपेक्षित है। यह पता कभी एड्रेस बार में नहीं दिखता; आप इसे ब्राउज़र के डेवलपर टूल्स के Network टैब में पाते हैं — [चरण-दर-चरण निर्देश]({docs_url}) देखें। पूरा पता नीचे पेस्ट करें।\n\nनोट: DHL का ट्रैकिंग endpoint केवल जर्मन IP पते को सही जवाब देता है — अगर आपका Home Assistant किसी दूसरे देश से इंटरनेट से जुड़ता है तो यह इंटीग्रेशन काम नहीं करेगा।",
+        "data": {
+          "redirect_url": "रीडायरेक्ट URL"
+        }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska सेट करें",
+        "description": "Mój DHL में पंजीकृत पोलिश मोबाइल नंबर दर्ज करें। नौ अंक, +48 और 0048 स्वीकार हैं; DHL को नौ स्थानीय अंक मिलते हैं और वह एक SMS कोड भेजता है। यह इंटीग्रेशन उसे कभी अपने आप दोबारा नहीं भेजता।",
+        "data": {
+          "phone": "पोलिश मोबाइल नंबर"
+        }
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska सत्यापित करें",
+        "description": "Mój DHL द्वारा भेजा गया SMS कोड दर्ज करें।",
+        "data": {
+          "sms_code": "SMS कोड"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL साइन-इन की अवधि समाप्त",
+        "description": "DHL अब संग्रहीत सत्र स्वीकार नहीं करता। यह लिंक खोलें, फिर से लॉग इन करें, और ब्राउज़र के डेवलपर टूल्स के Network टैब में मिला रीडायरेक्ट URL पेस्ट करें ([चरण-दर-चरण निर्देश]({docs_url}) देखें): {authorize_url}",
+        "data": {
+          "redirect_url": "रीडायरेक्ट URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "यह DHL रीडायरेक्ट URL जैसा नहीं दिखता — सुनिश्चित करें कि आपने लॉग इन के बाद पूरा पता कॉपी किया है।",
+      "invalid_auth": "DHL ने यह साइन-इन अस्वीकार कर दिया।",
+      "invalid_phone": "एक मान्य पोलिश मोबाइल नंबर दर्ज करें (नौ अंक, चाहें तो +48 या 0048 के साथ)।",
+      "invalid_sms_code": "अमान्य या समाप्त SMS कोड।",
+      "cannot_connect": "DHL से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।"
+    },
+    "abort": {
+      "already_configured": "यह DHL खाता पहले से सेट है।",
+      "cannot_connect": "DHL से संपर्क नहीं हो सका। कृपया पुनः प्रयास करें।",
+      "reauth_successful": "DHL को सफलतापूर्वक पुनः प्रमाणित किया गया।",
+      "wrong_account": "यह साइन-इन किसी दूसरे DHL खाते का है। उसी खाते से साइन इन करें जिसके लिए यह प्रविष्टि सेट की गई थी।",
+      "unsupported_country": "यह देश अभी समर्थित नहीं है।"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL विकल्प",
+        "menu_options": {
+          "incoming_parcels": "आने वाले पार्सल",
+          "outgoing_parcels": "भेजे जाने वाले पार्सल",
+          "settings": "सेटिंग्स"
+        },
+        "sections": {
+          "delivered": {
+            "name": "डिलीवर किए गए पार्सल",
+            "data": {
+              "delivered_filter_type": "इसके अनुसार फ़िल्टर करें",
+              "delivered_filter_amount": "मात्रा"
+            },
+            "data_description": {
+              "delivered_filter_type": "पिछले X दिनों में डिलीवर हुए पार्सल दिखाएं, या सबसे हाल के X तक सीमित करें।",
+              "delivered_filter_amount": "दिखाने के लिए दिनों या पार्सल की संख्या।"
+            }
+          },
+          "history": {
+            "name": "पार्सल इतिहास",
+            "data": {
+              "include_history": "स्थिति इतिहास शामिल करें"
+            },
+            "data_description": {
+              "include_history": "प्रत्येक पार्सल के लिए एक history एट्रिब्यूट जोड़ें जिसमें हर स्थिति अपडेट (टाइमस्टैंप, स्थिति, मूल टेक्स्ट) सूचीबद्ध हो। डिफ़ॉल्ट रूप से बंद।"
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "आने वाले पार्सल प्रबंधित करें",
+        "description": "उन पार्सलों के ट्रैकिंग कोड जिनकी आप प्रतीक्षा कर रहे हैं। DHL का ट्रैकिंग डेटा आपके भेजे गए पार्सल और आपको मिलने वाले पार्सल में अंतर नहीं कर सकता, इसलिए हर कोड को सही सूची में रखें। हर कोड अपने रूप के आधार पर अपने आप सही DHL बैकएंड पर भेजा जाता है — बताने की ज़रूरत नहीं।",
+        "data": {
+          "tracking_codes": "ट्रैकिंग कोड"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "भेजे जाने वाले पार्सल प्रबंधित करें",
+        "description": "आपके भेजे गए पार्सलों के ट्रैकिंग कोड। इन्हें अलग से गिना और दिखाया जाता है, इसलिए ये आने वाले पार्सलों की गिनती में नहीं जुड़ते।",
+        "data": {
+          "tracking_codes": "ट्रैकिंग कोड"
+        }
+      },
+      "settings": {
+        "title": "ट्रैकिंग सेटिंग्स कॉन्फ़िगर करें",
+        "sections": {
+          "delivered": {
+            "name": "डिलीवर किए गए पार्सल",
+            "data": {
+              "delivered_filter_type": "इसके अनुसार फ़िल्टर करें",
+              "delivered_filter_amount": "मात्रा"
+            },
+            "data_description": {
+              "delivered_filter_type": "पिछले X दिनों में डिलीवर हुए पार्सल दिखाएं, या सबसे हाल के X तक सीमित करें।",
+              "delivered_filter_amount": "दिखाने के लिए दिनों या पार्सल की संख्या।"
+            }
+          },
+          "history": {
+            "name": "पार्सल इतिहास",
+            "data": {
+              "include_history": "स्थिति इतिहास शामिल करें"
+            },
+            "data_description": {
+              "include_history": "प्रत्येक पार्सल के लिए एक history एट्रिब्यूट जोड़ें जिसमें हर स्थिति अपडेट (टाइमस्टैंप, स्थिति, मूल टेक्स्ट) सूचीबद्ध हो। डिफ़ॉल्ट रूप से बंद।"
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "ट्रैकिंग कोड में से एक मान्य नहीं है।"
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "जर्मनी",
+        "pl": "पोलैंड"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "दिन",
+        "parcels": "पार्सल की संख्या"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "पार्सल ट्रैक करें",
+      "description": "DHL ट्रैकिंग नंबर से किसी पार्सल को ट्रैक करना शुरू करें, आपके DHL खाते में पहले से दिख रहे पार्सलों के अलावा।",
+      "fields": {
+        "tracking_code": {
+          "name": "ट्रैकिंग कोड",
+          "description": "DHL ट्रैकिंग नंबर।"
+        },
+        "config_entry_id": {
+          "name": "DHL खाता",
+          "description": "यह पार्सल किस कॉन्फ़िगर किए गए DHL खाते में जोड़ना है। केवल तब ज़रूरी जब एक से अधिक सेट हों।"
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "पार्सल ट्रैक करना बंद करें",
+      "description": "मैन्युअल रूप से जोड़े गए DHL पार्सल की ट्रैकिंग उसके ट्रैकिंग नंबर से बंद करें।",
+      "fields": {
+        "tracking_code": {
+          "name": "ट्रैकिंग कोड",
+          "description": "वह DHL ट्रैकिंग नंबर जिसकी ट्रैकिंग बंद करनी है।"
+        },
+        "config_entry_id": {
+          "name": "DHL खाता",
+          "description": "यह पार्सल किस कॉन्फ़िगर किए गए DHL खाते से हटाना है। केवल तब ज़रूरी जब एक से अधिक सेट हों।"
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "एक पार्सल रजिस्टर किया गया",
+      "parcel_status_changed": "किसी पार्सल की स्थिति बदली",
+      "parcel_delivered": "एक पार्सल डिलीवर हो गया",
+      "parcel_delivery_time_changed": "किसी पार्सल के अनुमानित डिलीवरी समय में बदलाव हुआ",
+      "outgoing_parcel_status_changed": "किसी भेजे जाने वाले पार्सल की स्थिति बदली",
+      "outgoing_parcel_delivered": "एक भेजा गया पार्सल डिलीवर हुआ"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "रीफ्रेश"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "डिलीवरी"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "आने वाले पार्सल",
+        "unit_of_measurement": "पार्सल"
+      },
+      "next_delivery": {
+        "name": "अगली डिलीवरी"
+      },
+      "awaiting_pickup": {
+        "name": "संग्रह की प्रतीक्षा में",
+        "unit_of_measurement": "पार्सल"
+      },
+      "delivered_parcels": {
+        "name": "डिलीवर किए गए पार्सल",
+        "unit_of_measurement": "पार्सल"
+      },
+      "outgoing_parcels": {
+        "name": "भेजे जाने वाले पार्सल",
+        "unit_of_measurement": "पार्सल"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "डिलीवर हुए भेजे गए पार्सल",
+        "unit_of_measurement": "पार्सल"
+      },
+      "last_update": {
+        "name": "अंतिम सफल अपडेट"
+      },
+      "parcel": {
+        "name": "पार्सल {barcode}"
+      }
+    }
+  }
+}

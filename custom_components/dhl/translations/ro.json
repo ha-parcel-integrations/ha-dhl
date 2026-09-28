@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurare DHL",
+        "menu_options": {
+          "account": "Cont",
+          "tracking": "Coduri de urmărire"
+        }
+      },
+      "account": {
+        "title": "Autentificare într-un cont DHL",
+        "description": "Ce cont DHL vrei să adaugi? Sunt acceptate Germania și Polonia. [Solicită altă țară]({issue_url}). Cauți DHL în Țările de Jos? Aceasta este o integrare separată: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Țară"
+        }
+      },
+      "de": {
+        "title": "Configurare DHL (Germania)",
+        "description": "Deschide acest link într-un browser și autentifică-te cu DHL Kundenkonto: {authorize_url}\n\nBrowserul nu va reuși să deschidă redirecționarea finală `dhllogin://…` — este normal. Această adresă nu apare niciodată în bara de adrese; o găsești în fila Network din instrumentele pentru dezvoltatori ale browserului — vezi [instrucțiunile pas cu pas]({docs_url}). Lipește adresa completă mai jos.\n\nNotă: serviciul de urmărire DHL răspunde corect doar unei adrese IP germane — această integrare nu va funcționa dacă Home Assistant accesează internetul din altă țară.",
+        "data": {
+          "redirect_url": "URL de redirecționare"
+        }
+      },
+      "pl": {
+        "title": "Configurare DHL Parcel Polska",
+        "description": "Introdu numărul de mobil polonez înregistrat în Mój DHL. Sunt acceptate nouă cifre, +48 și 0048; DHL primește cele nouă cifre locale și trimite un cod SMS. Această integrare nu îl retrimite niciodată automat.",
+        "data": {
+          "phone": "Număr de mobil polonez"
+        }
+      },
+      "pl_sms": {
+        "title": "Verificare DHL Parcel Polska",
+        "description": "Introdu codul SMS trimis de Mój DHL.",
+        "data": {
+          "sms_code": "Cod SMS"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autentificarea DHL a expirat",
+        "description": "DHL nu mai acceptă sesiunea salvată. Deschide acest link, autentifică-te din nou, apoi lipește URL-ul de redirecționare găsit în fila Network din instrumentele pentru dezvoltatori ale browserului (vezi [instrucțiunile pas cu pas]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "URL de redirecționare"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Nu pare a fi URL-ul de redirecționare DHL — asigură-te că ai copiat adresa completă după autentificare.",
+      "invalid_auth": "DHL a respins această autentificare.",
+      "invalid_phone": "Introdu un număr de mobil polonez valid (nouă cifre, opțional cu prefixul +48 sau 0048).",
+      "invalid_sms_code": "Cod SMS invalid sau expirat.",
+      "cannot_connect": "DHL nu a putut fi contactat. Încearcă din nou."
+    },
+    "abort": {
+      "already_configured": "Acest cont DHL este deja configurat.",
+      "cannot_connect": "DHL nu a putut fi contactat. Încearcă din nou.",
+      "reauth_successful": "DHL a fost reautentificat cu succes.",
+      "wrong_account": "Această autentificare este pentru alt cont DHL. Autentifică-te cu contul pentru care a fost configurată această intrare.",
+      "unsupported_country": "Această țară nu este încă acceptată."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opțiuni DHL",
+        "menu_options": {
+          "incoming_parcels": "Colete primite",
+          "outgoing_parcels": "Colete expediate",
+          "settings": "Setări"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Colete livrate",
+            "data": {
+              "delivered_filter_type": "Filtrează după",
+              "delivered_filter_amount": "Cantitate"
+            },
+            "data_description": {
+              "delivered_filter_type": "Afișează coletele livrate din ultimele X zile sau limitează la cele mai recente X.",
+              "delivered_filter_amount": "Numărul de zile sau colete de afișat."
+            }
+          },
+          "history": {
+            "name": "Istoric colet",
+            "data": {
+              "include_history": "Include istoricul stărilor"
+            },
+            "data_description": {
+              "include_history": "Adaugă istoricul actualizărilor de stare pentru fiecare colet."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Gestionează coletele primite",
+        "description": "Codurile de urmărire ale coletelor pe care le aștepți. Datele de urmărire DHL nu pot deosebi un colet trimis de tine de unul pe care îl primești, așa că pune fiecare cod în lista potrivită. Fiecare cod este direcționat automat către sistemul DHL potrivit după forma sa — nu trebuie să spui care.",
+        "data": {
+          "tracking_codes": "Coduri de urmărire"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Gestionează coletele expediate",
+        "description": "Codurile de urmărire ale coletelor pe care le-ai trimis. Sunt numărate și raportate separat, deci nu intră în numărul coletelor primite.",
+        "data": {
+          "tracking_codes": "Coduri de urmărire"
+        }
+      },
+      "settings": {
+        "title": "Configurează urmărirea",
+        "sections": {
+          "delivered": {
+            "name": "Colete livrate",
+            "data": {
+              "delivered_filter_type": "Filtrează după",
+              "delivered_filter_amount": "Cantitate"
+            },
+            "data_description": {
+              "delivered_filter_type": "Afișează coletele livrate din ultimele X zile sau limitează la cele mai recente X.",
+              "delivered_filter_amount": "Numărul de zile sau colete de afișat."
+            }
+          },
+          "history": {
+            "name": "Istoric colet",
+            "data": {
+              "include_history": "Include istoricul stărilor"
+            },
+            "data_description": {
+              "include_history": "Adaugă istoricul actualizărilor de stare pentru fiecare colet."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Unul dintre codurile de urmărire nu este valid."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Germania",
+        "pl": "Polonia"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Zile",
+        "parcels": "Număr de colete"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Urmărește colet",
+      "description": "Începe urmărirea unui colet după numărul de urmărire DHL, pe lângă ce arată deja contul tău DHL.",
+      "fields": {
+        "tracking_code": {
+          "name": "Cod de urmărire",
+          "description": "Numărul de urmărire DHL."
+        },
+        "config_entry_id": {
+          "name": "Cont DHL",
+          "description": "Contul DHL configurat în care să fie adăugat acest colet. Necesar doar dacă sunt configurate mai multe."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Oprește urmărirea coletului",
+      "description": "Oprește urmărirea unui colet DHL adăugat manual, după numărul de urmărire.",
+      "fields": {
+        "tracking_code": {
+          "name": "Cod de urmărire",
+          "description": "Numărul de urmărire DHL care nu mai trebuie urmărit."
+        },
+        "config_entry_id": {
+          "name": "Cont DHL",
+          "description": "Contul DHL configurat din care să fie eliminat acest colet. Necesar doar dacă sunt configurate mai multe."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Un colet a fost înregistrat",
+      "parcel_status_changed": "Starea unui colet s-a schimbat",
+      "parcel_delivered": "Un colet a fost livrat",
+      "parcel_delivery_time_changed": "Ora estimată de livrare a unui colet s-a schimbat",
+      "outgoing_parcel_status_changed": "Starea unui colet expediat s-a schimbat",
+      "outgoing_parcel_delivered": "Un colet expediat a fost livrat"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Actualizează"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Livrări"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Colete primite",
+        "unit_of_measurement": "colete"
+      },
+      "next_delivery": {
+        "name": "Următoarea livrare"
+      },
+      "awaiting_pickup": {
+        "name": "În așteptarea ridicării",
+        "unit_of_measurement": "colete"
+      },
+      "delivered_parcels": {
+        "name": "Colete livrate",
+        "unit_of_measurement": "colete"
+      },
+      "outgoing_parcels": {
+        "name": "Colete expediate",
+        "unit_of_measurement": "colete"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Colete expediate livrate",
+        "unit_of_measurement": "colete"
+      },
+      "last_update": {
+        "name": "Ultima actualizare reușită"
+      },
+      "parcel": {
+        "name": "Colet {barcode}"
+      }
+    }
+  }
+}

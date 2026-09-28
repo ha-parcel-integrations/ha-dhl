@@ -1,0 +1,236 @@
+{
+  "title": "DHL",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Iestatīt DHL",
+        "menu_options": {
+          "account": "Konts",
+          "tracking": "Izsekošanas kodi"
+        }
+      },
+      "account": {
+        "title": "Pieteikties DHL kontā",
+        "description": "Kuru DHL kontu vēlaties pievienot? Tiek atbalstīta Vācija un Polija. [Pieprasīt citu valsti]({issue_url}). Meklējat DHL Nīderlandē? Tā ir atsevišķa integrācija: [ha-dhl-nl]({dhl_nl_url}).",
+        "data": {
+          "country": "Valsts"
+        }
+      },
+      "de": {
+        "title": "DHL iestatīšana (Vācija)",
+        "description": "Atveriet šo saiti pārlūkā un piesakieties ar savu DHL Kundenkonto: {authorize_url}\n\nPārlūks nevarēs atvērt pēdējo `dhllogin://…` novirzīšanu — tas ir paredzēts. Šī adrese nekad neparādās adreses joslā; to atradīsiet pārlūka izstrādātāja rīku cilnē Network — skatiet [soli pa solim instrukcijas]({docs_url}). Ielīmējiet visu adresi zemāk.\n\nPiezīme: DHL izsekošanas galapunkts pareizi atbild tikai Vācijas IP adresei — šī integrācija nedarbosies, ja jūsu Home Assistant piekļūst internetam no citas valsts.",
+        "data": {
+          "redirect_url": "Novirzīšanas URL"
+        }
+      },
+      "pl": {
+        "title": "DHL Parcel Polska iestatīšana",
+        "description": "Ievadiet Polijas mobilā tālruņa numuru, kas reģistrēts Mój DHL. Tiek pieņemti deviņi cipari, +48 un 0048; DHL saņem deviņus vietējos ciparus un nosūta vienu SMS kodu. Šī integrācija to nekad automātiski nesūta atkārtoti.",
+        "data": {
+          "phone": "Polijas mobilā tālruņa numurs"
+        }
+      },
+      "pl_sms": {
+        "title": "DHL Parcel Polska apstiprināšana",
+        "description": "Ievadiet Mój DHL nosūtīto SMS kodu.",
+        "data": {
+          "sms_code": "SMS kods"
+        }
+      },
+      "reauth_confirm": {
+        "title": "DHL pieteikšanās beigusies",
+        "description": "DHL vairs nepieņem saglabāto sesiju. Atveriet šo saiti, piesakieties vēlreiz un ielīmējiet novirzīšanas URL, ko notverat pārlūka izstrādātāja rīku cilnē Network (skatiet [soli pa solim instrukcijas]({docs_url})): {authorize_url}",
+        "data": {
+          "redirect_url": "Novirzīšanas URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_redirect": "Tas neizskatās pēc DHL novirzīšanas URL — pārliecinieties, ka pēc pieteikšanās nokopējāt visu adresi.",
+      "invalid_auth": "DHL noraidīja šo pieteikšanos.",
+      "invalid_phone": "Ievadiet derīgu Polijas mobilā tālruņa numuru (deviņi cipari, pēc izvēles ar +48 vai 0048).",
+      "invalid_sms_code": "Nederīgs vai beidzies SMS kods.",
+      "cannot_connect": "Neizdevās sazināties ar DHL. Mēģiniet vēlreiz."
+    },
+    "abort": {
+      "already_configured": "Šis DHL konts jau ir iestatīts.",
+      "cannot_connect": "Neizdevās sazināties ar DHL. Mēģiniet vēlreiz.",
+      "reauth_successful": "DHL atkārtota autentifikācija bija veiksmīga.",
+      "wrong_account": "Šī pieteikšanās ir citam DHL kontam. Piesakieties ar kontu, kuram šis ieraksts tika iestatīts.",
+      "unsupported_country": "Šī valsts vēl netiek atbalstīta."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DHL opcijas",
+        "menu_options": {
+          "incoming_parcels": "Ienākošās pakas",
+          "outgoing_parcels": "Izejošās pakas",
+          "settings": "Iestatījumi"
+        },
+        "sections": {
+          "delivered": {
+            "name": "Piegādātās pakas",
+            "data": {
+              "delivered_filter_type": "Filtrēt pēc",
+              "delivered_filter_amount": "Skaits"
+            },
+            "data_description": {
+              "delivered_filter_type": "Rādīt piegādātās pakas no pēdējām X dienām vai ierobežot līdz X jaunākajām.",
+              "delivered_filter_amount": "Rādāmo dienu vai paku skaits."
+            }
+          },
+          "history": {
+            "name": "Paku vēsture",
+            "data": {
+              "include_history": "Iekļaut statusu vēsturi"
+            },
+            "data_description": {
+              "include_history": "Pievieno katrai pakai vēstures atribūtu, kas uzskaita katru statusa atjauninājumu (laika zīmogs, statuss, oriģinālais teksts). Pēc noklusējuma izslēgts."
+            }
+          }
+        }
+      },
+      "incoming_parcels": {
+        "title": "Pārvaldīt ienākošos sūtījumus",
+        "description": "Gaidāmo sūtījumu izsekošanas kodi. DHL izsekošanas dati nespēj atšķirt jūsu nosūtītu sūtījumu no saņemta, tāpēc ievietojiet katru kodu pareizajā sarakstā. Katrs kods pēc tā formas automātiski tiek novirzīts uz pareizo DHL sistēmu — nav jānorāda, uz kuru.",
+        "data": {
+          "tracking_codes": "Izsekošanas kodi"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Pārvaldīt izejošos sūtījumus",
+        "description": "Jūsu nosūtīto sūtījumu izsekošanas kodi. Tie tiek skaitīti un rādīti atsevišķi, tāpēc neietilpst ienākošo sūtījumu skaitā.",
+        "data": {
+          "tracking_codes": "Izsekošanas kodi"
+        }
+      },
+      "settings": {
+        "title": "Izsekošanas iestatījumi",
+        "sections": {
+          "delivered": {
+            "name": "Piegādātās pakas",
+            "data": {
+              "delivered_filter_type": "Filtrēt pēc",
+              "delivered_filter_amount": "Skaits"
+            },
+            "data_description": {
+              "delivered_filter_type": "Rādīt piegādātās pakas no pēdējām X dienām vai ierobežot līdz X jaunākajām.",
+              "delivered_filter_amount": "Rādāmo dienu vai paku skaits."
+            }
+          },
+          "history": {
+            "name": "Paku vēsture",
+            "data": {
+              "include_history": "Iekļaut statusu vēsturi"
+            },
+            "data_description": {
+              "include_history": "Pievieno katrai pakai vēstures atribūtu, kas uzskaita katru statusa atjauninājumu (laika zīmogs, statuss, oriģinālais teksts). Pēc noklusējuma izslēgts."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "invalid_tracking_code": "Viens no izsekošanas kodiem nav derīgs."
+    }
+  },
+  "selector": {
+    "country": {
+      "options": {
+        "de": "Vācija",
+        "pl": "Polija"
+      }
+    },
+    "delivered_filter_type": {
+      "options": {
+        "days": "Dienas",
+        "parcels": "Paku skaits"
+      }
+    }
+  },
+  "services": {
+    "track_parcel": {
+      "name": "Izsekot sūtījumu",
+      "description": "Sākt izsekot sūtījumu pēc tā DHL izsekošanas numura papildus tam, ko jau rāda jūsu DHL konts.",
+      "fields": {
+        "tracking_code": {
+          "name": "Izsekošanas kods",
+          "description": "DHL izsekošanas numurs."
+        },
+        "config_entry_id": {
+          "name": "DHL konts",
+          "description": "Kuram iestatītajam DHL kontam pievienot šo sūtījumu. Nepieciešams tikai tad, ja iestatīts vairāk nekā viens."
+        }
+      }
+    },
+    "untrack_parcel": {
+      "name": "Pārtraukt sūtījuma izsekošanu",
+      "description": "Pārtraukt manuāli pievienota DHL sūtījuma izsekošanu pēc tā izsekošanas numura.",
+      "fields": {
+        "tracking_code": {
+          "name": "Izsekošanas kods",
+          "description": "DHL izsekošanas numurs, kura izsekošanu pārtraukt."
+        },
+        "config_entry_id": {
+          "name": "DHL konts",
+          "description": "No kura iestatītā DHL konta noņemt šo sūtījumu. Nepieciešams tikai tad, ja iestatīts vairāk nekā viens."
+        }
+      }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "parcel_registered": "Paka tika reģistrēta",
+      "parcel_status_changed": "Pakas statuss ir mainījies",
+      "parcel_delivered": "Paka tika piegādāta",
+      "parcel_delivery_time_changed": "Pakas paredzamais piegādes laiks ir mainījies",
+      "outgoing_parcel_status_changed": "Izejošās pakas statuss ir mainījies",
+      "outgoing_parcel_delivered": "Izejošā paka tika piegādāta"
+    }
+  },
+  "entity": {
+    "button": {
+      "refresh": {
+        "name": "Atjaunināt"
+      }
+    },
+    "calendar": {
+      "deliveries": {
+        "name": "Piegādes"
+      }
+    },
+    "sensor": {
+      "incoming_parcels": {
+        "name": "Ienākošās pakas",
+        "unit_of_measurement": "pakas"
+      },
+      "next_delivery": {
+        "name": "Nākamā piegāde"
+      },
+      "awaiting_pickup": {
+        "name": "Gatavs saņemšanai",
+        "unit_of_measurement": "pakas"
+      },
+      "delivered_parcels": {
+        "name": "Piegādātās pakas",
+        "unit_of_measurement": "pakas"
+      },
+      "outgoing_parcels": {
+        "name": "Izejošās pakas",
+        "unit_of_measurement": "pakas"
+      },
+      "outgoing_delivered_parcels": {
+        "name": "Piegādātās izejošās pakas",
+        "unit_of_measurement": "pakas"
+      },
+      "last_update": {
+        "name": "Pēdējā veiksmīgā atjaunināšana"
+      },
+      "parcel": {
+        "name": "Paka {barcode}"
+      }
+    }
+  }
+}
