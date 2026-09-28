@@ -87,13 +87,21 @@
           }
         },
         "menu_options": {
-          "parcels": "Sendungen",
+          "incoming_parcels": "Eingehende Sendungen",
+          "outgoing_parcels": "Ausgehende Sendungen",
           "settings": "Einstellungen"
         }
       },
-      "parcels": {
-        "title": "Verfolgte Sendungen verwalten",
-        "description": "Füge DHL-Tracking-Codes hinzu oder entferne sie. Jeder Code wird anhand seiner Form automatisch an das passende DHL-Backend weitergeleitet — du musst nicht angeben, welches.",
+      "incoming_parcels": {
+        "title": "Eingehende Sendungen verwalten",
+        "description": "Tracking-Codes von Sendungen, die du erwartest. Die Tracking-Daten von DHL können eine selbst versendete Sendung nicht von einer empfangenen unterscheiden – trage jeden Code daher in die passende Liste ein. Jeder Code wird anhand seiner Form automatisch an das passende DHL-Backend weitergeleitet — du musst nicht angeben, welches.",
+        "data": {
+          "tracking_codes": "Tracking-Codes"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Ausgehende Sendungen verwalten",
+        "description": "Tracking-Codes von Sendungen, die du versendet hast. Sie werden separat gezählt und fließen nicht in deine eingehenden Sendungen ein.",
         "data": {
           "tracking_codes": "Tracking-Codes"
         }

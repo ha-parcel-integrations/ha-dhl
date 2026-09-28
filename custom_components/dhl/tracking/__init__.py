@@ -12,7 +12,12 @@ from __future__ import annotations
 
 import re
 
-from ..const import DHL_EXPRESS_AWB_PATTERN, DHL_GATEWAY_BARCODE_PATTERNS
+from ..const import (
+    CONF_DIRECTION,
+    DEFAULT_DIRECTION,
+    DHL_EXPRESS_AWB_PATTERN,
+    DHL_GATEWAY_BARCODE_PATTERNS,
+)
 
 _BARCODE_RE = re.compile("|".join(f"(?:{p})" for p in DHL_GATEWAY_BARCODE_PATTERNS))
 _EXPRESS_RE = re.compile(DHL_EXPRESS_AWB_PATTERN)
@@ -53,3 +58,8 @@ def valid_tracking_code(value: str) -> bool:
     gateway's own scope edge is not fully mapped.
     """
     return bool(value)
+
+
+def tracked_direction(item: dict) -> str:
+    """Return the declared direction of one tracked-parcel options entry."""
+    return item.get(CONF_DIRECTION) or DEFAULT_DIRECTION

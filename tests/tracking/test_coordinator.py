@@ -7,6 +7,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
+    CONF_DIRECTION,
     CONF_PARCELS,
     CONF_SOURCE,
     CONF_TRACKING_CODE,
@@ -431,8 +432,6 @@ async def test_always_empty_attributes_present_for_platform_reuse(hass):
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    assert coordinator.outgoing == []
-    assert coordinator.delivered_outgoing == []
     assert coordinator.de_session is None
     assert coordinator.last_element_count is None
     assert coordinator.express_budget_available == 1
@@ -535,3 +534,75 @@ async def test_delivered_event_and_delivery_time_changed_event_fire(hass):
 
     assert len(delivered_events) == 1
     assert delivered_events[0].data["barcode"] == EXPRESS_CODE
+
+
+def _entry_with_outgoing(incoming: list[str], outgoing: list[str]) -> MockConfigEntry:
+    entry = _entry(incoming)
+    parcels = entry.options[CONF_PARCELS] + [
+        {CONF_TRACKING_CODE: c, CONF_DIRECTION: "outgoing"} for c in outgoing
+    ]
+    return MockConfigEntry(
+        domain=DOMAIN,
+        title=entry.title,
+        unique_id=entry.unique_id,
+        data=dict(entry.data),
+        options={**entry.options, CONF_PARCELS: parcels},
+    )
+
+
+async def test_outgoing_codes_are_split_out_of_the_incoming_lists(hass):
+    entry = _entry_with_outgoing([GATEWAY_CODE], [GATEWAY_CODE_2])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(
+            return_value={
+                GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE),
+                GATEWAY_CODE_2: gateway_element(barcode=GATEWAY_CODE_2),
+            }
+        ),
+    ):
+        data = await coordinator._async_update_data()
+
+    assert [p["barcode"] for p in data] == [GATEWAY_CODE]
+    assert [p["barcode"] for p in coordinator.outgoing] == [GATEWAY_CODE_2]
+    assert coordinator.delivered_outgoing == []
+
+
+async def test_outgoing_events_fire_on_status_change_and_delivery(hass):
+    entry = _entry_with_outgoing([], [GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    changed, delivered, incoming = [], [], []
+    hass.bus.async_listen(
+        f"{DOMAIN}_outgoing_parcel_status_changed", lambda e: changed.append(e)
+    )
+    hass.bus.async_listen(
+        f"{DOMAIN}_outgoing_parcel_delivered", lambda e: delivered.append(e)
+    )
+    hass.bus.async_listen(f"{DOMAIN}_parcel_registered", lambda e: incoming.append(e))
+
+    for element in (
+        gateway_element(barcode=GATEWAY_CODE, category="UNDERWAY", status=""),
+        gateway_element(barcode=GATEWAY_CODE),
+        gateway_element(
+            barcode=GATEWAY_CODE,
+            category="DELIVERED",
+            status="DELIVERED",
+            delivered_at="2026-02-13T14:00:00+01:00",
+        ),
+    ):
+        with patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={GATEWAY_CODE: element}),
+        ):
+            await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert len(changed) == 1
+    assert changed[0].data["new_status"] == ParcelStatus.OUT_FOR_DELIVERY
+    assert len(delivered) == 1
+    assert [p["barcode"] for p in coordinator.delivered_outgoing] == [GATEWAY_CODE]
+    assert incoming == []

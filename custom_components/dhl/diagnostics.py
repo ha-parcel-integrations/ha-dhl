@@ -74,7 +74,12 @@ async def async_get_config_entry_diagnostics(
         entry_options[CONF_TRACKED_CODES] = ["**REDACTED**" for _ in tracked_codes]
     parcels = entry_options.get(CONF_PARCELS)
     if isinstance(parcels, list):
-        entry_options[CONF_PARCELS] = [{"tracking_code": "**REDACTED**"} for _ in parcels]
+        entry_options[CONF_PARCELS] = [
+            {**parcel, "tracking_code": "**REDACTED**"}
+            if isinstance(parcel, dict)
+            else "**REDACTED**"
+            for parcel in parcels
+        ]
 
     interval = coordinator.update_interval
     de_session = coordinator.de_session

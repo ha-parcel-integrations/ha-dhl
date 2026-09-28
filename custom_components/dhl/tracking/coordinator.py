@@ -33,6 +33,7 @@ from ..const import (
     DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS,
     DHL_EXPRESS_STAGGER_MINUTES,
     DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT,
+    DIRECTION_OUTGOING,
     DOMAIN,
     TRACKING_STORAGE_KEY,
     TRACKING_STORAGE_VERSION,
@@ -41,7 +42,13 @@ from ..const import (
     DHLExpressThrottledError,
     ParcelStatus,
 )
-from . import BACKEND_EXPRESS, BACKEND_GATEWAY, BACKEND_UNKNOWN, classify_shape
+from . import (
+    BACKEND_EXPRESS,
+    BACKEND_GATEWAY,
+    BACKEND_UNKNOWN,
+    classify_shape,
+    tracked_direction,
+)
 from .budget import RequestBudget
 from .express import async_fetch_express
 from .gateway import DHLGatewayError, async_fetch_gateway
@@ -102,11 +109,11 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
     """Polls every tracked code and publishes the canonical parcel lists.
 
     ``coordinator.data`` is the active (not-yet-delivered) parcels,
-    ``self.delivered`` the rest — same contract as the account coordinator,
-    plus a handful of always-empty/``None`` attributes (``outgoing``,
-    ``delivered_outgoing``, ``de_session``, ``last_element_count``) purely so
-    the platform files and diagnostics can treat both coordinators
-    interchangeably without a source-specific branch in every one of them.
+    ``self.delivered`` the rest, and ``outgoing``/``delivered_outgoing`` the
+    same split for codes the user filed as outgoing — same contract as the
+    account coordinator. ``de_session`` and ``last_element_count`` are always
+    ``None`` purely so the platform files and diagnostics can treat both
+    coordinators interchangeably without a source-specific branch.
     """
 
     def __init__(self, hass: HomeAssistant, client, entry: ConfigEntry) -> None:
@@ -120,9 +127,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         )
         self._client = client
         self.delivered: list[dict] = []
-        # Always empty/None — see the class docstring.
         self.outgoing: list[dict] = []
         self.delivered_outgoing: list[dict] = []
+        # Always None — see the class docstring.
         self.de_session = None
         self.last_element_count: int | None = None
 
@@ -155,6 +162,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._known_delivery_times: (
             dict[str, tuple[str | None, str | None]] | None
         ) = None
+        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = (
+            None
+        )
         self._cached_device_id: str | None = None
         self.last_success_time: datetime | None = None
 
@@ -466,8 +476,25 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             code: parcel["status"] for (code, _), parcel in zip(raws, normalized)
         }
 
-        active = [p for p in normalized if not p["delivered"]]
-        delivered = [p for p in normalized if p["delivered"]]
+        outgoing_codes = {
+            item[CONF_TRACKING_CODE]
+            for item in self.config_entry.options.get(CONF_PARCELS, [])
+            if item.get(CONF_TRACKING_CODE)
+            and tracked_direction(item) == DIRECTION_OUTGOING
+        }
+        received = [
+            parcel
+            for (code, _), parcel in zip(raws, normalized)
+            if code not in outgoing_codes
+        ]
+        sent = [
+            parcel
+            for (code, _), parcel in zip(raws, normalized)
+            if code in outgoing_codes
+        ]
+
+        active = [p for p in received if not p["delivered"]]
+        delivered = [p for p in received if p["delivered"]]
 
         self.delivered = apply_delivered_filter(
             sort_parcels_by_ts(delivered, "delivered_at", descending=True),
@@ -488,8 +515,25 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel.get("barcode")
         }
 
+        self.delivered_outgoing = apply_delivered_filter(
+            sort_parcels_by_ts(
+                [p for p in sent if p["delivered"]], "delivered_at", descending=True
+            ),
+            self.config_entry,
+        )
+        self.outgoing = sort_parcels_by_ts(
+            [p for p in sent if not p["delivered"]], "planned_from"
+        )
+        outgoing = self.outgoing + self.delivered_outgoing
+        self._fire_outgoing_change_events(outgoing)
+        self._known_outgoing_state = {
+            parcel["barcode"]: (parcel["status"], parcel["delivered"])
+            for parcel in outgoing
+            if parcel.get("barcode")
+        }
+
         self.last_success_time = datetime.now(timezone.utc)
-        self._schedule(normalized_active)
+        self._schedule(normalized_active + self.outgoing)
         self._persist_cache()
         return normalized_active
 
@@ -511,6 +555,38 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             self.update_interval = timedelta(seconds=standdown_left)
         else:
             self.update_interval = base
+
+    def _fire_outgoing_change_events(self, parcels: list[dict]) -> None:
+        """Fire status/delivered events for outgoing parcels.
+
+        Identical contract to the account coordinator's outgoing events.
+        """
+        if self._known_outgoing_state is None:
+            return
+
+        device_id = self._device_id()
+
+        for parcel in parcels:
+            barcode = parcel.get("barcode")
+            if not barcode or barcode not in self._known_outgoing_state:
+                continue
+            old_status, old_delivered = self._known_outgoing_state[barcode]
+            new_status = parcel["status"]
+            if parcel["delivered"] and not old_delivered:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_outgoing_parcel_delivered",
+                    {**parcel, "device_id": device_id},
+                )
+            elif old_status != new_status:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_outgoing_parcel_status_changed",
+                    {
+                        **parcel,
+                        "device_id": device_id,
+                        "old_status": old_status,
+                        "new_status": new_status,
+                    },
+                )
 
     def _fire_change_events(self, parcels: list[dict]) -> None:
         """Fire registered / status-changed / delivered / delivery-time events.

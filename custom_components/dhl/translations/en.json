@@ -61,7 +61,8 @@
       "init": {
         "title": "DHL options",
         "menu_options": {
-          "parcels": "Parcels",
+          "incoming_parcels": "Incoming parcels",
+          "outgoing_parcels": "Outgoing parcels",
           "settings": "Settings"
         },
         "sections": {
@@ -87,9 +88,16 @@
           }
         }
       },
-      "parcels": {
-        "title": "Manage tracked parcels",
-        "description": "Add or remove the DHL tracking codes to follow. Each code is routed automatically to the right DHL backend by its shape — no need to say which.",
+      "incoming_parcels": {
+        "title": "Manage incoming parcels",
+        "description": "Tracking codes of parcels you are expecting. DHL's tracking data cannot tell a parcel you sent from one you are receiving, so file each code in the list it belongs to. Each code is routed automatically to the right DHL backend by its shape — no need to say which.",
+        "data": {
+          "tracking_codes": "Tracking codes"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Manage outgoing parcels",
+        "description": "Tracking codes of parcels you sent. They are counted and reported separately, so they stay out of your incoming parcel count.",
         "data": {
           "tracking_codes": "Tracking codes"
         }

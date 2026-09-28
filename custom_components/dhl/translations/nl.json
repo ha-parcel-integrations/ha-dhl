@@ -87,13 +87,21 @@
           }
         },
         "menu_options": {
-          "parcels": "Pakketten",
+          "incoming_parcels": "Inkomende pakketten",
+          "outgoing_parcels": "Uitgaande pakketten",
           "settings": "Instellingen"
         }
       },
-      "parcels": {
-        "title": "Gevolgde pakketten beheren",
-        "description": "Voeg DHL-trackingcodes toe of verwijder ze. Elke code wordt automatisch naar de juiste DHL-backend gerouteerd op basis van de vorm — je hoeft niet aan te geven welke.",
+      "incoming_parcels": {
+        "title": "Inkomende pakketten beheren",
+        "description": "Trackingcodes van pakketten die je verwacht. De trackinggegevens van DHL kunnen een pakket dat je verstuurt niet onderscheiden van een pakket dat je ontvangt, dus zet elke code in de juiste lijst. Elke code wordt automatisch naar de juiste DHL-backend gerouteerd op basis van de vorm — je hoeft niet aan te geven welke.",
+        "data": {
+          "tracking_codes": "Trackingcodes"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Uitgaande pakketten beheren",
+        "description": "Trackingcodes van pakketten die je hebt verstuurd. Ze worden apart geteld en tellen dus niet mee met je inkomende pakketten.",
         "data": {
           "tracking_codes": "Trackingcodes"
         }

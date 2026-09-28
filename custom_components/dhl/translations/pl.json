@@ -87,13 +87,21 @@
           }
         },
         "menu_options": {
-          "parcels": "Przesyłki",
+          "incoming_parcels": "Przesyłki przychodzące",
+          "outgoing_parcels": "Przesyłki wychodzące",
           "settings": "Ustawienia"
         }
       },
-      "parcels": {
-        "title": "Zarządzaj śledzonymi przesyłkami",
-        "description": "Dodaj lub usuń kody śledzenia DHL. Każdy kod jest automatycznie kierowany do właściwego backendu DHL na podstawie jego formatu — nie musisz podawać, którego.",
+      "incoming_parcels": {
+        "title": "Zarządzaj przesyłkami przychodzącymi",
+        "description": "Kody śledzenia przesyłek, których oczekujesz. Dane śledzenia DHL nie odróżniają przesyłki wysyłanej od odbieranej – wpisz każdy kod na właściwą listę. Każdy kod jest automatycznie kierowany do właściwego backendu DHL na podstawie jego formatu — nie musisz podawać, którego.",
+        "data": {
+          "tracking_codes": "Kody śledzenia"
+        }
+      },
+      "outgoing_parcels": {
+        "title": "Zarządzaj przesyłkami wychodzącymi",
+        "description": "Kody śledzenia przesyłek, które wysłałeś. Są liczone osobno, więc nie powiększają liczby przesyłek przychodzących.",
         "data": {
           "tracking_codes": "Kody śledzenia"
         }

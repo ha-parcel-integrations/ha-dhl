@@ -122,7 +122,7 @@ number, or use a [dashboard button](examples/dashboards/add_parcel_card.yaml).
 ### Tracking codes
 
 Choosing **Tracking codes** creates a single tracking hub with no parcels yet
-— add codes afterwards from **Configure → Parcels**. Nothing is validated
+— add codes afterwards from **Configure → Incoming parcels** or **Outgoing parcels**. Nothing is validated
 against DHL at add time; a code only resolves (or doesn't) on the next poll.
 
 ## Tracking codes
@@ -147,7 +147,8 @@ sectioned form; a tracking hub shows a menu:
 
 | Menu entry | Option | Default | Description |
 |---|---|---|---|
-| Parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes to follow. |
+| Incoming parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes of parcels you expect. |
+| Outgoing parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes of parcels you sent. They are counted on the outgoing sensors, not the incoming ones. Entering a code here that is filed as incoming moves it. |
 | Settings | Filter by / amount (Delivered parcels) | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Settings | Include status history (Parcel history) | off | Adds a `history` attribute per parcel with each status update. |
 
@@ -176,6 +177,8 @@ Standard HA removal applies: **Settings → Devices & Services → DHL → ⋮ �
 A delivered parcel moves from its per-parcel sensor to the delivered sensor automatically.
 
 Outgoing parcels are shipments DHL reports as sent *by* your account rather than to it — DHL exposes this as a `sendungsrichtung` field (`ANKOMMEND`/`EINGEHEND` incoming, `ABGEHEND` outgoing) on the same account-inbox listing incoming parcels come from, no separate endpoint. Their canonical `status` always reports `unknown`: the 0-5 progress ladder below was only ever confirmed against incoming shipments, so guessing what it means for an outgoing one isn't done — the raw DHL status text is still available as `raw_status`.
+
+On a tracking hub DHL's tracking data cannot tell a parcel you sent from one you receive, so you choose: a code filed under **Outgoing parcels** is counted on the outgoing sensors and fires the outgoing events, with its normal status.
 
 ## Parcel status reference
 

@@ -14,6 +14,7 @@ from custom_components.dhl.const import (
     CONF_COUNTRY,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
+    CONF_DIRECTION,
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
     CONF_REFRESH_TOKEN,
@@ -427,7 +428,11 @@ async def test_tracking_options_flow_shows_menu(hass):
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
     assert result["type"] == "menu"
-    assert set(result["menu_options"]) == {"parcels", "settings"}
+    assert set(result["menu_options"]) == {
+        "incoming_parcels",
+        "outgoing_parcels",
+        "settings",
+    }
 
 
 async def test_tracking_options_parcels_add_and_dedupe(hass):
@@ -436,9 +441,9 @@ async def test_tracking_options_parcels_add_and_dedupe(hass):
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "parcels"}
+        result["flow_id"], {"next_step_id": "incoming_parcels"}
     )
-    assert result["step_id"] == "parcels"
+    assert result["step_id"] == "incoming_parcels"
 
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
@@ -447,8 +452,32 @@ async def test_tracking_options_parcels_add_and_dedupe(hass):
 
     assert result["type"] == "create_entry"
     assert result["data"][CONF_PARCELS] == [
-        {CONF_TRACKING_CODE: "LX200352688DE"},
-        {CONF_TRACKING_CODE: "8929341455"},
+        {CONF_TRACKING_CODE: "LX200352688DE", CONF_DIRECTION: "incoming"},
+        {CONF_TRACKING_CODE: "8929341455", CONF_DIRECTION: "incoming"},
+    ]
+
+
+async def test_tracking_options_outgoing_list_leaves_incoming_alone(hass):
+    entry = _tracking_entry(["3SBPB0010367741", "8929341455"])
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "outgoing_parcels"}
+    )
+    assert result["step_id"] == "outgoing_parcels"
+    assert result["data_schema"]({}) == {}
+
+    # Re-filing an incoming code as outgoing moves it rather than duplicating.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"tracking_codes": ["8929341455", "JVGL0001"]}
+    )
+
+    assert result["type"] == "create_entry"
+    assert result["data"][CONF_PARCELS] == [
+        {CONF_TRACKING_CODE: "3SBPB0010367741"},
+        {CONF_TRACKING_CODE: "8929341455", CONF_DIRECTION: "outgoing"},
+        {CONF_TRACKING_CODE: "JVGL0001", CONF_DIRECTION: "outgoing"},
     ]
 
 

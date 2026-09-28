@@ -51,6 +51,7 @@ from .const import (
     CONF_DHL_PL_COOKIES,
     CONF_DHL_PL_DEVICE_ID,
     CONF_DHL_PL_PHONE,
+    CONF_DIRECTION,
     CONF_INCLUDE_HISTORY,
     CONF_PARCELS,
     CONF_REFRESH_TOKEN,
@@ -64,12 +65,15 @@ from .const import (
     DEFAULT_INCLUDE_HISTORY,
     DHL_DE_REDIRECT_URL_DOCS_URL,
     DHL_NL_REPO_URL,
+    DIRECTION_INCOMING,
+    DIRECTION_OUTGOING,
     DOMAIN,
     NEW_COUNTRY_ISSUE_URL,
     SOURCE_ACCOUNT,
     SOURCE_TRACKING,
 )
 from .tracking import normalize_tracking_code as normalize_tracking_source_code
+from .tracking import tracked_direction
 from .tracking import valid_tracking_code as valid_tracking_source_code
 
 _LOGGER = logging.getLogger(__name__)
@@ -465,39 +469,70 @@ class DHLOptionsFlowHandler(OptionsFlow):
     ) -> ConfigFlowResult:
         """Route to the tracking hub's menu, or straight to the account form.
 
-        A tracking hub offers "parcels" alongside "settings" (mirroring
-        ha-bpost); an account entry has no per-parcel list of its own to
+        A tracking hub offers incoming and outgoing parcel lists alongside
+        "settings" (mirroring ha-packeta — neither backend can tell the two
+        directions apart, so the user files each code); an account entry has no per-parcel list of its own to
         manage here — the DE by-number list is `dhl.track_parcel`'s job —
         so it goes straight to the single sectioned form it always has.
         """
         if self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
             return self.async_show_menu(
-                step_id="init", menu_options=["parcels", "settings"]
+                step_id="init",
+                menu_options=["incoming_parcels", "outgoing_parcels", "settings"],
             )
         return await self._async_step_account_settings(user_input)
 
-    async def async_step_parcels(
+    async def async_step_incoming_parcels(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show and handle the complete tracked tracking-code list."""
+        """Show and handle the tracked-code list for parcels being received."""
+        return await self._async_step_parcel_list(DIRECTION_INCOMING, user_input)
+
+    async def async_step_outgoing_parcels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show and handle the tracked-code list for parcels being sent."""
+        return await self._async_step_parcel_list(DIRECTION_OUTGOING, user_input)
+
+    async def _async_step_parcel_list(
+        self, direction: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        """Show and handle one direction's complete tracked-code list.
+
+        Both directions share one ``CONF_PARCELS`` list, so a submission
+        replaces this direction's entries and leaves the other's alone —
+        except a code submitted here that was filed the other way, which
+        moves: re-entering it is how a user corrects a wrongly filed parcel.
+        """
+        step_id = f"{direction}_parcels"
+        parcels = list(self.config_entry.options.get(CONF_PARCELS, []))
         errors: dict[str, str] = {}
         if user_input is not None:
             codes = _clean_tracking_codes(user_input.get("tracking_codes"))
             if any(not valid_tracking_source_code(code) for code in codes):
                 errors["base"] = "invalid_tracking_code"
             else:
+                kept = [
+                    parcel
+                    for parcel in parcels
+                    if tracked_direction(parcel) != direction
+                    and parcel.get(CONF_TRACKING_CODE) not in codes
+                ]
                 return self.async_create_entry(
                     title="",
                     data={
                         **self.config_entry.options,
-                        CONF_PARCELS: [
-                            {CONF_TRACKING_CODE: code} for code in codes
+                        CONF_PARCELS: kept
+                        + [
+                            {CONF_TRACKING_CODE: code, CONF_DIRECTION: direction}
+                            for code in codes
                         ],
                     },
                 )
         current_codes = [
             parcel[CONF_TRACKING_CODE]
-            for parcel in self.config_entry.options.get(CONF_PARCELS, [])
+            for parcel in parcels
+            if tracked_direction(parcel) == direction
         ]
         schema = vol.Schema(
             {
@@ -507,7 +542,7 @@ class DHLOptionsFlowHandler(OptionsFlow):
             }
         )
         return self.async_show_form(
-            step_id="parcels",
+            step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(
                 schema, {"tracking_codes": current_codes}
             ),

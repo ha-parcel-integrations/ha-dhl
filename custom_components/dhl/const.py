@@ -274,10 +274,18 @@ SOURCE_ACCOUNT = "account"
 SOURCE_TRACKING = "tracking"
 
 # Tracking-mode tracked parcels, stored in entry.options as a list of
-# ``{tracking_code}`` dicts (mirrors ha-bpost/ha-ups) — distinct from
+# ``{tracking_code, direction}`` dicts (mirrors ha-packeta) — distinct from
 # CONF_TRACKED_CODES, which is the DE account's by-number `track_parcel`
 # service list and only ever holds DE-shaped codes.
 CONF_PARCELS = "parcels"
+
+# Neither tracking backend says whether the user sent or receives a parcel,
+# so the user declares it per code. Entries stored before this option existed
+# carry no direction and default to incoming — no options migration.
+CONF_DIRECTION = "direction"
+DIRECTION_INCOMING = "incoming"
+DIRECTION_OUTGOING = "outgoing"
+DEFAULT_DIRECTION = DIRECTION_INCOMING
 
 # ---------------------------------------------------------------------------
 # Tracking source, half 1: the keyless api-gw.dhlparcel.nl gateway.
