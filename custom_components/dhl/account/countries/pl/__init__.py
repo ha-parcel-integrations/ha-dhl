@@ -1,10 +1,14 @@
 """DHL Parcel Polska transport and canonical parcel mapping."""
 from __future__ import annotations
 
+import logging
+
 import aiohttp
 
-from ....const import DHLApiError, DHLAuthError, ParcelStatus
+from ....const import NEW_ISSUE_URL, DHLApiError, DHLAuthError, ParcelStatus
 from .session import DHLPlSession
+
+_LOGGER = logging.getLogger(__name__)
 
 # `status` — the raw TT_*/SP_* code (primary; tracking.md#status-the-raw-code-primary).
 _RAW = {"TT_EDWP": ParcelStatus.REGISTERED, "SP_DSP": ParcelStatus.IN_TRANSIT, "TT_MAG": ParcelStatus.IN_TRANSIT, "TT_MAG_INT": ParcelStatus.IN_TRANSIT, "TT_PRZEKIERUJ": ParcelStatus.IN_TRANSIT, "TT_DWP": ParcelStatus.OUT_FOR_DELIVERY, "TT_DWP_INT": ParcelStatus.OUT_FOR_DELIVERY, "TT_DWP_PUNKT": ParcelStatus.OUT_FOR_DELIVERY, "TT_LK": ParcelStatus.AT_PICKUP_POINT, "TT_AWI": ParcelStatus.AT_PICKUP_POINT, "TT_OP": ParcelStatus.DELIVERED, "TT_DOR": ParcelStatus.DELIVERED, "TT_ZWN": ParcelStatus.RETURNING, "TT_DOR_ZWN": ParcelStatus.RETURNING, "TT_DELAY_KUR": ParcelStatus.PROBLEM, "TT_DELAY_MAG": ParcelStatus.PROBLEM, "TT_OWL": ParcelStatus.PROBLEM, "TT_CS": ParcelStatus.PROBLEM, "TT_ZGN": ParcelStatus.PROBLEM, "TT_LIK": ParcelStatus.PROBLEM, "SP_CN": ParcelStatus.PROBLEM, "ERR": ParcelStatus.PROBLEM}
@@ -64,12 +68,34 @@ async def async_get_incoming(session: aiohttp.ClientSession, pl_session: DHLPlSe
     return [item for number, item in merged.items() if number]
 
 
+_unmapped_status_logged: set[str] = set()
+
+
+def _warn_unmapped_status(raw_status: str, ladder_status: str | None, status: ParcelStatus) -> None:
+    # Warn even when the timeline rescues the status: only the raw code says
+    # which new state DHL introduced.
+    if raw_status in _unmapped_status_logged:
+        return
+    _unmapped_status_logged.add(raw_status)
+    _LOGGER.warning(
+        "Unrecognised DHL Parcel Polska status — help us map it. Open an "
+        "issue and paste this line: %s\n"
+        "  status=%s timeline=%s → reported as '%s'",
+        NEW_ISSUE_URL,
+        raw_status,
+        ladder_status,
+        status.value,
+    )
+
+
 def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
     """Map one Mój DHL list item to the suite's canonical parcel shape."""
     timeline = raw.get("menuTimelineLabel") if isinstance(raw.get("menuTimelineLabel"), dict) else {}
     raw_status = raw.get("status") if isinstance(raw.get("status"), str) else None
     ladder_status = timeline.get("status") if isinstance(timeline.get("status"), str) else None
     status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "") or _TIMELINE.get(ladder_status or "", ParcelStatus.UNKNOWN)
+    if raw_status and raw_status not in _RAW:
+        _warn_unmapped_status(raw_status, ladder_status, status)
     timestamp = timeline.get("dateUtc") if isinstance(timeline.get("dateUtc"), str) else None
     return {"carrier": "DHL Parcel Polska", "barcode": raw.get("shipmentNumber"), "sender": raw.get("sender"),
             "receiver": None, "status": status, "raw_status": raw_status,

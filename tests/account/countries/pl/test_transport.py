@@ -138,3 +138,18 @@ def test_raw_carries_the_full_list_item():
         "menuTimelineLabel": {"status": "DeliveredToLocker", "dateUtc": "2026-09-04T10:00:00Z"},
     }
     assert normalize_parcel_pl(item)["raw"] == item
+
+
+def test_unrecognised_raw_code_warns_once(caplog):
+    item = {"shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+            "menuTimelineLabel": {"status": "Delivery"}}
+    normalize_parcel_pl(item)
+    normalize_parcel_pl(item)
+    warnings = [r for r in caplog.records if "TT_NEW_CODE_NOT_YET_MAPPED" in r.getMessage()]
+    assert len(warnings) == 1
+    assert "out_for_delivery" in warnings[0].getMessage()
+
+
+def test_recognised_raw_code_does_not_warn(caplog):
+    normalize_parcel_pl({"shipmentNumber": "30413196282", "status": "TT_DOR"})
+    assert not caplog.records

@@ -20,7 +20,7 @@ def reset_one_shot_warnings():
     makes them leak across tests, so whether a warning fires would otherwise
     depend on test order.
     """
-    from custom_components.dhl.account.countries import de
+    from custom_components.dhl.account.countries import de, pl
     from custom_components.dhl.account.countries.de import session
 
     de._unexpected_body_logged = False
@@ -33,6 +33,7 @@ def reset_one_shot_warnings():
     de._delivery_window_shape_logged = False
     de._timestamp_parse_failed_logged = False
     session._client_retirement_warned = False
+    pl._unmapped_status_logged.clear()
     yield
 
 
