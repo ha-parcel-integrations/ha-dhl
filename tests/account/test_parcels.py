@@ -71,6 +71,12 @@ def test_normalize_publishes_exactly_the_canonical_keys():
     assert list(normalize_parcel(delivered_sample(), country="DE")) == CANONICAL_KEYS
 
 
+def test_normalize_publishes_exactly_the_canonical_keys_for_pl():
+    parcel = normalize_parcel({"shipmentNumber": "30413196282", "status": "TT_LK"}, country="PL")
+    assert list(parcel) == CANONICAL_KEYS
+    assert parcel["pickup"] is True
+
+
 def test_normalize_dispatches_to_de():
     parcel = normalize_parcel(delivered_sample(), country="DE")
     assert parcel["carrier"] == "DHL"

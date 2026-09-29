@@ -71,11 +71,12 @@ def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
     ladder_status = timeline.get("status") if isinstance(timeline.get("status"), str) else None
     status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "") or _TIMELINE.get(ladder_status or "", ParcelStatus.UNKNOWN)
     timestamp = timeline.get("dateUtc") if isinstance(timeline.get("dateUtc"), str) else None
-    return {"carrier": "DHL Parcel Polska", "barcode": raw.get("shipmentNumber"), "status": status,
-            "raw_status": raw_status, "sender": raw.get("sender"), "receiver": None,
+    return {"carrier": "DHL Parcel Polska", "barcode": raw.get("shipmentNumber"), "sender": raw.get("sender"),
+            "receiver": None, "status": status, "raw_status": raw_status,
             "delivered": status is ParcelStatus.DELIVERED, "delivered_at": timestamp if status is ParcelStatus.DELIVERED else None,
-            "planned_from": None, "planned_to": None, "weight": None, "dimensions": None,
-            "pickup_point": None, "url": None, "history": None,
+            "planned_from": None, "planned_to": None,
+            "pickup": status is ParcelStatus.AT_PICKUP_POINT, "pickup_point": None, "url": None,
+            "weight": None, "dimensions": None, "history": None,
             "raw": raw}
 
 
