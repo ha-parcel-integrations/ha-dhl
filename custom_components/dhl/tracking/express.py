@@ -291,6 +291,7 @@ _CHECKPOINT_PREFIXES: tuple[tuple[str, ParcelStatus], ...] = (
     ("delivery attempt could not be completed", ParcelStatus.PROBLEM),
     ("further consignee information needed", ParcelStatus.PROBLEM),
     ("delivery not accepted", ParcelStatus.PROBLEM),
+    ("on hold awaiting for payment", ParcelStatus.PROBLEM),
     ("shipment information received", ParcelStatus.REGISTERED),
     ("shipment is scheduled for delivery", ParcelStatus.IN_TRANSIT),
     ("arrived at dhl delivery facility", ParcelStatus.IN_TRANSIT),
@@ -299,6 +300,10 @@ _CHECKPOINT_PREFIXES: tuple[tuple[str, ParcelStatus], ...] = (
     ("processed at", ParcelStatus.IN_TRANSIT),
     ("arrived at dhl sort facility", ParcelStatus.IN_TRANSIT),
     ("shipment has departed from a dhl facility", ParcelStatus.IN_TRANSIT),
+    ("shipment is in transit to destination", ParcelStatus.IN_TRANSIT),
+    ("customs clearance status updated", ParcelStatus.IN_TRANSIT),
+    ("clearance processing complete", ParcelStatus.IN_TRANSIT),
+    ("payment is received and recorded", ParcelStatus.IN_TRANSIT),
 )
 
 # The trailing facility, e.g. " MILAN - MALPENSA - ITALY", so an unknown

@@ -352,11 +352,22 @@ def test_later_real_checkpoints_map_too(caplog):
             "Arrived at DHL Delivery Facility  MONTEROTONDO - ITALY",
             "Delivery not accepted",
             "Shipment information received",
+            "Customs clearance status updated. Note - The Customs clearance "
+            "process may start while the shipment is in transit to the destination. ",
+            "Shipment is in transit to destination",
+            "On hold awaiting for payment of shipment related fees",
+            "Clearance processing complete at CINCINNATI HUB - USA",
+            "Payment is received and recorded for shipment related fees",
         ]
     )
     parcel = normalize_parcel_express(raw, include_history=True)
 
     assert [e["status"] for e in parcel["history"]] == [
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.PROBLEM,
+        ParcelStatus.IN_TRANSIT,
+        ParcelStatus.IN_TRANSIT,
         ParcelStatus.REGISTERED,
         ParcelStatus.PROBLEM,
         ParcelStatus.IN_TRANSIT,
