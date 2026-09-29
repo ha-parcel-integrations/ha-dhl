@@ -377,6 +377,14 @@ DHL_HAMTA_URL = "https://hamta.dhl.com/api/v1/shipment"
 DHL_HAMTA_CODE_LENGTH = 10
 DHL_HAMTA_REQUEST_TIMEOUT_SECONDS = 30
 
+# ---------------------------------------------------------------------------
+# Tracking source, fallback: Mój DHL's public by-number lookup (mojdhl.pl).
+# ---------------------------------------------------------------------------
+
+# Answers for more than Poland (a PL→CZ parcel, a JJD barcode). Its validator
+# rejects anything shorter, and one rejected number fails the whole batch.
+DHL_MOJDHL_MIN_CODE_LENGTH = 11
+
 # Per-entry Store for the tracking source. Without it every restart starts the
 # Express budget full and forgets a running stand-down, so a reboot during a
 # cooldown polls straight back into it, and Express parcels fall back to

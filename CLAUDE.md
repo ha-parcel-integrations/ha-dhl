@@ -2,8 +2,8 @@
 
 Home Assistant custom integration for **DHL**: an `account` source (DHL Paket
 Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (a
-keyless DHL Parcel gateway plus DHL Express tracking, both code-based, no
-account). Distributed via HACS; not part of HA core. One carrier in the
+chain of keyless lookups — the DHL Parcel gateway, then Mój DHL — plus DHL
+Express with DHL Freight Sweden behind it, all code-based, no account). Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
 **generated from ha-carrier-template**. No DTO layer.
 
@@ -236,18 +236,26 @@ implementing:
 | `tracking/gateway.py` (client + `normalize_parcel_gateway`) | **yes** |
 | `tracking/express.py` (client + `normalize_parcel_express`) | **yes** |
 | `tracking/hamta.py` (client + `normalize_parcel_hamta`) | **yes** |
+| `tracking/mojdhl.py` (client + `normalize_parcel_mojdhl`; reuses the PL Altcha solver and status map) | **yes** |
 | `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
 | `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and the normalizers don't) |
 | `tracking/parcels.py` (per-backend dispatch, sort, filters) | no |
 
 ## Load-bearing tracking decisions — do not refactor away
 
-**Routing is a classification of the code, never a fallback chain tried
-against both backends.** A gateway-shaped code that the gateway can't resolve
-must not also try Express, and vice versa — see `ARCHITECTURE.md`'s
-"Tracking source" section for why. The one exception is a code matching
-neither known shape, which tries the gateway first and only falls back to
-Express if the gateway can't resolve it either.
+**The keyless backends are a fallback chain; Express is never part of it.**
+`_KEYLESS_CHAIN` (gateway, then Mój DHL) tries a code no backend owns yet on
+each keyless backend in turn, and the first to answer keeps it. A
+barcode-shaped code the chain can't resolve must still never go to Express,
+and a bare 10-digit code never goes to the gateway — see `ARCHITECTURE.md`'s
+"Tracking source" section for why. Only a code matching no known shape goes
+on to Express after the chain.
+
+**Mój DHL's `422` fails the whole batch.** One number its validator rejects
+(anything under 11 characters, or malformed) turns the entire
+`/shipment/status` request into a `422` naming it. `async_fetch_mojdhl`
+skips short codes and retries once without the named numbers; drop either
+and one bad tracked code stops every Mój DHL parcel from updating.
 
 **DHL Freight Sweden is a fallback behind Express, never a first try.**
 Freight numbers share the 10-character Express shape, so only an Express

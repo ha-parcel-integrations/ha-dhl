@@ -151,3 +151,30 @@ def hamta_shipment(
         ],
         "retention": {"latestPickUpDate": None},
     }
+
+
+def mojdhl_shipment(
+    number: str = "31500000001", *, status: str = "TT_DOR", **fields
+) -> dict:
+    """A Mój DHL public ``/shipment/status`` shipment, shaped like a real one."""
+    return {
+        "shipmentNumber": number,
+        "sender": "EXAMPLE SENDER",
+        "dateOfPostingUtc": "2026-09-18T22:00:00Z",
+        "timelineStep": "Delivered",
+        "timelineStep3Label": "Doręczona",
+        "timelineStep4Label": "Odebrana",
+        "step": "Przesyłka została doręczona",
+        "title": "",
+        "description": "Odbiorca otrzymał paczkę.",
+        "status": status,
+        "internalStatus": "DRPDOR",
+        "planOfDeliveryFromUtc": None,
+        "planOfDeliveryToUtc": None,
+        "deliveryUpToUtc": None,
+        "deliveryDateUtc": None,
+        "receiptDateUtc": "2026-09-22T09:51:00Z",
+        "faqCondition": "DeliveryByCourier",
+        "options": [],
+        **fields,
+    }

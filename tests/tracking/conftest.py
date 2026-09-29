@@ -12,3 +12,13 @@ def fetch_hamta():
         AsyncMock(return_value={}),
     ) as mock:
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def fetch_mojdhl():
+    """Keep the Mój DHL fallback offline; a test sets ``return_value`` to use it."""
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_mojdhl",
+        AsyncMock(return_value={}),
+    ) as mock:
+        yield mock

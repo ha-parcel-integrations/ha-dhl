@@ -88,14 +88,20 @@ def _warn_unmapped_status(raw_status: str, ladder_status: str | None, status: Pa
     )
 
 
+def map_pl_status(raw_status: str | None, ladder_status: str | None) -> ParcelStatus:
+    """Map a raw ``TT_*``/``SP_*`` code, falling back to the timeline step."""
+    status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "") or _TIMELINE.get(ladder_status or "", ParcelStatus.UNKNOWN)
+    if raw_status and raw_status not in _RAW:
+        _warn_unmapped_status(raw_status, ladder_status, status)
+    return status
+
+
 def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
     """Map one Mój DHL list item to the suite's canonical parcel shape."""
     timeline = raw.get("menuTimelineLabel") if isinstance(raw.get("menuTimelineLabel"), dict) else {}
     raw_status = raw.get("status") if isinstance(raw.get("status"), str) else None
     ladder_status = timeline.get("status") if isinstance(timeline.get("status"), str) else None
-    status = _RAW.get(raw_status or "") or _LADDER.get(ladder_status or "") or _TIMELINE.get(ladder_status or "", ParcelStatus.UNKNOWN)
-    if raw_status and raw_status not in _RAW:
-        _warn_unmapped_status(raw_status, ladder_status, status)
+    status = map_pl_status(raw_status, ladder_status)
     timestamp = timeline.get("dateUtc") if isinstance(timeline.get("dateUtc"), str) else None
     return {"carrier": "DHL Parcel Polska", "barcode": raw.get("shipmentNumber"), "sender": raw.get("sender"),
             "receiver": None, "status": status, "raw_status": raw_status,

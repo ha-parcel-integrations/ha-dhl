@@ -1,12 +1,12 @@
 """Tracking-code source: routes each code to the backend that can answer it.
 
-Two backends answer disjoint code shapes (dhl-nl/gateway_track_trace.md,
-dhl/express-app-backend.md): the keyless gateway resolves DHL Parcel barcode
-families, the Express app backend resolves bare 10-digit AWBs, and neither
-has ever resolved the other's shape. Routing is therefore a classification of
-the *code*, not a fallback chain tried against both backends — trying a
-confidently-classified code against the wrong backend only wastes the
-Express backend's scarce budget for a request that can never resolve.
+The keyless backends (the DHL Parcel gateway, then Mój DHL's public lookup)
+are a fallback chain: cheap and unrationed, so a code one of them cannot
+answer is simply tried on the next. The Express app backend is not part of
+that chain. Its budget is scarce, and it has never resolved a DHL Parcel
+barcode, so it is reached by the code's *shape*: bare 10-digit AWBs, plus a
+code that matched no known family and no keyless backend could answer
+(dhl-nl/gateway_track_trace.md, dhl/express-app-backend.md).
 """
 from __future__ import annotations
 
@@ -24,10 +24,9 @@ _EXPRESS_RE = re.compile(DHL_EXPRESS_AWB_PATTERN)
 
 BACKEND_GATEWAY = "gateway"
 BACKEND_EXPRESS = "express"
-# Neither pattern matched: still tried against the gateway (keyless,
-# unthrottled, cheap) per the plan's one narrow, deliberately-inferred rule —
-# never against the Express backend directly, only as that gateway attempt's
-# fallback (see tracking/coordinator.py).
+BACKEND_MOJDHL = "mojdhl"
+# Neither pattern matched: still tried on the keyless chain, and only then
+# on the Express backend (see tracking/coordinator.py).
 BACKEND_UNKNOWN = "unknown"
 
 

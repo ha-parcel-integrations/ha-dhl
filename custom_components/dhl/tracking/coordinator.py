@@ -1,7 +1,9 @@
 """Coordinator for the tracking-code source.
 
-Every poll batches the whole gateway-routed subset in one cheap, unthrottled
-request. The Express-routed subset shares ha-ups's throttled-queue model
+Every poll runs the keyless backends in :data:`_KEYLESS_CHAIN` order, one
+cheap, unthrottled batch each: a code no backend has answered yet goes on to
+the next one, and the first backend that answers keeps the code from then on.
+The Express-routed subset shares ha-ups's throttled-queue model
 instead — one token bucket per entry, spent on at most one Express code per
 cycle, ranked by :data:`_QUEUE_PRIORITY` — because the Express backend's
  answers a handful of requests and then stands down with no
@@ -50,14 +52,16 @@ from ..delivery_window import end_of_day
 from . import (
     BACKEND_EXPRESS,
     BACKEND_GATEWAY,
+    BACKEND_MOJDHL,
     BACKEND_UNKNOWN,
     classify_shape,
     tracked_direction,
 )
 from .budget import RequestBudget
 from .express import async_fetch_express
-from .gateway import DHLGatewayError, async_fetch_gateway
+from .gateway import async_fetch_gateway
 from .hamta import async_fetch_hamta, hamta_shaped
+from .mojdhl import async_fetch_mojdhl, mojdhl_shaped
 from .parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -96,6 +100,23 @@ _BACKOFF_BASE_SECONDS = DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS
 _BACKOFF_CAP_SECONDS = DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS * 6
 
 STORE_SAVE_DELAY_SECONDS = 15
+
+# (backend, label, which codes it may be tried with, batch fetch). A bare
+# 10-digit code is never sent to the gateway, which has never resolved one.
+_KEYLESS_CHAIN = (
+    (
+        BACKEND_GATEWAY,
+        "DHL tracking gateway",
+        lambda code, shape: shape != BACKEND_EXPRESS,
+        lambda session, codes: async_fetch_gateway(session, codes),
+    ),
+    (
+        BACKEND_MOJDHL,
+        "Mój DHL",
+        lambda code, shape: mojdhl_shaped(code),
+        lambda session, codes: async_fetch_mojdhl(session, codes),
+    ),
+)
 
 
 def _stagger_minutes(entry_id: str) -> int:
@@ -217,7 +238,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                 for code, raw in raw_cache.items()
                 if isinstance(code, str)
                 and isinstance(raw, dict)
-                and raw.get(BACKEND_KEY) in ("gateway", "express", "hamta")
+                and raw.get(BACKEND_KEY) in ("gateway", "express", "hamta", "mojdhl")
             }
         delivered_codes = stored.get("delivered_codes")
         if isinstance(delivered_codes, list):
@@ -423,6 +444,28 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         if payload is not None:
             self._raw_cache[code] = {**payload, BACKEND_KEY: "express"}
 
+    async def _async_run_keyless_chain(
+        self, codes: list[str], shapes: dict[str, str]
+    ) -> None:
+        """Poll each keyless backend in turn; a failing one does not stop the next."""
+        for backend, label, accepts, fetch in _KEYLESS_CHAIN:
+            batch = [
+                c
+                for c in codes
+                if self._backend_of(c) == backend
+                or (self._backend_of(c) is None and accepts(c, shapes[c]))
+            ]
+            if not batch:
+                continue
+            try:
+                results = await fetch(self._client, batch)
+            except DHLApiError as err:
+                _LOGGER.warning("%s request failed: %s", label, err)
+                continue
+            for code, raw in results.items():
+                if code in batch:
+                    self._raw_cache[code] = {**raw, BACKEND_KEY: backend}
+
     async def _async_update_data(self) -> list[dict]:
         codes = self._tracked_codes()
         tracked = set(codes)
@@ -438,31 +481,19 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         }
 
         shapes = {code: classify_shape(code) for code in codes}
-        gateway_codes = [c for c in codes if shapes[c] == BACKEND_GATEWAY]
         express_codes = [c for c in codes if shapes[c] == BACKEND_EXPRESS]
         unknown_codes = [c for c in codes if shapes[c] == BACKEND_UNKNOWN]
 
-        # Every gateway-shaped and unknown-shaped code goes out in one batch —
-        # never a confidently Express-shaped one, which the gateway has never
-        # been observed to resolve.
-        gateway_query = gateway_codes + unknown_codes
-        gateway_results: dict[str, dict] = {}
-        if gateway_query:
-            try:
-                gateway_results = await async_fetch_gateway(self._client, gateway_query)
-            except DHLGatewayError as err:
-                _LOGGER.warning("DHL tracking gateway request failed: %s", err)
-        for code, raw in gateway_results.items():
-            self._raw_cache[code] = {**raw, BACKEND_KEY: "gateway"}
+        await self._async_run_keyless_chain(codes, shapes)
 
-        # The plan's one narrow, deliberately-inferred rule: a code that
-        # matched no known barcode family and the gateway could not resolve
-        # gets one attempt against the Express backend too, sharing its
-        # queue with the confidently Express-shaped codes.
-        unresolved_unknown = [c for c in unknown_codes if c not in gateway_results]
-        hamta_codes = [
-            c for c in express_codes + unresolved_unknown if self._backend_of(c) == "hamta"
+        # A code that matched no known barcode family and no keyless backend
+        # could resolve gets the Express backend too, sharing its queue with
+        # the confidently Express-shaped codes. A barcode-shaped code never
+        # does: Express has never resolved one, and its budget is scarce.
+        unresolved_unknown = [
+            c for c in unknown_codes if self._backend_of(c) in (None, "express")
         ]
+        hamta_codes = [c for c in codes if self._backend_of(c) == "hamta"]
         hamta_active = [c for c in hamta_codes if c not in self._delivered_codes]
         if hamta_active:
             try:

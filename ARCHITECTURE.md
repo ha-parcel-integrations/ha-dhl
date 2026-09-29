@@ -55,19 +55,42 @@ has nothing in common with DE's OAuth flow, so its step will look nothing like
 points.** `unique_id` is `f"{country}:{subject}"`; reauth reads the country back
 off the existing entry (`entry_data[CONF_COUNTRY]`) and never asks again.
 
-## Tracking source: shape-routed, three backends
+## Tracking source: a keyless chain, plus shape-routed Express
 
 `tracking/` has no account and no login — a user pastes in tracking codes
 (`config_flow.py`'s `tracking` step creates an empty hub; codes are added
-through the options flow's "parcels" entry), and each code is routed to
-whichever backend its *shape* resolves on
+through the options flow's "parcels" entry). The keyless backends form a
+fallback chain; the rationed Express backend is reached by the code's *shape*
 (`tracking/__init__.py::classify_shape`):
 
-| Shape | Backend | Module |
+| Shape | Backends, in order | Modules |
 |---|---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl`, keyless | `tracking/gateway.py` |
-| Bare 10-digit number (a DHL Express AWB) | `dhle.dhl.com` | `tracking/express.py` |
-| Anything else | Tried on the gateway first; only falls back to Express if the gateway can't resolve it — and never for a confidently-classified shape | both |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl` → `mojdhl.pl` | `tracking/gateway.py`, `tracking/mojdhl.py` |
+| Bare 10-digit number (a DHL Express AWB) | `dhle.dhl.com` → `hamta.dhl.com` | `tracking/express.py`, `tracking/hamta.py` |
+| Anything else | `api-gw.dhlparcel.nl` → `mojdhl.pl` (11+ characters) → `dhle.dhl.com` | all three |
+
+**The keyless chain.** `_KEYLESS_CHAIN` in `tracking/coordinator.py` lists the
+backends that are keyless, unrationed and batchable, in the order they are
+tried: the gateway, then Mój DHL's public lookup. Every poll, each backend
+gets one batch: the codes it already owns (its marker in the cache), plus
+every code no backend owns yet that it can accept. A code one backend
+answers is stamped with that backend's marker and never offered to a later
+one, so the first backend to answer keeps it. A failing backend is logged
+and the chain goes on to the next. Adding a keyless backend is one more
+entry, a fetch that returns `{code: raw}` for the codes it knows, and a
+normalizer in `tracking/parcels.py`.
+
+**Mój DHL answers for more than Poland.** `mojdhl.pl`'s public
+`POST /shipment/status` is the lookup behind DHL Parcel Polska's tracking
+page. It resolved a parcel posted in Poland and delivered in Czechia, which
+no other backend here knew, and a `JJD…` barcode. Each request needs a fresh
+Altcha proof of work, solved with the same `solve_altcha` the Polish account
+login uses. Its validator rejects codes under 11 characters, and a single
+rejected number fails the whole batch with a `422` naming it, so the client
+skips short codes and retries a batch once without the numbers a `422`
+named. The status comes from the same `TT_*` codes as the Polish account
+(`map_pl_status`), with `timelineStep` as the fallback. The payload has no
+event log, so `history` is always `None` for these parcels.
 
 **DHL Freight Sweden shares the Express shape.** Its shipment numbers are 10
 characters too, so shape cannot separate them from Express AWBs. A code that
@@ -79,16 +102,17 @@ the gateway. While Express is standing down or disabled, one code per cycle
 without any record yet is tried on Hamta instead; a miss there is not asked
 again from that path, only after the code's next Express request.
 
-**Do not try both backends for a confidently-classified code.** Every
-barcode-shaped code tried against the Express backend comes back a clean
-`[]` (not found, not an error) — technically harmless, but wasteful of
-Express's scarce request budget for a request that can never resolve; the
-reverse holds for a bare-digit code against the gateway. The unknown-shape
-fallback is the one narrow, deliberately-inferred exception to this rule.
+**Express is never a link in the keyless chain.** Every barcode-shaped code
+tried against the Express backend comes back a clean `[]` (not found, not an
+error) — technically harmless, but wasteful of Express's scarce request
+budget for a request that can never resolve. So a barcode-shaped code the
+keyless chain cannot answer stays unresolved, and only a code matching no
+known shape goes on to Express. A bare-digit code is not sent to the gateway
+either, which has never resolved one.
 
 **The gateway is keyless, unthrottled, and batched.** One request per poll
-covers the entire gateway-routed (plus unresolved-unknown-shape) subset of
-tracked codes, comma-separated (`tracking/gateway.py::async_fetch_gateway`).
+covers the whole batch the chain gives it, comma-separated
+(`tracking/gateway.py::async_fetch_gateway`).
 Unknown codes are dropped silently from a mixed batch, never erred — results
 are matched on the returned `barcode` field, never array position.
 
@@ -159,8 +183,9 @@ custom_components/dhl/
     ├── gateway.py           api-gw.dhlparcel.nl client + normalize_parcel_gateway
     ├── express.py           dhle.dhl.com client + normalize_parcel_express
     ├── hamta.py             hamta.dhl.com client + normalize_parcel_hamta
+    ├── mojdhl.py            mojdhl.pl public lookup client + normalize_parcel_mojdhl
     ├── budget.py            RequestBudget token bucket (Express only)
-    ├── coordinator.py       poll loop, routing, Express queue/throttle, events
+    ├── coordinator.py       poll loop, keyless chain, Express queue/throttle, events
     └── parcels.py           per-backend dispatch, sort, filters
 ```
 

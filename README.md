@@ -25,7 +25,9 @@ DHL's Netherlands business is a separate integration,
 
 **Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
 and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
-domestic DHL Freight Sweden shipment numbers — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
+domestic DHL Freight Sweden shipment numbers and DHL parcel numbers that only
+DHL's Polish tracking (Mój DHL) knows, such as a parcel sent from Poland to
+another country — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
 
 ## Contents
 
@@ -128,13 +130,14 @@ against DHL at add time; a code only resolves (or doesn't) on the next poll.
 ## Tracking codes
 
 Each code you add is routed automatically to whichever DHL backend can
-answer it — you never say which:
+answer it — you never say which. A code is tried on one backend after the
+other until one of them knows it, and is followed there from then on:
 
-| Code shape | Backend |
+| Code shape | Tried on, in order |
 |---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands |
-| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend. A code DHL Express can't find is tried on DHL Freight Sweden's public tracking (Mitt DHL); once found there, it is followed there on the normal cadence |
-| Anything else | Tried on the gateway first; only falls back to the Express backend if the gateway can't resolve it |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands; then Mój DHL's public tracking |
+| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend; then DHL Freight Sweden's public tracking (Mitt DHL) |
+| Anything else | The DHL Parcel gateway; then Mój DHL's public tracking (codes of 11 characters or more); then the DHL Express backend |
 
 **The DHL Express backend is intentionally slow to refresh — roughly once
 every 40 minutes per tracked Express code, shared across however many you
@@ -182,7 +185,7 @@ On a tracking hub DHL's tracking data cannot tell a parcel you sent from one you
 
 ## Parcel status reference
 
-The `status` field is the carrier-agnostic enum shared by the whole integration family, and its exact source depends on which of the three DHL backends produced a given parcel.
+The `status` field is the carrier-agnostic enum shared by the whole integration family, and its exact source depends on which DHL backend produced a given parcel.
 
 **Account (Germany).** DHL Germany reports a coarse 0-5 progress ladder rather than a status vocabulary, so the mapping below is what that ladder can express, plus a Packstation arrival read from the parcel's delivery details. A Filiale arrival cannot currently be told apart from an ordinary "out for delivery" (see [Troubleshooting](#troubleshooting)).
 
@@ -202,6 +205,8 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 **Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`. Before delivery the status follows the newest checkpoint: *Shipment is out with courier for delivery* is `out_for_delivery`; *Delivery attempt could not be completed*, *Delivery not accepted*, *Further consignee information needed* and *On hold awaiting for payment of shipment related fees* are `problem`; *Shipment information received* is `registered`; *Shipment Accepted*, *Shipment picked up*, *Processed at …*, *Arrived at DHL Sort Facility …*, *Arrived at DHL Delivery Facility …*, *Shipment has departed from a DHL facility …*, *Shipment is in transit to destination*, *Customs clearance status updated*, *Clearance processing complete at …*, *Payment is received and recorded for shipment related fees* and *Shipment is scheduled for delivery* are `in_transit`. Any other checkpoint is `in_transit` while the estimated delivery date is still ahead, otherwise `unknown`. No pickup-point state has been observed on this backend yet. Checkpoint times are the local time of the DHL facility; they carry that country's time zone when it has only one, and no offset otherwise.
 
 **Tracking codes — DHL Freight Sweden.** Follows Mitt DHL's own status card: a collected shipment is `delivered`, one waiting too long at the service point is `returning`, a stopped one is `problem`, and one ready for collection is `at_pickup_point`. Otherwise the newest event decides: *OUT FOR DELIVERY* is `out_for_delivery`, a drop-off at the service point or locker is `at_pickup_point`, a return is `returning`, and terminal and transport events are `in_transit`. A shipment without events is `registered`. `pickup_point` is the service point's name.
+
+**Tracking codes — Mój DHL.** Uses the same DHL Parcel Polska status codes as a Polish account: a delivered or collected parcel is `delivered`, one waiting in a locker or behind a notice is `at_pickup_point`, one handed to the courier is `out_for_delivery`, a return is `returning`, and delays and delivery problems are `problem`. This backend has no event log, so parcels found here have no `history`.
 
 The carrier's own human-readable text is always available as `raw_status`.
 
@@ -291,8 +296,8 @@ finished, since nobody building it has a DHL parcel of their own.
 - **A tracking code never resolves** — double-check it against the shape
   table in [Tracking codes](#tracking-codes). A code that matches none of
   the known DHL Parcel barcode families and isn't a 10-digit Express AWB is
-  still tried, but only on the gateway, and only if the gateway's own answer
-  for it looks like "not found" rather than "not this kind of key".
+  still tried on every backend in that table's last row. If none of them
+  knows it, it stays `unknown`.
 
 ## Related integrations
 
