@@ -1,6 +1,14 @@
-"""Tests for the DHL Freight Sweden (Mitt DHL) backend's normalizer."""
-from custom_components.dhl.const import ParcelStatus
-from custom_components.dhl.tracking.hamta import normalize_parcel_hamta
+"""Tests for the DHL Freight Sweden (Mitt DHL) backend: fetch and normalizer."""
+from unittest.mock import AsyncMock, MagicMock
+
+import aiohttp
+import pytest
+
+from custom_components.dhl.const import DHLApiError, ParcelStatus
+from custom_components.dhl.tracking.hamta import (
+    async_fetch_hamta,
+    normalize_parcel_hamta,
+)
 
 from .payloads import hamta_shipment
 
@@ -91,3 +99,68 @@ def test_events_are_ordered_oldest_first_whatever_the_feed_order():
         "PROCESSED AT TERMINAL",
         "DELIVERED BY SERVICE POINT",
     ]
+
+
+def _mock_session(*, status: int, json_body=None):
+    resp = MagicMock()
+    resp.status = status
+    resp.json = AsyncMock(return_value=json_body)
+    resp.__aenter__ = AsyncMock(return_value=resp)
+    resp.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.get = MagicMock(return_value=resp)
+    return session, resp
+
+
+async def test_fetch_skips_the_request_without_a_hamta_shaped_code():
+    session = MagicMock()
+    assert await async_fetch_hamta(session, ["JJD000", "123"]) == {}
+    session.get.assert_not_called()
+
+
+async def test_fetch_keys_shipments_by_tracking_number():
+    session, _ = _mock_session(
+        status=200, json_body=[hamta_shipment("8000000002"), {"no": "number"}, "junk"]
+    )
+    result = await async_fetch_hamta(session, ["8000000001", "8000000002"])
+
+    assert set(result) == {"8000000002"}
+    _, kwargs = session.get.call_args
+    assert kwargs["params"] == [("ids", "8000000001"), ("ids", "8000000002")]
+
+
+async def test_fetch_404_is_not_found_not_an_error():
+    session, resp = _mock_session(status=404)
+    assert await async_fetch_hamta(session, ["8000000001"]) == {}
+    resp.json.assert_not_called()
+
+
+async def test_fetch_non_200_raises():
+    session, _ = _mock_session(status=500)
+    with pytest.raises(DHLApiError):
+        await async_fetch_hamta(session, ["8000000001"])
+
+
+async def test_fetch_connection_error_raises():
+    session = MagicMock()
+    session.get = MagicMock(side_effect=aiohttp.ClientConnectionError("boom"))
+    with pytest.raises(DHLApiError):
+        await async_fetch_hamta(session, ["8000000001"])
+
+
+async def test_fetch_non_list_body_is_empty():
+    session, _ = _mock_session(status=200, json_body={"error": "x"})
+    assert await async_fetch_hamta(session, ["8000000001"]) == {}
+
+
+def test_return_to_sender_event_is_returning():
+    parcel = normalize_parcel_hamta(
+        hamta_shipment(events=[(56, 909, "RETURNED", "2026-09-26T10:00:00.000Z")])
+    )
+    assert parcel["status"] == ParcelStatus.RETURNING
+
+
+def test_timed_out_shipment_is_returning():
+    assert normalize_parcel_hamta(hamta_shipment(isTimeout=True))["status"] == (
+        ParcelStatus.RETURNING
+    )
