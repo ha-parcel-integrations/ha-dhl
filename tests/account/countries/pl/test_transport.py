@@ -129,3 +129,12 @@ async def test_async_get_incoming_raises_dhl_api_error_on_other_list_failure():
 
     with pytest.raises(DHLApiError):
         await async_get_incoming(session, pl_session, "device-1")
+
+
+def test_raw_carries_the_full_list_item():
+    item = {
+        "shipmentNumber": "30413196282", "status": "TT_LK", "sender": "Sender",
+        "packageType": "Locker", "shipmentPin": "123456",
+        "menuTimelineLabel": {"status": "DeliveredToLocker", "dateUtc": "2026-09-04T10:00:00Z"},
+    }
+    assert normalize_parcel_pl(item)["raw"] == item

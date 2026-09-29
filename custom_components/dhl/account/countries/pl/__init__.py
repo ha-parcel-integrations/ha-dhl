@@ -76,7 +76,7 @@ def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
             "delivered": status is ParcelStatus.DELIVERED, "delivered_at": timestamp if status is ParcelStatus.DELIVERED else None,
             "planned_from": None, "planned_to": None, "weight": None, "dimensions": None,
             "pickup_point": None, "url": None, "history": None,
-            "raw": {"package_type": raw.get("packageType"), "timeline_status": ladder_status}}
+            "raw": raw}
 
 
 def is_outgoing_element(raw: dict) -> bool:

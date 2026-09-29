@@ -56,6 +56,9 @@ TO_REDACT = {
     "city",
     "latitude",
     "longitude",
+    # DHL Parcel Polska's shipment number and the PIN that collects the parcel
+    "shipmentNumber",
+    "shipmentPin",
     # the account holder's own email address, present on every element
     "email",
     "phone",
