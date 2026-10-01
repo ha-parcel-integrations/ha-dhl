@@ -237,3 +237,10 @@ def test_pick_shipment_falls_back_to_the_first_and_warns_once(caplog):
 def test_pick_shipment_empty():
     assert pick_shipment({}, "X") is None
     assert pick_shipment({"shipments": ["junk"]}, "X") is None
+
+
+def test_barcode_is_the_entered_code_not_dhls_id():
+    raw = shipment("JJD000390007000000001")
+    parcel = normalize_parcel_unified(raw, code="00340434292135100186")
+    assert parcel["barcode"] == "00340434292135100186"
+    assert parcel["raw"]["id"] == "JJD000390007000000001"

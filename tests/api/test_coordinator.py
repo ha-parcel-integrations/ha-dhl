@@ -390,3 +390,15 @@ async def test_a_new_code_fires_registered(hass):
     await hass.async_block_till_done()
 
     assert fired == [CODE_B]
+
+
+async def test_sensor_and_link_follow_the_entered_code_when_dhl_answers_another_id(hass):
+    entry = _entry(["00340434292135100186"])
+    coordinator, _ = _coordinator(
+        hass, entry, {"00340434292135100186": body(shipment("JJD000390007000000001"))}
+    )
+
+    (parcel,) = await coordinator._async_update_data()
+
+    assert parcel["barcode"] == "00340434292135100186"
+    assert parcel["url"].endswith("tracking-id=00340434292135100186")

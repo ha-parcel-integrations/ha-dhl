@@ -178,7 +178,10 @@ def normalize_parcel_unified(
 
     return {
         "carrier": "DHL",
-        "barcode": shipment.get("id") or code,
+        # The code the user entered, not DHL's id: options, services, the
+        # sensor and the tracking link all key on it, and DHL can answer a
+        # 00340… code with a JJD… id. The id stays in raw.
+        "barcode": code,
         "sender": None,
         "receiver": None,
         "status": status,

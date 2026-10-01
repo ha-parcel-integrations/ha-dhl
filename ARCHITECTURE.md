@@ -207,6 +207,10 @@ five-value `statusCode` baseline; `_REFINEMENTS` (keyed on
 means `out_for_delivery`, `at_pickup_point` or `returning`. A `statusCode`
 outside the enum is `unknown` with a one-shot WARNING. Several shipments for
 one code take the one whose `id` matches, else the first, and warn once.
+`barcode` is always the code the user entered, never DHL's `id` (which stays in
+`raw`): the sandbox answered a `00340…` code with a different `id`, and the
+options list, the services, the per-parcel sensor and the tracking link all key
+on the entered code.
 
 **DHL's terms, implemented.** Every entity of an API entry carries
 `"Delivered by Deutsche Post DHL Group"` as its attribution (`device.py::
