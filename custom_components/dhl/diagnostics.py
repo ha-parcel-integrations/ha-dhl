@@ -10,17 +10,26 @@ key set survives untouched.
 
 The tracking source shares the same shape (``incoming``/``delivered``/
 ``counts``), plus a ``tracking`` block reporting the Express half's
-budget/backoff state.
+budget/backoff state. The API source adds an ``api`` block instead, and its
+``raw`` shipments carry addresses and names, redacted leaf by leaf below.
 """
 from __future__ import annotations
 
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
+from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
 
 from . import DHLConfigEntry
-from .const import CONF_PARCELS, CONF_SOURCE, CONF_TRACKED_CODES, SOURCE_TRACKING
+from .const import (
+    CONF_PARCELS,
+    CONF_SOURCE,
+    CONF_TRACKED_CODES,
+    DHL_UNIFIED_MAX_RETENTION_DAYS,
+    SOURCE_API,
+    SOURCE_TRACKING,
+)
 
 # Redact values, keep every key — a missing key would be indistinguishable
 # from a key the API never sent, which is exactly the ambiguity this export
@@ -69,6 +78,26 @@ TO_REDACT = {
     "access-token",
     "access-signature",
     "token",
+    CONF_API_KEY,
+}
+
+# An API entry's shipments nest their addresses as objects under "address",
+# so that key is swapped for the leaves inside it.
+TO_REDACT_API = (TO_REDACT - {"address"}) | {
+    "postalCode",
+    "streetAddress",
+    "addressLine",
+    "addressLocality",
+    "addressLocalityServicing",
+    "addressRegion",
+    "familyName",
+    "givenName",
+    "organizationName",
+    "number",
+    "documentUrl",
+    "signatureUrl",
+    "serviceUrl",
+    "rerouteUrl",
 }
 
 
@@ -106,8 +135,17 @@ async def async_get_config_entry_diagnostics(
             "express_standing_down": coordinator.express_standing_down,
             "express_disabled": coordinator.express_disabled,
         }
+    api_info = None
+    to_redact = TO_REDACT
+    if entry.data.get(CONF_SOURCE) == SOURCE_API:
+        to_redact = TO_REDACT_API
+        api_info = {
+            "delivered_codes": len(coordinator.delivered_codes),
+            "consecutive_rate_limits": coordinator.consecutive_rate_limits,
+            "max_retention_days": DHL_UNIFIED_MAX_RETENTION_DAYS,
+        }
     return {
-        "entry_options": async_redact_data(entry_options, TO_REDACT),
+        "entry_options": async_redact_data(entry_options, to_redact),
         # Claim *names* only, never their values — `post_number` and `email`
         # are PII. Their presence is what tells an emptied inbox apart from
         # an empty account.
@@ -128,6 +166,7 @@ async def async_get_config_entry_diagnostics(
             "last_inbox_elements": coordinator.last_element_count,
         },
         "tracking": tracking_info,
+        "api": api_info,
         "counts": {
             "incoming_active": len(coordinator.data or []),
             "delivered": len(coordinator.delivered or []),
@@ -139,10 +178,10 @@ async def async_get_config_entry_diagnostics(
                 round(interval.total_seconds() / 60, 1) if interval else None
             ),
         },
-        "incoming": async_redact_data(coordinator.data or [], TO_REDACT),
-        "delivered": async_redact_data(coordinator.delivered or [], TO_REDACT),
-        "outgoing": async_redact_data(coordinator.outgoing or [], TO_REDACT),
+        "incoming": async_redact_data(coordinator.data or [], to_redact),
+        "delivered": async_redact_data(coordinator.delivered or [], to_redact),
+        "outgoing": async_redact_data(coordinator.outgoing or [], to_redact),
         "outgoing_delivered": async_redact_data(
-            coordinator.delivered_outgoing or [], TO_REDACT
+            coordinator.delivered_outgoing or [], to_redact
         ),
     }

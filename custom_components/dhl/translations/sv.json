@@ -6,7 +6,8 @@
         "title": "Konfigurera DHL",
         "menu_options": {
           "account": "Konto",
-          "tracking": "Spårningsnummer"
+          "tracking": "Spårningsnummer",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-kod"
         }
       },
+      "api": {
+        "title": "Spåra med din DHL API-nyckel",
+        "description": "Klistra in API-nyckeln för en app på [developer.dhl.com]({portal_url}) som använder Shipment Tracking – Unified API. DHL utfärdar nycklar till en utvecklarprofil med företagsnamn; en privat profil kan nekas. En standardnyckel tillåter 250 anrop per dag, ett per paket och uppdatering. Spåra bara dina egna paket.",
+        "data": {
+          "api_key": "API-nyckel"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL-inloggningen har gått ut",
         "description": "DHL godtar inte längre den sparade sessionen. Öppna den här länken, logga in igen och klistra in omdirigerings-URL:en som du fångar på fliken Network i webbläsarens utvecklarverktyg (se [steg-för-steg-instruktionerna]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Omdirigerings-URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API-nyckel avvisad",
+        "description": "DHL godtar inte längre den sparade API-nyckeln. Klistra in en fungerande nyckel från [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-nyckel"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL avvisade den här inloggningen.",
       "invalid_phone": "Ange ett giltigt polskt mobilnummer (nio siffror, eventuellt med +48 eller 0048 före).",
       "invalid_sms_code": "Ogiltig eller utgången SMS-kod.",
-      "cannot_connect": "Kunde inte nå DHL. Försök igen."
+      "cannot_connect": "Kunde inte nå DHL. Försök igen.",
+      "invalid_api_key": "DHL avvisade den här API-nyckeln.",
+      "rate_limited": "DHL begränsar den här nyckeln just nu. Vänta en minut och försök igen."
     },
     "abort": {
       "already_configured": "Det DHL-kontot är redan konfigurerat.",

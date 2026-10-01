@@ -102,7 +102,7 @@ async def test_user_flow_shows_source_menu(hass):
 
     assert result["step_id"] == "user"
     assert result["type"] == "menu"
-    assert set(result["menu_options"]) == {"account", "tracking"}
+    assert set(result["menu_options"]) == {"account", "tracking", "api"}
 
 
 async def test_user_flow_account_shows_country_picker(hass):

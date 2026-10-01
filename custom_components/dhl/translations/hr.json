@@ -6,7 +6,8 @@
         "title": "Postavljanje DHL-a",
         "menu_options": {
           "account": "Račun",
-          "tracking": "Kodovi za praćenje"
+          "tracking": "Kodovi za praćenje",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS kod"
         }
       },
+      "api": {
+        "title": "Praćenje vlastitim DHL API ključem",
+        "description": "Zalijepite API ključ aplikacije na [developer.dhl.com]({portal_url}) koja koristi Shipment Tracking – Unified API. DHL izdaje ključeve profilu razvojnog programera s nazivom tvrtke; privatni profil može biti odbijen. Standardni ključ dopušta 250 poziva dnevno, jedan po pošiljci pri svakom ažuriranju. Pratite samo vlastite pošiljke.",
+        "data": {
+          "api_key": "API ključ"
+        }
+      },
       "reauth_confirm": {
         "title": "Prijava na DHL je istekla",
         "description": "DHL više ne prihvaća spremljenu sesiju. Otvorite ovu poveznicu, ponovno se prijavite i zalijepite URL preusmjeravanja koji pronađete na kartici Network u alatima za razvojne programere preglednika (pogledajte [upute korak po korak]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL preusmjeravanja"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API ključ odbijen",
+        "description": "DHL više ne prihvaća spremljeni API ključ. Zalijepite ispravan ključ s [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API ključ"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL je odbio ovu prijavu.",
       "invalid_phone": "Unesite valjan poljski broj mobilnog telefona (devet znamenki, po želji s +48 ili 0048).",
       "invalid_sms_code": "Neispravan ili istekao SMS kod.",
-      "cannot_connect": "Nije moguće doći do DHLa. Pokušajte ponovno."
+      "cannot_connect": "Nije moguće doći do DHLa. Pokušajte ponovno.",
+      "invalid_api_key": "DHL je odbio ovaj API ključ.",
+      "rate_limited": "DHL trenutačno ograničava ovaj ključ. Pričekajte minutu i pokušajte ponovno."
     },
     "abort": {
       "already_configured": "Taj DHL račun je već postavljen.",

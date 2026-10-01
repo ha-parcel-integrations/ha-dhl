@@ -35,16 +35,26 @@ KNOWN_CAPABILITIES = frozenset(
     {"weight", "dimensions", "delivery_window", "pickup_point", "url", "history"}
 )
 
-# Which optional contract fields this carrier's API actually populates — feeds
-# the comparison table on the docs site. Everything not listed here comes back
-# as a literal ``None`` from normalize_parcel_de() in account/countries/de/__init__.py.
+# Which optional contract fields each setup source actually populates — feeds
+# the comparison table on the docs site. Keys are the backend labels
+# data/carriers.yml uses for this repo, in display order.
 #
-# DHL DE never exposes weight or dimensions (no source names either field).
-# ``pickup_point`` counts for Packstations only — it is read from the latest
-# event's link text, so a Filiale arrival still comes back ``None``. The
+# Account: DHL DE never exposes weight or dimensions (no source names either
+# field). ``pickup_point`` counts for Packstations only — it is read from the
+# latest event's link text, so a Filiale arrival still comes back ``None``. The
 # delivery window is contested between two shapes but both are implemented, so
 # it counts.
-CAPABILITIES = frozenset({"delivery_window", "pickup_point", "url", "history"})
+#
+# API Tracking: the Unified API names ``details.weight``; dimensions and a pickup point
+# stay ``None`` until a real payload shows them.
+CAPABILITIES_BY_VARIANT = {
+    "Tracking": frozenset({"delivery_window", "pickup_point", "url", "history"}),
+    "Account": frozenset({"delivery_window", "pickup_point", "url", "history"}),
+    "API Tracking": frozenset({"weight", "delivery_window", "url", "history"}),
+}
+# Legacy consumers import this flat value. New code must select from
+# CAPABILITIES_BY_VARIANT using the entry source.
+CAPABILITIES = frozenset().union(*CAPABILITIES_BY_VARIANT.values())
 
 # The country a hub talks to (CONF_COUNTRY -> entry.data). Both countries own
 # a separate session lifecycle, so each has a country package.
@@ -272,6 +282,9 @@ NEW_ISSUE_URL = (
 CONF_SOURCE = "source"
 SOURCE_ACCOUNT = "account"
 SOURCE_TRACKING = "tracking"
+# The user's own developer.dhl.com key against DHL's official Unified
+# Shipment Tracking API — never mixed with the other two sources.
+SOURCE_API = "api"
 
 # Tracking-mode tracked parcels, stored in entry.options as a list of
 # ``{tracking_code, direction}`` dicts (mirrors ha-packeta) — distinct from
@@ -391,3 +404,31 @@ DHL_MOJDHL_MIN_CODE_LENGTH = 11
 # placeholders until the queue reaches them again.
 TRACKING_STORAGE_VERSION = 1
 TRACKING_STORAGE_KEY = f"{DOMAIN}.tracking_cache"
+
+# ---------------------------------------------------------------------------
+# API source: DHL's official Shipment Tracking – Unified API, on the user's own
+# developer.dhl.com key.
+# ---------------------------------------------------------------------------
+
+DHL_UNIFIED_URL = "https://api-eu.dhl.com/track/shipments"
+DHL_UNIFIED_REQUEST_TIMEOUT_SECONDS = 30
+
+# DHL allows at most one call per 5 s per key, across every code the entry
+# tracks — so requests are sequential and spaced, never gathered.
+DHL_UNIFIED_MIN_REQUEST_GAP_SECONDS = 5
+
+# Request English always, so the fine status texts stay stable keys.
+DHL_UNIFIED_LANGUAGE = "en"
+
+# Spent once by the config flow to prove a key: a 404 for it means the key was
+# accepted.
+DHL_UNIFIED_VALIDATION_CODE = "0000000000"
+
+# 429 backoff when DHL sends no Retry-After: base * 2**consecutive, capped.
+DHL_UNIFIED_BACKOFF_BASE_SECONDS = 60
+DHL_UNIFIED_BACKOFF_CAP_SECONDS = 3600
+
+# DHL's API terms: data shown from this API carries this attribution, and a
+# delivered shipment's data is deleted 30 days after delivery.
+DHL_UNIFIED_ATTRIBUTION = "Delivered by Deutsche Post DHL Group"
+DHL_UNIFIED_MAX_RETENTION_DAYS = 30

@@ -6,7 +6,8 @@
         "title": "Sett opp DHL",
         "menu_options": {
           "account": "Konto",
-          "tracking": "Sporingsnumre"
+          "tracking": "Sporingsnumre",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-kode"
         }
       },
+      "api": {
+        "title": "Spor med din DHL API-nøkkel",
+        "description": "Lim inn API-nøkkelen til en app på [developer.dhl.com]({portal_url}) som bruker Shipment Tracking – Unified API. DHL utsteder nøkler til en utviklerprofil med firmanavn; en privat profil kan bli avvist. En standardnøkkel tillater 250 kall per dag, ett per pakke per oppdatering. Spor bare dine egne pakker.",
+        "data": {
+          "api_key": "API-nøkkel"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL-innloggingen er utløpt",
         "description": "DHL godtar ikke lenger den lagrede økten. Åpne denne lenken, logg inn igjen, og lim inn omdirigerings-URL-en du fanger under fanen Network i nettleserens utviklerverktøy (se [trinnvise instruksjoner]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Omdirigerings-URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API-nøkkel avvist",
+        "description": "DHL godtar ikke lenger den lagrede API-nøkkelen. Lim inn en gyldig nøkkel fra [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-nøkkel"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL avviste denne innloggingen.",
       "invalid_phone": "Skriv inn et gyldig polsk mobilnummer (ni sifre, eventuelt med +48 eller 0048 foran).",
       "invalid_sms_code": "Ugyldig eller utløpt SMS-kode.",
-      "cannot_connect": "Fikk ikke kontakt med DHL. Prøv igjen."
+      "cannot_connect": "Fikk ikke kontakt med DHL. Prøv igjen.",
+      "invalid_api_key": "DHL avviste denne API-nøkkelen.",
+      "rate_limited": "DHL begrenser denne nøkkelen akkurat nå. Vent et minutt og prøv igjen."
     },
     "abort": {
       "already_configured": "Denne DHL-kontoen er allerede satt opp.",

@@ -11,8 +11,10 @@ A custom Home Assistant integration that tracks **DHL Paket** (Germany),
 **DHL Parcel Polska**, and — via tracking codes, no account needed — DHL
 Parcel's wider network and DHL Express. During setup, pick **Account** to log
 in with your own DHL Kundenkonto or Mój DHL account (parcels import
-automatically), or **Tracking codes** to add tracking numbers directly; each
-code is routed automatically to whichever DHL backend can answer it.
+automatically), **Tracking codes** to add tracking numbers directly (each
+code is routed automatically to whichever DHL backend can answer it), or
+**API Tracking** to track codes through DHL's official tracking API with a key of
+your own.
 
 Part of the [ha-parcel-integrations](https://ha-parcel-integrations.github.io/) family: it publishes the same canonical parcel format, statuses and events as the other carrier integrations, so it plugs straight into the [Parcel Aggregator](https://github.com/ha-parcel-integrations/ha-parcel-aggregator) and cross-carrier automations.
 
@@ -28,6 +30,13 @@ and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
 domestic DHL Freight Sweden shipment numbers and DHL parcel numbers that only
 DHL's Polish tracking (Mój DHL) knows, such as a parcel sent from Poland to
 another country — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
+
+**API Tracking support:** every DHL business DHL's official *Shipment Tracking –
+Unified* API covers — DHL Paket Germany by number (no German IP or login
+needed), DHL eCommerce, DHL Parcel in Poland, the UK and the Netherlands,
+DHL Express, DHL Freight and DHL Global Forwarding — with your own key from
+[developer.dhl.com](https://developer.dhl.com/api-reference/shipment-tracking).
+See [API Tracking](#api-tracking) below.
 
 ## Contents
 
@@ -79,6 +88,16 @@ another country — no account or postcode needed. See [Tracking codes](#trackin
 **Tracking-code setup:** nothing beyond the tracking code itself — no
 account, no login, no postcode.
 
+**API Tracking setup:**
+
+- A developer profile on [developer.dhl.com](https://developer.dhl.com/api-reference/shipment-tracking)
+  with an app that has the **Shipment Tracking – Unified** API, and that
+  app's API key. **DHL issues the key to a profile with a company name; a
+  private profile has been refused.**
+- The standard key allows **250 calls a day and one call every 5 seconds**.
+  Each tracked parcel costs one call per update, so the standard key covers
+  about five parcels in transit at once (see [API Tracking](#api-tracking)).
+
 ## Installation
 
 ### HACS (recommended)
@@ -94,7 +113,7 @@ Copy `custom_components/dhl` into your `config/custom_components/` folder and re
 ## Configuration
 
 1. Go to **Settings → Devices & Services → Add Integration → DHL**.
-2. Choose **Account** or **Tracking codes**.
+2. Choose **Account**, **Tracking codes** or **API Tracking**.
 
 ### Account
 
@@ -127,6 +146,31 @@ Choosing **Tracking codes** creates a single tracking hub with no parcels yet
 — add codes afterwards from **Configure → Incoming parcels** or **Outgoing parcels**. Nothing is validated
 against DHL at add time; a code only resolves (or doesn't) on the next poll.
 
+### API Tracking
+
+1. Paste your API key. It is checked with one call before the entry is
+   created; the key is stored in Home Assistant's config-entry storage and
+   never shown or logged.
+2. Add codes afterwards from **Configure → Incoming parcels** or **Outgoing
+   parcels**, exactly as on a tracking hub.
+
+Every code goes to DHL's official API — there is no routing and no fallback
+to the tracking hub's backends. You can add one entry per key. An entry with
+a key and a tracking hub side by side each keep their own parcel list.
+
+**Mind the daily quota.** Calls are made one at a time, at least 5 seconds
+apart, and a parcel stops being fetched once it is delivered. When DHL
+answers that the quota is used up, the entry waits (as long as DHL asks, or
+longer each time it happens) and keeps showing the last known data. With the
+standard 250 calls a day, more than about five parcels in transit at once
+will use up the day. If DHL rejects the key, Home Assistant asks for a new
+one.
+
+DHL's API terms apply to this setup: data from it is attributed "Delivered by
+Deutsche Post DHL Group" on every entity, delivered parcels disappear at the
+latest 30 days after delivery whatever the retention setting says, and you
+should only track your own parcels.
+
 ## Tracking codes
 
 Each code you add is routed automatically to whichever DHL backend can
@@ -146,19 +190,21 @@ track.**
 ## Options
 
 Click **Configure** on the integration entry. An account hub shows one
-sectioned form; a tracking hub shows a menu:
+sectioned form; a tracking hub and an API Tracking entry show a menu:
 
 | Menu entry | Option | Default | Description |
 |---|---|---|---|
-| Incoming parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes of parcels you expect. |
-| Outgoing parcels *(tracking hub only)* | Tracking codes | — | Add or remove the tracking codes of parcels you sent. They are counted on the outgoing sensors, not the incoming ones. Entering a code here that is filed as incoming moves it. |
+| Incoming parcels *(tracking hub and API Tracking)* | Tracking codes | — | Add or remove the tracking codes of parcels you expect. |
+| Outgoing parcels *(tracking hub and API Tracking)* | Tracking codes | — | Add or remove the tracking codes of parcels you sent. They are counted on the outgoing sensors, not the incoming ones. Entering a code here that is filed as incoming moves it. |
 | Settings | Filter by / amount (Delivered parcels) | last 7 days | How long delivered parcels stay visible on the delivered sensor. |
 | Settings | Include status history (Parcel history) | off | Adds a `history` attribute per parcel with each status update. |
 
 Polling isn't one of these settings. An account hub polls on a dynamic,
 status-driven schedule (quiet overnight window, faster when a parcel is out
 for delivery); a tracking hub follows the same schedule for its DHL Parcel
-codes, with Express codes rationed separately as described above. See
+codes, with Express codes rationed separately as described above. An
+API Tracking entry follows the same schedule too, and stops polling once nothing
+is left in transit. See
 [ARCHITECTURE.md](ARCHITECTURE.md) for the details.
 
 ## Removal
@@ -207,6 +253,14 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 **Tracking codes — DHL Freight Sweden.** Follows Mitt DHL's own status card: a collected shipment is `delivered`, one waiting too long at the service point is `returning`, a stopped one is `problem`, and one ready for collection is `at_pickup_point`. Otherwise the newest event decides: *OUT FOR DELIVERY* is `out_for_delivery`, a drop-off at the service point or locker is `at_pickup_point`, a return is `returning`, and terminal and transport events are `in_transit`. A shipment without events is `registered`. `pickup_point` is the service point's name.
 
 **Tracking codes — Mój DHL.** Uses the same DHL Parcel Polska status codes as a Polish account: a delivered or collected parcel is `delivered`, one waiting in a locker or behind a notice is `at_pickup_point`, one handed to the courier is `out_for_delivery`, a return is `returning`, and delays and delivery problems are `problem`. This backend has no event log, so parcels found here have no `history`.
+
+**API Tracking.** DHL's API reports a coarse status for every shipment:
+`pre-transit` → `registered`, `transit` → `in_transit`, `delivered` →
+`delivered`, `failure` → `problem`, `unknown` → `unknown`. The finer statuses
+(`out_for_delivery`, `at_pickup_point`, `returning`) are not mapped yet on
+this setup, because no real parcel has shown yet which DHL status text means
+what. Delivery times are shown exactly as DHL sends them, and `weight` is
+filled in, in kg, when DHL reports it.
 
 The carrier's own human-readable text is always available as `raw_status`.
 
@@ -293,6 +347,13 @@ finished, since nobody building it has a DHL parcel of their own.
 - **A tracking-code Express parcel barely updates** — this is expected, not a
   bug; see [Tracking codes](#tracking-codes) for why. A DHL Parcel barcode
   (`3S…`/`JJD…`/`CR…`/`LX…`) updates on the normal cadence.
+- **An API Tracking entry stops updating for a while** — DHL has answered that
+  the key's quota is used up. The entry keeps its last known data and tries
+  again later; the log says so. Fewer tracked parcels in transit, or a key
+  with a higher quota, avoids it.
+- **An API Tracking entry asks for a new key** — DHL rejected the stored key (it
+  was revoked or deleted on developer.dhl.com). Paste a working one; the
+  tracked parcels are kept.
 - **A tracking code never resolves** — double-check it against the shape
   table in [Tracking codes](#tracking-codes). A code that matches none of
   the known DHL Parcel barcode families and isn't a 10-digit Express AWB is

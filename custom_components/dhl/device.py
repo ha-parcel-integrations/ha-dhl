@@ -10,11 +10,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN
+from .const import CONF_SOURCE, DHL_UNIFIED_ATTRIBUTION, DOMAIN, SOURCE_API
 
 CONFIGURATION_URL = "https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html"
 
 ATTRIBUTION = "Data provided by DHL"
+
+
+def attribution(entry: ConfigEntry) -> str:
+    """Return the attribution line for this entry's entities.
+
+    DHL's API terms require their own line on data from the Unified API.
+    """
+    if entry.data.get(CONF_SOURCE) == SOURCE_API:
+        return DHL_UNIFIED_ATTRIBUTION
+    return ATTRIBUTION
 
 
 def build_device_info(entry: ConfigEntry) -> DeviceInfo:

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
@@ -14,6 +15,8 @@ from .account.client import DHLApiClient
 from .account.coordinator import DHLCoordinator
 from .account.countries.de.session import DHLDeSession
 from .account.countries.pl.session import DHLPlSession
+from .api.client import DHLUnifiedClient
+from .api.coordinator import DHLUnifiedCoordinator
 from .const import (
     CONF_COUNTRY,
     CONF_DHL_PL_COOKIES,
@@ -23,6 +26,7 @@ from .const import (
     DEFAULT_COUNTRY,
     PLATFORMS,
     SOURCE_ACCOUNT,
+    SOURCE_API,
     SOURCE_TRACKING,
     TRACKING_STORAGE_KEY,
     TRACKING_STORAGE_VERSION,
@@ -38,7 +42,7 @@ class DHLData:
     """Runtime data attached to a DHL config entry."""
 
     client: object
-    coordinator: DHLCoordinator | DHLTrackingCoordinator
+    coordinator: DHLCoordinator | DHLTrackingCoordinator | DHLUnifiedCoordinator
     de_session: DHLDeSession | None
     pl_session: DHLPlSession | None
     session: aiohttp.ClientSession
@@ -54,12 +58,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     an account entry — the account branch below is the default, never a
     migration.
     """
-    if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
+    source = entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT)
+    if source == SOURCE_API:
+        session = async_get_clientsession(hass)
+        client = DHLUnifiedClient(session, entry.data[CONF_API_KEY])
+        coordinator = DHLUnifiedCoordinator(hass, client, entry)
+        await coordinator.async_config_entry_first_refresh()
+        entry.runtime_data = DHLData(
+            client=client,
+            coordinator=coordinator,
+            de_session=None,
+            pl_session=None,
+            session=session,
+        )
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        # Same live options model as the tracking source, and likewise no
+        # services: `dhl.track_parcel` stays account-only.
+        entry.async_on_unload(entry.add_update_listener(_async_tracking_options_updated))
+        return True
+
+    if source == SOURCE_TRACKING:
         # The tracking source needs no dedicated cookie jar — HA's shared
         # session is fine.
         session = async_get_clientsession(hass)
         client = session
-        coordinator: DHLCoordinator | DHLTrackingCoordinator = DHLTrackingCoordinator(
+        coordinator = DHLTrackingCoordinator(
             hass, client, entry
         )
         de_session = None
@@ -139,16 +162,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
 async def _async_tracking_options_updated(
     hass: HomeAssistant, entry: DHLConfigEntry
 ) -> None:
-    """Apply a tracking-mode options change by refreshing the coordinator."""
+    """Apply a code-based source's options change by refreshing the coordinator."""
     await entry.runtime_data.coordinator.async_request_refresh()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     """Unload a DHL config entry."""
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) != SOURCE_TRACKING:
-            # The tracking source reuses HA's shared session — nothing owned
-            # to close. The account source opens its own cookie-jarred one.
+        if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_ACCOUNT:
+            # The code-based sources reuse HA's shared session — nothing
+            # owned to close. The account source opens its own cookie-jarred
+            # one.
             await entry.runtime_data.session.close()
         async_unload_services(hass)
         return True

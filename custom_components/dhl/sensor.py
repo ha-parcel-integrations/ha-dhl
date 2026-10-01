@@ -20,7 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import DHLConfigEntry
 from .const import DOMAIN, ParcelStatus
 from .coordinator import DHLCoordinator
-from .device import ATTRIBUTION, build_device_info
+from .device import attribution, build_device_info
 from .parcels import parse_iso
 
 _LOGGER = logging.getLogger(__name__)
@@ -103,7 +103,6 @@ class DHLIncomingParcelsSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "incoming_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -119,6 +118,7 @@ class DHLIncomingParcelsSensor(
         self._async_add_entities = async_add_entities
         self._attr_unique_id = f"{entry.entry_id}_incoming_parcels"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
         self._known_barcodes: set[str] = known_barcodes or set()
 
     @property
@@ -162,7 +162,6 @@ class DHLParcelSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
 
     _attr_has_entity_name = True
     _attr_translation_key = "parcel"
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"raw", "history"})
 
     def __init__(
@@ -175,6 +174,7 @@ class DHLParcelSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_{barcode}"
         self._attr_translation_placeholders = {"barcode": barcode}
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     def _get_parcel(self) -> dict[str, Any] | None:
         for parcel in self.coordinator.data or []:
@@ -203,7 +203,6 @@ class DHLNextDeliverySensor(
     _attr_has_entity_name = True
     _attr_translation_key = "next_delivery"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_attribution = ATTRIBUTION
 
     def __init__(
         self, coordinator: DHLCoordinator, entry: ConfigEntry
@@ -212,6 +211,7 @@ class DHLNextDeliverySensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_next_delivery"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     def _delivery_moments(self) -> list[tuple[datetime, dict]]:
         result: list[tuple[datetime, dict]] = []
@@ -254,7 +254,6 @@ class DHLDeliveredParcelsSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "delivered_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -264,6 +263,7 @@ class DHLDeliveredParcelsSensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_delivered_parcels"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     @property
     def native_value(self) -> int:
@@ -284,7 +284,6 @@ class DHLAwaitingPickupSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "awaiting_pickup"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -294,6 +293,7 @@ class DHLAwaitingPickupSensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_awaiting_pickup"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     def _parcels(self) -> list[dict]:
         return [
@@ -324,7 +324,6 @@ class DHLOutgoingParcelsSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "outgoing_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -334,6 +333,7 @@ class DHLOutgoingParcelsSensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_outgoing_parcels"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     @property
     def native_value(self) -> int:
@@ -354,7 +354,6 @@ class DHLOutgoingDeliveredSensor(
     _attr_has_entity_name = True
     _attr_translation_key = "outgoing_delivered_parcels"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_attribution = ATTRIBUTION
     _unrecorded_attributes = frozenset({"parcels"})
 
     def __init__(
@@ -364,6 +363,7 @@ class DHLOutgoingDeliveredSensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_outgoing_delivered_parcels"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     @property
     def native_value(self) -> int:
@@ -385,7 +385,6 @@ class DHLLastUpdateSensor(
     _attr_translation_key = "last_update"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_attribution = ATTRIBUTION
 
     def __init__(
         self, coordinator: DHLCoordinator, entry: ConfigEntry
@@ -394,6 +393,7 @@ class DHLLastUpdateSensor(
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_last_update"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     @property
     def native_value(self) -> datetime | None:

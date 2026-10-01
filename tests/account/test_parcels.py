@@ -19,6 +19,7 @@ from custom_components.dhl.account.parcels import (
 )
 from custom_components.dhl.const import (
     CAPABILITIES,
+    CAPABILITIES_BY_VARIANT,
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
     DOMAIN,
@@ -175,13 +176,16 @@ def test_collected_packstation_parcel_is_delivered_not_at_pickup_point():
 def test_capabilities_are_known_values():
     """A typo here would silently misreport this carrier on the docs site."""
     assert CAPABILITIES <= KNOWN_CAPABILITIES
+    for capabilities in CAPABILITIES_BY_VARIANT.values():
+        assert capabilities <= KNOWN_CAPABILITIES
 
 
 def test_capabilities_match_what_normalize_parcel_actually_returns():
-    """Every declared CAPABILITIES entry must come true somewhere in a sample."""
+    """Every declared account capability must come true somewhere in a sample."""
     delivered = normalize_parcel(delivered_sample(), country="DE")
     active = normalize_parcel(active_sample(), country="DE")
     with_history = normalize_parcel(delivered_sample(), country="DE", include_history=True)
+    CAPABILITIES = CAPABILITIES_BY_VARIANT["Account"]  # noqa: N806
 
     if "weight" in CAPABILITIES:
         assert delivered["weight"] is not None

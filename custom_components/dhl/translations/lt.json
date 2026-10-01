@@ -6,7 +6,8 @@
         "title": "Nustatyti DHL",
         "menu_options": {
           "account": "Paskyra",
-          "tracking": "Sekimo kodai"
+          "tracking": "Sekimo kodai",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS kodas"
         }
       },
+      "api": {
+        "title": "Sekti su savo DHL API raktu",
+        "description": "Įklijuokite programėlės iš [developer.dhl.com]({portal_url}) API raktą, kuri naudoja Shipment Tracking – Unified API. DHL raktus išduoda kūrėjo profiliui su įmonės pavadinimu; privatus profilis gali būti atmestas. Standartinis raktas leidžia 250 užklausų per dieną, vieną siuntai per kiekvieną atnaujinimą. Sekite tik savo siuntas.",
+        "data": {
+          "api_key": "API raktas"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL prisijungimas baigė galioti",
         "description": "DHL nebepriima išsaugotos sesijos. Atidarykite šią nuorodą, vėl prisijunkite ir įklijuokite peradresavimo URL, kurį pagausite naršyklės kūrėjo įrankių skirtuke Network (žr. [nuoseklias instrukcijas]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Peradresavimo URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API raktas atmestas",
+        "description": "DHL nebepriima išsaugoto API rakto. Įklijuokite veikiantį raktą iš [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API raktas"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL atmetė šį prisijungimą.",
       "invalid_phone": "Įveskite galiojantį Lenkijos mobiliojo telefono numerį (devyni skaitmenys, pasirinktinai su +48 arba 0048).",
       "invalid_sms_code": "Neteisingas arba pasibaigęs SMS kodas.",
-      "cannot_connect": "Nepavyko susisiekti su DHL. Bandykite dar kartą."
+      "cannot_connect": "Nepavyko susisiekti su DHL. Bandykite dar kartą.",
+      "invalid_api_key": "DHL atmetė šį API raktą.",
+      "rate_limited": "DHL šiuo metu riboja šį raktą. Palaukite minutę ir bandykite dar kartą."
     },
     "abort": {
       "already_configured": "Ši DHL paskyra jau nustatyta.",

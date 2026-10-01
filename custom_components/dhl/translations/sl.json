@@ -6,7 +6,8 @@
         "title": "Nastavitev DHL",
         "menu_options": {
           "account": "Račun",
-          "tracking": "Sledilne kode"
+          "tracking": "Sledilne kode",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-koda"
         }
       },
+      "api": {
+        "title": "Sledenje z lastnim ključem API DHL",
+        "description": "Prilepite ključ API aplikacije na [developer.dhl.com]({portal_url}), ki uporablja Shipment Tracking – Unified API. DHL izdaja ključe razvijalskemu profilu z imenom podjetja; zasebni profil je lahko zavrnjen. Standardni ključ dovoli 250 klicev na dan, enega na pošiljko ob vsaki posodobitvi. Sledite samo svojim pošiljkam.",
+        "data": {
+          "api_key": "Ključ API"
+        }
+      },
       "reauth_confirm": {
         "title": "Prijava v DHL je potekla",
         "description": "DHL ne sprejema več shranjene seje. Odprite to povezavo, se znova prijavite in prilepite preusmeritveni URL, ki ga ujamete na zavihku Network v razvijalskih orodjih brskalnika (glejte [navodila po korakih]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Preusmeritveni URL"
+        }
+      },
+      "reauth_api": {
+        "title": "Ključ API DHL je bil zavrnjen",
+        "description": "DHL ne sprejema več shranjenega ključa API. Prilepite delujoč ključ z [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Ključ API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL je zavrnil to prijavo.",
       "invalid_phone": "Vnesite veljavno poljsko mobilno številko (devet številk, po želji s predpono +48 ali 0048).",
       "invalid_sms_code": "Neveljavna ali potekla SMS-koda.",
-      "cannot_connect": "DHLa ni bilo mogoče doseči. Poskusite znova."
+      "cannot_connect": "DHLa ni bilo mogoče doseči. Poskusite znova.",
+      "invalid_api_key": "DHL je zavrnil ta ključ API.",
+      "rate_limited": "DHL ta ključ trenutno omejuje. Počakajte minuto in poskusite znova."
     },
     "abort": {
       "already_configured": "Ta račun DHL je že nastavljen.",

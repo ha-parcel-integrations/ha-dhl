@@ -6,7 +6,8 @@
         "title": "Iestatīt DHL",
         "menu_options": {
           "account": "Konts",
-          "tracking": "Izsekošanas kodi"
+          "tracking": "Izsekošanas kodi",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS kods"
         }
       },
+      "api": {
+        "title": "Izsekot ar savu DHL API atslēgu",
+        "description": "Ielīmē [developer.dhl.com]({portal_url}) lietotnes API atslēgu, kas izmanto Shipment Tracking – Unified API. DHL izsniedz atslēgas izstrādātāja profilam ar uzņēmuma nosaukumu; privāts profils var tikt noraidīts. Standarta atslēga atļauj 250 izsaukumus dienā, vienu uz sūtījumu katrā atjaunināšanā. Izseko tikai savus sūtījumus.",
+        "data": {
+          "api_key": "API atslēga"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL pieteikšanās beigusies",
         "description": "DHL vairs nepieņem saglabāto sesiju. Atveriet šo saiti, piesakieties vēlreiz un ielīmējiet novirzīšanas URL, ko notverat pārlūka izstrādātāja rīku cilnē Network (skatiet [soli pa solim instrukcijas]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Novirzīšanas URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API atslēga noraidīta",
+        "description": "DHL vairs nepieņem saglabāto API atslēgu. Ielīmē derīgu atslēgu no [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API atslēga"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL noraidīja šo pieteikšanos.",
       "invalid_phone": "Ievadiet derīgu Polijas mobilā tālruņa numuru (deviņi cipari, pēc izvēles ar +48 vai 0048).",
       "invalid_sms_code": "Nederīgs vai beidzies SMS kods.",
-      "cannot_connect": "Neizdevās sazināties ar DHL. Mēģiniet vēlreiz."
+      "cannot_connect": "Neizdevās sazināties ar DHL. Mēģiniet vēlreiz.",
+      "invalid_api_key": "DHL noraidīja šo API atslēgu.",
+      "rate_limited": "DHL pašlaik ierobežo šo atslēgu. Pagaidi minūti un mēģini vēlreiz."
     },
     "abort": {
       "already_configured": "Šis DHL konts jau ir iestatīts.",

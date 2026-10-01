@@ -3,7 +3,9 @@
 Home Assistant custom integration for **DHL**: an `account` source (DHL Paket
 Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (a
 chain of keyless lookups — the DHL Parcel gateway, then Mój DHL — plus DHL
-Express with DHL Freight Sweden behind it, all code-based, no account). Distributed via HACS; not part of HA core. One carrier in the
+Express with DHL Freight Sweden behind it, all code-based, no account), and
+an `api` source (DHL's official Unified tracking API on the user's own key,
+code-based). Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
 **generated from ha-carrier-template**. No DTO layer.
 
@@ -11,7 +13,7 @@ Three places hold the knowledge, and they do not overlap:
 
 | What | Where |
 |---|---|
-| How this integration is built, and why it is built that way | [`ARCHITECTURE.md`](ARCHITECTURE.md) — read it before touching the OIDC session, the `fortschritt` ladder, the in/outgoing split, `account/countries/de/`, or anything in `tracking/` |
+| How this integration is built, and why it is built that way | [`ARCHITECTURE.md`](ARCHITECTURE.md) — read it before touching the OIDC session, the `fortschritt` ladder, the in/outgoing split, `account/countries/de/`, or anything in `tracking/` or `api/` |
 | Endpoint mechanics, status vocabularies | `carrier-research/dhl/api/` (private repo) — the OIDC discovery/token endpoints, the `int-verfolgen/data/search` envelope, the `fortschritt` ladder, the tracking gateway/Express mechanics, and every contested field. **Never** duplicated into this repo |
 | Suite-wide conventions | [`.github/CONVENTIONS.md`](https://github.com/ha-parcel-integrations/.github/blob/main/CONVENTIONS.md) |
 
@@ -26,7 +28,7 @@ of these areas:
 |---|---|
 | touch entities, sensors, config/options flow, coordinator, diagnostics, translations | *Home Assistant developer docs* (its table points on to the canonical HA page — don't rely on memory) |
 | add/rename a parcel field, a `ParcelStatus`, or a bus event; change the sort/first-refresh; touch unmapped-status logging | *Parcel contract* — exact key set, units, sort, events + suppression; `test_parcels.py::test_normalize_publishes_exactly_the_canonical_keys` guards the key set |
-| change which optional field this carrier populates vs. always returns `None` | Update `const.py`'s `CAPABILITIES` in the same commit — it feeds the comparison table on the docs site, so an unreflected change is a wrong claim on the website |
+| change which optional field this carrier populates vs. always returns `None` | Update that source's entry in `const.py`'s `CAPABILITIES_BY_VARIANT` in the same commit — it feeds the comparison table on the docs site, so an unreflected change is a wrong claim on the website |
 | ship anything while below 1.0.0 (unconfirmed data) | *Pre-1.0 releases* — one-shot WARNINGs for every guessed shape/code |
 | consider "fixing" a lint/pattern the skill flags (poll interval, inline client, sync requests) | *Deliberate skill divergences* — likely intentional, don't re-flag |
 | commit, bump, tag, release, or write release notes; add a feature without a test | *Workflow / Commits / Versioning / Testing* |
@@ -128,9 +130,10 @@ replaces a redacted key's whole value, collapsing the nesting a tester's export
 needs. `CONF_TRACKED_CODES` is redacted by hand (a bare string list has no key
 to match).
 
-**`weight`/`dimensions` are always `None`; `pickup_point` is set for Packstation
-arrivals only** (parsed from the latest event's link text). Keep `const.py`'s
-`CAPABILITIES` in sync if that changes.
+**On the account source `weight`/`dimensions` are always `None`; `pickup_point`
+is set for Packstation arrivals only** (parsed from the latest event's link
+text). Keep `const.py`'s `CAPABILITIES_BY_VARIANT["Account"]` in sync if that
+changes.
 
 **Do not design toward folding in `ha-dhl-nl`.** It is a separate released repo
 on a different backend. Folding it in as `account/countries/nl/` is a later
@@ -209,9 +212,10 @@ than using either stock mechanism. `options.async_init`'s form never touches
 
 *Polling* — unconditional and status-driven, no user-facing interval, and the
 mid tier is **30 min** rather than the scaffold's 45. Account-based, so it never
-fully stops.
+fully stops. The `api` source reuses the tiers but does stop once nothing is in
+flight.
 
-*Module layout* — two setup-flow sources (`account/`, `tracking/`), each a
+*Module layout* — three setup-flow sources (`account/`, `tracking/`, `api/`), each a
 self-contained package with its own `client.py`/`coordinator.py`/`parcels.py`
 (mirroring `ha-bpost`/`ha-usps`); the domain root dispatches on `CONF_SOURCE`
 and otherwise carries no source-specific logic. Within `account/`, the
@@ -220,11 +224,11 @@ implementing:
 
 | File | Carrier-specific? |
 |---|---|
-| `__init__.py` (source dispatch, setup/unload for both) | no |
-| `api.py` / `coordinator.py` / `parcels.py` (domain root) | no — compatibility re-exports onto `account/client.py` etc., for the pre-split public import path |
+| `__init__.py` (source dispatch, setup/unload for all three) | no |
+| `coordinator.py` / `parcels.py` (domain root) | no — compatibility re-exports onto `account/coordinator.py` etc., for the pre-split public import path |
 | `const.py` | partly (shared contract + DE-specific/PL-specific/tracking-specific constants) |
-| `config_flow.py` (source menu + account's country router/OIDC/SMS flows + tracking's setup/options steps) | **yes** — no precedent elsewhere in the suite |
-| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — account-source only; filters to account entries, never picks a tracking entry |
+| `config_flow.py` (source menu + account's country router/OIDC/SMS flows + tracking's and api's setup/options steps) | **yes** — no precedent elsewhere in the suite |
+| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — account-source only; filters to account entries, never picks a tracking or api entry |
 | `account/client.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |
@@ -240,6 +244,10 @@ implementing:
 | `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
 | `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and the normalizers don't) |
 | `tracking/parcels.py` (per-backend dispatch, sort, filters) | no |
+| `api/__init__.py` | no — the old `api.py`: re-exports the *account* client for the pre-split import path |
+| `api/client.py` (`DHLUnifiedClient`, `DHLUnified…` errors) | **yes** |
+| `api/parcels.py` (`normalize_parcel_unified`, `pick_shipment`) | **yes** |
+| `api/coordinator.py` (spaced sequential poll, 429 backoff, retention cap, events) | partly (the polling model is the scaffold's; the spacing and retention cap are DHL's terms) |
 
 ## Load-bearing tracking decisions — do not refactor away
 
@@ -350,6 +358,48 @@ normalizing, and strips again before it reaches `raw`.** Don't let that
 marker leak into a published parcel's `raw` field, and don't try to infer the
 backend from the payload shape instead — a placeholder for an unfetched code
 has too little shape to infer from reliably.
+
+## Load-bearing API decisions — do not refactor away
+
+**`api/__init__.py` is also the compat shim.** `custom_components.dhl.api`
+used to be a module re-exporting the account client; it is a package now, and
+its `__init__.py` still re-exports `DHLApiClient`/`DHLApiError`/`DHLAuthError`
+from `account/client.py`. Those names mean the *account* transport — the API
+source's own classes are `DHLUnified…` on purpose. `test_compat_shims.py`
+guards this; never edit that test to make a change pass.
+
+**Requests are sequential and at least 5 s apart, never gathered.** DHL allows
+one call per 5 s per key. `_async_pace()` tracks the last request across polls
+too, because an options change refreshes right after a scheduled poll. Do not
+"speed this up" with `asyncio.gather` the way `ha-usps` does.
+
+**A 429 stops the poll.** The rest of the codes would only hit the same limit;
+`UpdateFailed(retry_after=…)` takes DHL's `Retry-After`, else exponential
+backoff. The cache keeps the last good shipments.
+
+**A 401/403 on any code is a reauth for the whole entry.** One key covers every
+code — unlike the tracking source's Express backend, this *is* the user's
+credential, so HA's reauth flow is right. Reauth accepts any working key and
+moves `unique_id` with it; a revoked key is usually replaced, not restored.
+
+**The status is the `statusCode` baseline until a real parcel says more.**
+`_REFINEMENTS` in `api/parcels.py` is empty on purpose: the source was built
+against DHL's OpenAPI spec with no captured payload. Add a `(service, status)`
+pair only for text a real parcel has shown. `status_catalogue.csv` in the
+research repo is a hypothesis, not a mapping table.
+
+**30 days after delivery a shipment is gone.** DHL's API terms: the
+coordinator drops a parcel delivered longer ago than
+`DHL_UNIFIED_MAX_RETENTION_DAYS` from its cache and every list, whatever the
+retention option says, and never fetches that code again while it is tracked.
+Do not add a `Store` to this source — the in-memory cache being the only copy
+is what makes this hold.
+
+**Every entity of an api entry carries DHL's attribution line**
+(`device.py::attribution`) — also a term of the API, not a style choice.
+
+**Never the key in a `unique_id`, title, log or diagnostics.** `unique_id` and
+title carry a SHA-256 prefix; the key lives only in `entry.data`.
 
 ## Running tests
 

@@ -6,7 +6,8 @@
         "title": "Set up DHL",
         "menu_options": {
           "account": "Account",
-          "tracking": "Tracking codes"
+          "tracking": "Tracking codes",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -26,18 +27,36 @@
       "pl": {
         "title": "Set up DHL Parcel Polska",
         "description": "Enter the Polish mobile number registered with Mój DHL. Nine digits, +48, and 0048 are accepted; DHL receives the nine local digits and sends one SMS code. This integration never resends it automatically.",
-        "data": {"phone": "Polish mobile number"}
+        "data": {
+          "phone": "Polish mobile number"
+        }
       },
       "pl_sms": {
         "title": "Verify DHL Parcel Polska",
         "description": "Enter the SMS code sent by Mój DHL.",
-        "data": {"sms_code": "SMS code"}
+        "data": {
+          "sms_code": "SMS code"
+        }
+      },
+      "api": {
+        "title": "Track with your DHL API key",
+        "description": "Paste the API key of an app on [developer.dhl.com]({portal_url}) that uses the Shipment Tracking – Unified API. DHL issues keys to a developer profile with a company name; a private profile may be refused. A standard key allows 250 calls a day, one per parcel per update. Only track your own parcels.",
+        "data": {
+          "api_key": "API key"
+        }
       },
       "reauth_confirm": {
         "title": "DHL sign-in expired",
         "description": "DHL no longer accepts the stored session. Open this link, log in again, then paste the redirect URL you catch in your browser's developer tools' Network tab (see [step-by-step instructions]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Redirect URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API key rejected",
+        "description": "DHL no longer accepts the stored API key. Paste a working key from [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API key"
         }
       }
     },
@@ -46,7 +65,9 @@
       "invalid_auth": "DHL rejected this sign-in.",
       "invalid_phone": "Enter a valid Polish mobile number (nine digits, optionally prefixed with +48 or 0048).",
       "invalid_sms_code": "Invalid or expired SMS code.",
-      "cannot_connect": "Could not reach DHL. Please try again."
+      "cannot_connect": "Could not reach DHL. Please try again.",
+      "invalid_api_key": "DHL rejected this API key.",
+      "rate_limited": "DHL is rate-limiting this key right now. Wait a minute and try again."
     },
     "abort": {
       "already_configured": "That DHL account is already set up.",

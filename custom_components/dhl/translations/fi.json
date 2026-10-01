@@ -6,7 +6,8 @@
         "title": "Määritä DHL",
         "menu_options": {
           "account": "Tili",
-          "tracking": "Seurantakoodit"
+          "tracking": "Seurantakoodit",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-koodi"
         }
       },
+      "api": {
+        "title": "Seuraa omalla DHL API -avaimellasi",
+        "description": "Liitä [developer.dhl.com]({portal_url}) -palvelun sovelluksen API-avain, joka käyttää Shipment Tracking – Unified APIa. DHL myöntää avaimia kehittäjäprofiilille, jossa on yrityksen nimi; yksityinen profiili voidaan hylätä. Vakioavain sallii 250 kutsua päivässä, yhden lähetystä kohden jokaisella päivityksellä. Seuraa vain omia lähetyksiäsi.",
+        "data": {
+          "api_key": "API-avain"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL-kirjautuminen vanhentui",
         "description": "DHL ei enää hyväksy tallennettua istuntoa. Avaa tämä linkki, kirjaudu uudelleen ja liitä uudelleenohjauksen URL, jonka löydät selaimen kehittäjätyökalujen Network-välilehdeltä (katso [vaiheittaiset ohjeet]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Uudelleenohjauksen URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL:n API-avain hylättiin",
+        "description": "DHL ei enää hyväksy tallennettua API-avainta. Liitä toimiva avain osoitteesta [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-avain"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL hylkäsi tämän kirjautumisen.",
       "invalid_phone": "Anna kelvollinen puolalainen matkapuhelinnumero (yhdeksän numeroa, valinnaisesti etuliitteellä +48 tai 0048).",
       "invalid_sms_code": "Virheellinen tai vanhentunut SMS-koodi.",
-      "cannot_connect": "DHLiin ei saatu yhteyttä. Yritä uudelleen."
+      "cannot_connect": "DHLiin ei saatu yhteyttä. Yritä uudelleen.",
+      "invalid_api_key": "DHL hylkäsi tämän API-avaimen.",
+      "rate_limited": "DHL rajoittaa tätä avainta juuri nyt. Odota minuutti ja yritä uudelleen."
     },
     "abort": {
       "already_configured": "Tämä DHL-tili on jo määritetty.",

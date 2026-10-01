@@ -6,7 +6,8 @@
         "title": "DHL instellen",
         "menu_options": {
           "account": "Account",
-          "tracking": "Trackingcodes"
+          "tracking": "Trackingcodes",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Sms-code"
         }
       },
+      "api": {
+        "title": "Volgen met je DHL API-sleutel",
+        "description": "Plak de API-sleutel van een app op [developer.dhl.com]({portal_url}) die de Shipment Tracking – Unified API gebruikt. DHL geeft sleutels uit aan een ontwikkelaarsprofiel met een bedrijfsnaam; een privéprofiel kan geweigerd worden. Een standaardsleutel staat 250 calls per dag toe, één per pakket per update. Volg alleen je eigen pakketten.",
+        "data": {
+          "api_key": "API-sleutel"
+        }
+      },
       "reauth_confirm": {
         "title": "Aanmelding bij DHL verlopen",
         "description": "DHL accepteert de opgeslagen sessie niet meer. Open deze link, meld je opnieuw aan en plak daarna de omleidings-URL die je vindt in het Netwerk-tabblad van de ontwikkelaarstools van je browser (zie de [stapsgewijze uitleg]({docs_url}), in het Engels): {authorize_url}",
         "data": {
           "redirect_url": "Omleidings-URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL API-sleutel geweigerd",
+        "description": "DHL accepteert de opgeslagen API-sleutel niet meer. Plak een werkende sleutel van [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-sleutel"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL heeft deze aanmelding geweigerd.",
       "invalid_phone": "Voer een geldig Pools mobiel nummer in (negen cijfers, eventueel met +48 of 0048 ervoor).",
       "invalid_sms_code": "Ongeldige of verlopen sms-code.",
-      "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw."
+      "cannot_connect": "Kon DHL niet bereiken. Probeer het opnieuw.",
+      "invalid_api_key": "DHL heeft deze API-sleutel geweigerd.",
+      "rate_limited": "DHL beperkt deze sleutel op dit moment. Wacht een minuut en probeer het opnieuw."
     },
     "abort": {
       "already_configured": "Dat DHL-account is al ingesteld.",

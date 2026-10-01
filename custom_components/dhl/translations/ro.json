@@ -6,7 +6,8 @@
         "title": "Configurare DHL",
         "menu_options": {
           "account": "Cont",
-          "tracking": "Coduri de urmărire"
+          "tracking": "Coduri de urmărire",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Cod SMS"
         }
       },
+      "api": {
+        "title": "Urmărire cu cheia ta API DHL",
+        "description": "Lipește cheia API a unei aplicații de pe [developer.dhl.com]({portal_url}) care folosește API-ul Shipment Tracking – Unified. DHL emite chei pentru un profil de dezvoltator cu nume de companie; un profil privat poate fi refuzat. O cheie standard permite 250 de apeluri pe zi, unul per colet la fiecare actualizare. Urmărește doar coletele tale.",
+        "data": {
+          "api_key": "Cheie API"
+        }
+      },
       "reauth_confirm": {
         "title": "Autentificarea DHL a expirat",
         "description": "DHL nu mai acceptă sesiunea salvată. Deschide acest link, autentifică-te din nou, apoi lipește URL-ul de redirecționare găsit în fila Network din instrumentele pentru dezvoltatori ale browserului (vezi [instrucțiunile pas cu pas]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL de redirecționare"
+        }
+      },
+      "reauth_api": {
+        "title": "Cheia API DHL a fost respinsă",
+        "description": "DHL nu mai acceptă cheia API salvată. Lipește o cheie validă de pe [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Cheie API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL a respins această autentificare.",
       "invalid_phone": "Introdu un număr de mobil polonez valid (nouă cifre, opțional cu prefixul +48 sau 0048).",
       "invalid_sms_code": "Cod SMS invalid sau expirat.",
-      "cannot_connect": "DHL nu a putut fi contactat. Încearcă din nou."
+      "cannot_connect": "DHL nu a putut fi contactat. Încearcă din nou.",
+      "invalid_api_key": "DHL a respins această cheie API.",
+      "rate_limited": "DHL limitează această cheie acum. Așteaptă un minut și încearcă din nou."
     },
     "abort": {
       "already_configured": "Acest cont DHL este deja configurat.",

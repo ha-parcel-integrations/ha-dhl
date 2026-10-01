@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DHLConfigEntry
-from .device import ATTRIBUTION, build_device_info
+from .device import attribution, build_device_info
 
 # A manual refresh is a single API round-trip per tracked parcel; HA's
 # per-entity throttling adds nothing here.
@@ -28,13 +28,13 @@ class DHLRefreshButton(ButtonEntity):
 
     _attr_has_entity_name = True
     _attr_translation_key = "refresh"
-    _attr_attribution = ATTRIBUTION
 
     def __init__(self, entry: DHLConfigEntry) -> None:
         """Initialize the button."""
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_refresh"
         self._attr_device_info = build_device_info(entry)
+        self._attr_attribution = attribution(entry)
 
     async def async_press(self) -> None:
         """Trigger an immediate refresh of the coordinator."""

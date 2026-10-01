@@ -6,7 +6,8 @@
         "title": "Skonfiguruj DHL",
         "menu_options": {
           "account": "Konto",
-          "tracking": "Kody śledzenia"
+          "tracking": "Kody śledzenia",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Kod SMS"
         }
       },
+      "api": {
+        "title": "Śledzenie z własnym kluczem API DHL",
+        "description": "Wklej klucz API aplikacji z [developer.dhl.com]({portal_url}), która korzysta z Shipment Tracking – Unified API. DHL wydaje klucze dla profilu dewelopera z nazwą firmy; profil prywatny może zostać odrzucony. Standardowy klucz pozwala na 250 wywołań dziennie, jedno na przesyłkę przy każdej aktualizacji. Śledź tylko własne przesyłki.",
+        "data": {
+          "api_key": "Klucz API"
+        }
+      },
       "reauth_confirm": {
         "title": "Logowanie DHL wygasło",
         "description": "DHL nie akceptuje już zapisanej sesji. Otwórz ten link, zaloguj się ponownie, a następnie wklej adres URL przekierowania przechwycony w karcie Sieć narzędzi deweloperskich przeglądarki (zobacz [instrukcję krok po kroku]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Adres URL przekierowania"
+        }
+      },
+      "reauth_api": {
+        "title": "Klucz API DHL odrzucony",
+        "description": "DHL nie akceptuje już zapisanego klucza API. Wklej działający klucz z [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Klucz API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL odrzuciło to logowanie.",
       "invalid_phone": "Wpisz prawidłowy polski numer telefonu (dziewięć cyfr, opcjonalnie z prefiksem +48 lub 0048).",
       "invalid_sms_code": "Nieprawidłowy lub wygasły kod SMS.",
-      "cannot_connect": "Nie można połączyć się z DHL. Spróbuj ponownie."
+      "cannot_connect": "Nie można połączyć się z DHL. Spróbuj ponownie.",
+      "invalid_api_key": "DHL odrzuciło ten klucz API.",
+      "rate_limited": "DHL ogranicza teraz ten klucz. Odczekaj minutę i spróbuj ponownie."
     },
     "abort": {
       "already_configured": "To konto DHL jest już skonfigurowane.",

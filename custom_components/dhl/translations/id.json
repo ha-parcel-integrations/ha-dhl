@@ -6,7 +6,8 @@
         "title": "Siapkan DHL",
         "menu_options": {
           "account": "Akun",
-          "tracking": "Kode pelacakan"
+          "tracking": "Kode pelacakan",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Kode SMS"
         }
       },
+      "api": {
+        "title": "Lacak dengan kunci API DHL Anda",
+        "description": "Tempel kunci API dari aplikasi di [developer.dhl.com]({portal_url}) yang menggunakan Shipment Tracking – Unified API. DHL menerbitkan kunci untuk profil pengembang dengan nama perusahaan; profil pribadi dapat ditolak. Kunci standar mengizinkan 250 panggilan per hari, satu per paket setiap pembaruan. Lacak hanya paket Anda sendiri.",
+        "data": {
+          "api_key": "Kunci API"
+        }
+      },
       "reauth_confirm": {
         "title": "Sesi masuk DHL kedaluwarsa",
         "description": "DHL tidak lagi menerima sesi yang tersimpan. Buka tautan ini, masuk lagi, lalu tempel URL pengalihan yang Anda tangkap di tab Network pada alat pengembang browser (lihat [petunjuk langkah demi langkah]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL pengalihan"
+        }
+      },
+      "reauth_api": {
+        "title": "Kunci API DHL ditolak",
+        "description": "DHL tidak lagi menerima kunci API yang tersimpan. Tempel kunci yang berfungsi dari [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Kunci API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL menolak proses masuk ini.",
       "invalid_phone": "Masukkan nomor ponsel Polandia yang valid (sembilan digit, opsional dengan awalan +48 atau 0048).",
       "invalid_sms_code": "Kode SMS tidak valid atau kedaluwarsa.",
-      "cannot_connect": "Tidak dapat menghubungi DHL. Silakan coba lagi."
+      "cannot_connect": "Tidak dapat menghubungi DHL. Silakan coba lagi.",
+      "invalid_api_key": "DHL menolak kunci API ini.",
+      "rate_limited": "DHL sedang membatasi kunci ini. Tunggu satu menit lalu coba lagi."
     },
     "abort": {
       "already_configured": "Akun DHL tersebut sudah disiapkan.",

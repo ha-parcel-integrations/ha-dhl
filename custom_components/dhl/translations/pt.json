@@ -6,7 +6,8 @@
         "title": "Configurar o DHL",
         "menu_options": {
           "account": "Conta",
-          "tracking": "Códigos de rastreio"
+          "tracking": "Códigos de rastreio",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Código SMS"
         }
       },
+      "api": {
+        "title": "Seguir com a sua chave API da DHL",
+        "description": "Cole a chave API de uma aplicação em [developer.dhl.com]({portal_url}) que use a API Shipment Tracking – Unified. A DHL emite chaves para um perfil de programador com nome de empresa; um perfil privado pode ser recusado. Uma chave padrão permite 250 chamadas por dia, uma por encomenda em cada atualização. Siga apenas as suas próprias encomendas.",
+        "data": {
+          "api_key": "Chave API"
+        }
+      },
       "reauth_confirm": {
         "title": "Sessão DHL expirada",
         "description": "A DHL já não aceita a sessão guardada. Abra esta ligação, inicie sessão novamente e cole o URL de redirecionamento que captar no separador Network das ferramentas de programador do navegador (consulte as [instruções passo a passo]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL de redirecionamento"
+        }
+      },
+      "reauth_api": {
+        "title": "Chave API da DHL rejeitada",
+        "description": "A DHL já não aceita a chave API guardada. Cole uma chave válida de [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Chave API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "A DHL rejeitou este início de sessão.",
       "invalid_phone": "Introduza um número de telemóvel polaco válido (nove algarismos, opcionalmente com +48 ou 0048).",
       "invalid_sms_code": "Código SMS inválido ou expirado.",
-      "cannot_connect": "Não foi possível contactar a DHL. Tente novamente."
+      "cannot_connect": "Não foi possível contactar a DHL. Tente novamente.",
+      "invalid_api_key": "A DHL rejeitou esta chave API.",
+      "rate_limited": "A DHL está a limitar esta chave neste momento. Aguarde um minuto e tente novamente."
     },
     "abort": {
       "already_configured": "Esta conta DHL já está configurada.",

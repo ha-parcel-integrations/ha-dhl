@@ -6,7 +6,8 @@
         "title": "DHL beállítása",
         "menu_options": {
           "account": "Fiók",
-          "tracking": "Követési kódok"
+          "tracking": "Követési kódok",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-kód"
         }
       },
+      "api": {
+        "title": "Követés saját DHL API-kulccsal",
+        "description": "Illeszd be egy [developer.dhl.com]({portal_url}) alkalmazás API-kulcsát, amely a Shipment Tracking – Unified API-t használja. A DHL cégnévvel rendelkező fejlesztői profilnak ad ki kulcsot; a magánprofilt elutasíthatják. Egy alapkulcs napi 250 hívást enged, csomagonként egyet minden frissítéskor. Csak a saját csomagjaidat kövesd.",
+        "data": {
+          "api_key": "API-kulcs"
+        }
+      },
       "reauth_confirm": {
         "title": "A DHL-bejelentkezés lejárt",
         "description": "A DHL már nem fogadja el a tárolt munkamenetet. Nyissa meg ezt a hivatkozást, jelentkezzen be újra, majd illessze be a böngésző fejlesztői eszközeinek Network lapján elkapott átirányítási URL-t (lásd a [lépésenkénti útmutatót]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Átirányítási URL"
+        }
+      },
+      "reauth_api": {
+        "title": "A DHL elutasította az API-kulcsot",
+        "description": "A DHL már nem fogadja el a mentett API-kulcsot. Illessz be egy működő kulcsot innen: [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-kulcs"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "A DHL elutasította ezt a bejelentkezést.",
       "invalid_phone": "Adjon meg érvényes lengyel mobilszámot (kilenc számjegy, opcionálisan +48 vagy 0048 előtaggal).",
       "invalid_sms_code": "Érvénytelen vagy lejárt SMS-kód.",
-      "cannot_connect": "A DHL nem érhető el. Próbáld újra."
+      "cannot_connect": "A DHL nem érhető el. Próbáld újra.",
+      "invalid_api_key": "A DHL elutasította ezt az API-kulcsot.",
+      "rate_limited": "A DHL most korlátozza ezt a kulcsot. Várj egy percet, és próbáld újra."
     },
     "abort": {
       "already_configured": "Ez a DHL-fiók már be van állítva.",

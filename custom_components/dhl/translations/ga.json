@@ -6,7 +6,8 @@
         "title": "Socraigh DHL",
         "menu_options": {
           "account": "Cuntas",
-          "tracking": "Cóid rianaithe"
+          "tracking": "Cóid rianaithe",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Cód SMS"
         }
       },
+      "api": {
+        "title": "Rianaigh le d'eochair API DHL",
+        "description": "Greamaigh eochair API aip ar [developer.dhl.com]({portal_url}) a úsáideann an Shipment Tracking – Unified API. Eisíonn DHL eochracha do phróifíl forbróra le hainm comhlachta; d'fhéadfaí próifíl phríobháideach a dhiúltú. Ceadaíonn eochair chaighdeánach 250 glao sa lá, ceann amháin in aghaidh an bheartáin gach nuashonrú. Ná rianaigh ach do bheartáin féin.",
+        "data": {
+          "api_key": "Eochair API"
+        }
+      },
       "reauth_confirm": {
         "title": "Tá síniú isteach DHL as feidhm",
         "description": "Ní ghlacann DHL leis an seisiún stóráilte a thuilleadh. Oscail an nasc seo, sínigh isteach arís, agus greamaigh an URL atreoraithe a aimsíonn tú sa chluaisín Network in uirlisí forbróra do bhrabhsálaí (féach na [treoracha céim ar chéim]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL atreoraithe"
+        }
+      },
+      "reauth_api": {
+        "title": "Diúltaíodh d'eochair API DHL",
+        "description": "Ní ghlacann DHL leis an eochair API stóráilte a thuilleadh. Greamaigh eochair a oibríonn ó [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Eochair API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "Dhiúltaigh DHL don síniú isteach seo.",
       "invalid_phone": "Cuir isteach uimhir fón póca Pholannach bhailí (naoi ndigit, le +48 nó 0048 roimpi más mian leat).",
       "invalid_sms_code": "Cód SMS neamhbhailí nó as feidhm.",
-      "cannot_connect": "Níorbh fhéidir teagmháil a dhéanamh le DHL. Bain triail eile as."
+      "cannot_connect": "Níorbh fhéidir teagmháil a dhéanamh le DHL. Bain triail eile as.",
+      "invalid_api_key": "Dhiúltaigh DHL don eochair API seo.",
+      "rate_limited": "Tá DHL ag teorannú na heochrach seo faoi láthair. Fan nóiméad agus bain triail eile as."
     },
     "abort": {
       "already_configured": "Tá an cuntas DHL sin socraithe cheana féin.",

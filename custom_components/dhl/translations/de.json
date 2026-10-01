@@ -6,7 +6,8 @@
         "title": "DHL einrichten",
         "menu_options": {
           "account": "Konto",
-          "tracking": "Tracking-Codes"
+          "tracking": "Tracking-Codes",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-Code"
         }
       },
+      "api": {
+        "title": "Mit deinem DHL-API-Schlüssel verfolgen",
+        "description": "Füge den API-Schlüssel einer App auf [developer.dhl.com]({portal_url}) ein, die die Shipment Tracking – Unified API nutzt. DHL vergibt Schlüssel an ein Entwicklerprofil mit Firmennamen; ein privates Profil kann abgelehnt werden. Ein Standardschlüssel erlaubt 250 Aufrufe pro Tag, einen pro Sendung und Aktualisierung. Verfolge nur deine eigenen Sendungen.",
+        "data": {
+          "api_key": "API-Schlüssel"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL-Anmeldung abgelaufen",
         "description": "DHL akzeptiert die gespeicherte Sitzung nicht mehr. Öffne diesen Link, melde dich erneut an und füge dann die Weiterleitungs-URL ein, die du im Netzwerk-Tab der Entwicklertools deines Browsers findest (siehe [Schritt-für-Schritt-Anleitung]({docs_url}), auf Englisch): {authorize_url}",
         "data": {
           "redirect_url": "Weiterleitungs-URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL-API-Schlüssel abgelehnt",
+        "description": "DHL akzeptiert den gespeicherten API-Schlüssel nicht mehr. Füge einen gültigen Schlüssel von [developer.dhl.com]({portal_url}) ein.",
+        "data": {
+          "api_key": "API-Schlüssel"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL hat diese Anmeldung abgelehnt.",
       "invalid_phone": "Gib eine gültige polnische Mobilnummer ein (neun Ziffern, optional mit +48 oder 0048).",
       "invalid_sms_code": "Ungültiger oder abgelaufener SMS-Code.",
-      "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen."
+      "cannot_connect": "DHL konnte nicht erreicht werden. Bitte erneut versuchen.",
+      "invalid_api_key": "DHL hat diesen API-Schlüssel abgelehnt.",
+      "rate_limited": "DHL drosselt diesen Schlüssel gerade. Warte eine Minute und versuche es erneut."
     },
     "abort": {
       "already_configured": "Dieses DHL-Konto ist bereits eingerichtet.",

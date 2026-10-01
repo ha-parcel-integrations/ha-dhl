@@ -6,7 +6,8 @@
         "title": "Seadista DHL",
         "menu_options": {
           "account": "Konto",
-          "tracking": "Jälgimiskoodid"
+          "tracking": "Jälgimiskoodid",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "SMS-kood"
         }
       },
+      "api": {
+        "title": "Jälgi oma DHL-i API-võtmega",
+        "description": "Kleebi [developer.dhl.com]({portal_url}) rakenduse API-võti, mis kasutab Shipment Tracking – Unified API-d. DHL väljastab võtmeid ettevõtte nimega arendajaprofiilile; eraprofiil võidakse tagasi lükata. Tavavõti lubab 250 päringut päevas, ühe saadetise kohta iga uuenduse ajal. Jälgi ainult oma saadetisi.",
+        "data": {
+          "api_key": "API-võti"
+        }
+      },
       "reauth_confirm": {
         "title": "DHL-i sisselogimine aegus",
         "description": "DHL ei aktsepteeri enam salvestatud seanssi. Ava see link, logi uuesti sisse ja kleebi ümbersuunamise URL, mille leiad brauseri arendajatööriistade vahekaardilt Network (vaata [samm-sammulisi juhiseid]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Ümbersuunamise URL"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL-i API-võti lükati tagasi",
+        "description": "DHL ei aktsepteeri enam salvestatud API-võtit. Kleebi töötav võti aadressilt [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "API-võti"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL lükkas selle sisselogimise tagasi.",
       "invalid_phone": "Sisesta kehtiv Poola mobiilinumber (üheksa numbrit, soovi korral eesliitega +48 või 0048).",
       "invalid_sms_code": "Vigane või aegunud SMS-kood.",
-      "cannot_connect": "DHLiga ei saanud ühendust. Proovi uuesti."
+      "cannot_connect": "DHLiga ei saanud ühendust. Proovi uuesti.",
+      "invalid_api_key": "DHL lükkas selle API-võtme tagasi.",
+      "rate_limited": "DHL piirab praegu seda võtit. Oota minut ja proovi uuesti."
     },
     "abort": {
       "already_configured": "See DHL-i konto on juba seadistatud.",

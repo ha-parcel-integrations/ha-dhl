@@ -6,7 +6,8 @@
         "title": "Thiết lập DHL",
         "menu_options": {
           "account": "Tài khoản",
-          "tracking": "Mã vận đơn"
+          "tracking": "Mã vận đơn",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Mã SMS"
         }
       },
+      "api": {
+        "title": "Theo dõi bằng khóa API DHL của bạn",
+        "description": "Dán khóa API của một ứng dụng trên [developer.dhl.com]({portal_url}) dùng Shipment Tracking – Unified API. DHL cấp khóa cho hồ sơ nhà phát triển có tên công ty; hồ sơ cá nhân có thể bị từ chối. Một khóa tiêu chuẩn cho phép 250 lượt gọi mỗi ngày, một lượt cho mỗi bưu kiện ở mỗi lần cập nhật. Chỉ theo dõi bưu kiện của chính bạn.",
+        "data": {
+          "api_key": "Khóa API"
+        }
+      },
       "reauth_confirm": {
         "title": "Phiên đăng nhập DHL đã hết hạn",
         "description": "DHL không còn chấp nhận phiên đã lưu. Mở liên kết này, đăng nhập lại, rồi dán URL chuyển hướng bạn bắt được trong tab Network của công cụ dành cho nhà phát triển của trình duyệt (xem [hướng dẫn từng bước]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "URL chuyển hướng"
+        }
+      },
+      "reauth_api": {
+        "title": "DHL đã từ chối khóa API",
+        "description": "DHL không còn chấp nhận khóa API đã lưu. Dán một khóa hợp lệ từ [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Khóa API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL đã từ chối lần đăng nhập này.",
       "invalid_phone": "Nhập số điện thoại di động Ba Lan hợp lệ (chín chữ số, có thể thêm tiền tố +48 hoặc 0048).",
       "invalid_sms_code": "Mã SMS không hợp lệ hoặc đã hết hạn.",
-      "cannot_connect": "Không thể kết nối tới DHL. Vui lòng thử lại."
+      "cannot_connect": "Không thể kết nối tới DHL. Vui lòng thử lại.",
+      "invalid_api_key": "DHL đã từ chối khóa API này.",
+      "rate_limited": "DHL đang giới hạn khóa này. Hãy đợi một phút rồi thử lại."
     },
     "abort": {
       "already_configured": "Tài khoản DHL này đã được thiết lập.",

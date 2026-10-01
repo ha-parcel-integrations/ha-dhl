@@ -12,11 +12,12 @@ The OIDC dance has no precedent elsewhere in the suite (every other
 email/password or keyless carrier) — keep it entirely inside this file and
 account/countries/de/session.py; if it starts leaking into the coordinator,
 the abstraction is wrong. This module also holds the account-vs-tracking
-source menu (``SOURCE_ACCOUNT``/``SOURCE_TRACKING``, modelled on ha-bpost)
-and the tracking hub's own setup/options steps.
+source menu (``SOURCE_ACCOUNT``/``SOURCE_TRACKING``/``SOURCE_API``, modelled
+on ha-bpost and ha-usps) and the code-based sources' setup/options steps.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from collections.abc import Mapping
@@ -31,6 +32,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
+from homeassistant.const import CONF_API_KEY
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
@@ -43,6 +45,13 @@ from .account.countries.de.session import (
     decode_id_token_subject,
 )
 from .account.countries.pl.session import DHLPlSession, new_device_id
+from .api.client import (
+    DHLUnifiedClient,
+    DHLUnifiedError,
+    DHLUnifiedKeyError,
+    DHLUnifiedNotFound,
+    DHLUnifiedRateLimitError,
+)
 from .const import (
     CONF_ACCOUNT_SUBJECT,
     CONF_COUNTRY,
@@ -65,11 +74,13 @@ from .const import (
     DEFAULT_INCLUDE_HISTORY,
     DHL_DE_REDIRECT_URL_DOCS_URL,
     DHL_NL_REPO_URL,
+    DHL_UNIFIED_VALIDATION_CODE,
     DIRECTION_INCOMING,
     DIRECTION_OUTGOING,
     DOMAIN,
     NEW_COUNTRY_ISSUE_URL,
     SOURCE_ACCOUNT,
+    SOURCE_API,
     SOURCE_TRACKING,
 )
 from .tracking import normalize_tracking_code as normalize_tracking_source_code
@@ -81,6 +92,27 @@ _LOGGER = logging.getLogger(__name__)
 _REDIRECT_SCHEMA = vol.Schema({vol.Required("redirect_url"): str})
 _PL_PHONE_SCHEMA = vol.Schema({vol.Required("phone"): str})
 _PL_SMS_SCHEMA = vol.Schema({vol.Required("sms_code"): str})
+_API_KEY_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_API_KEY): selector.TextSelector(
+            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+        )
+    }
+)
+DEVELOPER_PORTAL_URL = "https://developer.dhl.com/api-reference/shipment-tracking"
+
+# Settings every code-based entry starts with.
+_CODE_SOURCE_OPTIONS = {
+    CONF_PARCELS: [],
+    CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+    CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
+    CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
+}
+
+
+def _api_key_digest(api_key: str) -> str:
+    """Identify a key without storing or showing it anywhere but entry data."""
+    return hashlib.sha256(api_key.encode()).hexdigest()[:12]
 
 # First-run form: pick which DHL country to set up. Mirrors ha-gls's
 # _COUNTRY_SELECTOR — selector option values double as translation keys
@@ -233,7 +265,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         in, which is a setup-flow fork, not two integrations.
         """
         return self.async_show_menu(
-            step_id="user", menu_options=[SOURCE_ACCOUNT, SOURCE_TRACKING]
+            step_id="user", menu_options=[SOURCE_ACCOUNT, SOURCE_TRACKING, SOURCE_API]
         )
 
     async def async_step_account(
@@ -277,12 +309,90 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title="DHL tracking",
             data={CONF_SOURCE: SOURCE_TRACKING},
-            options={
-                CONF_PARCELS: [],
-                CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
-                CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
-                CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
-            },
+            options=dict(_CODE_SOURCE_OPTIONS),
+        )
+
+    async def _async_validate_api_key(self, api_key: str) -> str | None:
+        """Spend one call proving the key; return an error code or ``None``.
+
+        A 404 for the dummy code is the expected answer from a working key. A
+        429 proves nothing either way, so the user is asked to retry.
+        """
+        client = DHLUnifiedClient(async_get_clientsession(self.hass), api_key)
+        try:
+            await client.async_get_shipments(DHL_UNIFIED_VALIDATION_CODE)
+        except DHLUnifiedNotFound:
+            return None
+        except DHLUnifiedKeyError:
+            return "invalid_api_key"
+        except DHLUnifiedRateLimitError:
+            return "rate_limited"
+        except DHLUnifiedError:
+            _LOGGER.debug("DHL API key validation failed", exc_info=True)
+            return "cannot_connect"
+        return None
+
+    async def async_step_api(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Create an API entry on the user's own developer.dhl.com key.
+
+        One entry per key; codes are added afterwards through the options
+        flow, exactly as on the tracking hub.
+        """
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY].strip()
+            digest = _api_key_digest(api_key)
+            await self.async_set_unique_id(f"{SOURCE_API}:{digest}")
+            self._abort_if_unique_id_configured()
+            error = await self._async_validate_api_key(api_key)
+            if error is None:
+                return self.async_create_entry(
+                    title=f"API ({digest[:6]})",
+                    data={CONF_SOURCE: SOURCE_API, CONF_API_KEY: api_key},
+                    options=dict(_CODE_SOURCE_OPTIONS),
+                )
+            errors["base"] = error
+        return self.async_show_form(
+            step_id=SOURCE_API,
+            data_schema=_API_KEY_SCHEMA,
+            errors=errors,
+            description_placeholders={"portal_url": DEVELOPER_PORTAL_URL},
+        )
+
+    async def async_step_reauth_api(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Replace a rejected API key.
+
+        Any working key is accepted: a revoked key is usually replaced by a
+        new one, so insisting on the old key's identity would make reauth
+        impossible. It must not be a key another entry already uses.
+        """
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY].strip()
+            unique_id = f"{SOURCE_API}:{_api_key_digest(api_key)}"
+            entry = self._get_reauth_entry()
+            if any(
+                other.unique_id == unique_id and other.entry_id != entry.entry_id
+                for other in self._async_current_entries(include_ignore=False)
+            ):
+                return self.async_abort(reason="already_configured")
+            error = await self._async_validate_api_key(api_key)
+            if error is None:
+                return self.async_update_reload_and_abort(
+                    entry,
+                    unique_id=unique_id,
+                    data_updates={CONF_API_KEY: api_key},
+                )
+            errors["base"] = error
+        return self.async_show_form(
+            step_id="reauth_api",
+            data_schema=_API_KEY_SCHEMA,
+            errors=errors,
+            description_placeholders={"portal_url": DEVELOPER_PORTAL_URL},
         )
 
     def _get_pl_session(self) -> DHLPlSession:
@@ -405,6 +515,8 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         The entry already carries its country (set at creation by
         async_step_user's dispatch) — reauth never needs to ask again.
         """
+        if entry_data.get(CONF_SOURCE) == SOURCE_API:
+            return await self.async_step_reauth_api()
         self._country = entry_data[CONF_COUNTRY]
         if self._country == "PL":
             self._pl_reauth_entry = self._get_reauth_entry()
@@ -475,7 +587,10 @@ class DHLOptionsFlowHandler(OptionsFlow):
         manage here — the DE by-number list is `dhl.track_parcel`'s job —
         so it goes straight to the single sectioned form it always has.
         """
-        if self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
+        if self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) in (
+            SOURCE_TRACKING,
+            SOURCE_API,
+        ):
             return self.async_show_menu(
                 step_id="init",
                 menu_options=["incoming_parcels", "outgoing_parcels", "settings"],
@@ -565,7 +680,7 @@ class DHLOptionsFlowHandler(OptionsFlow):
         tracked-codes key carried through untouched differs by source.
         """
         is_tracking = (
-            self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING
+            self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) != SOURCE_ACCOUNT
         )
         if user_input is not None:
             delivered = user_input["delivered"]

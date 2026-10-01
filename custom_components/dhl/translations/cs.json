@@ -6,7 +6,8 @@
         "title": "Nastavit DHL",
         "menu_options": {
           "account": "Účet",
-          "tracking": "Sledovací kódy"
+          "tracking": "Sledovací kódy",
+          "api": "API Tracking"
         }
       },
       "account": {
@@ -37,11 +38,25 @@
           "sms_code": "Kód SMS"
         }
       },
+      "api": {
+        "title": "Sledování s vlastním klíčem API DHL",
+        "description": "Vložte klíč API aplikace na [developer.dhl.com]({portal_url}), která používá Shipment Tracking – Unified API. DHL vydává klíče vývojářskému profilu s názvem firmy; soukromý profil může být odmítnut. Standardní klíč umožňuje 250 volání denně, jedno na zásilku při každé aktualizaci. Sledujte pouze své vlastní zásilky.",
+        "data": {
+          "api_key": "Klíč API"
+        }
+      },
       "reauth_confirm": {
         "title": "Přihlášení k DHL vypršelo",
         "description": "DHL už uloženou relaci nepřijímá. Otevřete tento odkaz, znovu se přihlaste a vložte přesměrovací URL, kterou zachytíte na kartě Network ve vývojářských nástrojích prohlížeče (viz [návod krok za krokem]({docs_url})): {authorize_url}",
         "data": {
           "redirect_url": "Přesměrovací URL"
+        }
+      },
+      "reauth_api": {
+        "title": "Klíč API DHL byl odmítnut",
+        "description": "DHL již nepřijímá uložený klíč API. Vložte funkční klíč z [developer.dhl.com]({portal_url}).",
+        "data": {
+          "api_key": "Klíč API"
         }
       }
     },
@@ -50,7 +65,9 @@
       "invalid_auth": "DHL toto přihlášení odmítlo.",
       "invalid_phone": "Zadejte platné polské mobilní číslo (devět číslic, volitelně s +48 nebo 0048).",
       "invalid_sms_code": "Neplatný nebo prošlý kód SMS.",
-      "cannot_connect": "Nepodařilo se spojit s DHL. Zkuste to prosím znovu."
+      "cannot_connect": "Nepodařilo se spojit s DHL. Zkuste to prosím znovu.",
+      "invalid_api_key": "DHL tento klíč API odmítlo.",
+      "rate_limited": "DHL tento klíč právě omezuje. Počkejte minutu a zkuste to znovu."
     },
     "abort": {
       "already_configured": "Tento účet DHL je již nastaven.",

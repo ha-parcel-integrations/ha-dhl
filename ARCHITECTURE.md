@@ -7,33 +7,41 @@ behind it. API mechanics — the OIDC discovery/token endpoints, the
 gateway and Express mechanics, and every contested field — live in the
 private `carrier-research/dhl/api/` and are never copied here.
 
-Four things shape this repo. It has **two setup-flow sources**: `account`
-(DE/PL, a logged-in inbox) and `tracking` (a keyless DHL Parcel gateway plus
-DHL Express tracking, both code-based). DE auth is a **one-time browser hop**
+Four things shape this repo. It has **three setup-flow sources**: `account`
+(DE/PL, a logged-in inbox), `tracking` (a keyless DHL Parcel gateway plus
+DHL Express tracking, both code-based) and `api` (DHL's official Unified
+tracking API on the user's own key, code-based). DE auth is a **one-time browser hop**
 producing a refresh token; PL auth is a phone/SMS flow whose rotating cookie
 jar is its credential. And a large share of the account source's payload
 mapping is **inferred from third-party sources** rather than observed, so
 nearly every decision there codes both branches and warns.
 
-## Two sources: account and tracking
+## Three sources: account, tracking and api
 
-Mirroring `ha-bpost`, `ha-usps`: `custom_components/dhl/account/` and
-`custom_components/dhl/tracking/` are self-contained source packages, each
+Mirroring `ha-bpost`, `ha-usps`: `custom_components/dhl/account/`,
+`custom_components/dhl/tracking/` and `custom_components/dhl/api/` are
+self-contained source packages, each
 with its own `client.py`/`coordinator.py`/`parcels.py`. The domain root
 (`__init__.py`, `config_flow.py`, `sensor.py`, …) dispatches on the entry's
 `CONF_SOURCE` and otherwise carries no source-specific logic. An entry with no
 `CONF_SOURCE` key predates this split and is an account entry — a default
 read everywhere, never a migration.
 
-`api.py`/`coordinator.py`/`parcels.py` still exist at the domain root as thin
-compatibility re-exports onto `account/client.py` etc. — the pre-split public
-import path (`custom_components.dhl.api.DHLApiClient…`) and any external
-automation/test patching it keep resolving to the same objects.
+`coordinator.py`/`parcels.py` still exist at the domain root as thin
+compatibility re-exports onto `account/coordinator.py` etc., and the `api/`
+package's `__init__.py` does the same for `account/client.py` — the pre-split
+public import path (`custom_components.dhl.api.DHLApiClient…`) and any external
+automation/test patching it keep resolving to the same objects. A package and
+a module of the same name cannot coexist, so `api.py` became that
+`__init__.py`; `DHLApiClient`/`DHLApiError`/`DHLAuthError` there always mean
+the account transport, which is why the API source's own names are
+`DHLUnified…`.
 
-Both sources answer the same shape of question — "what's the status of this
+All three answer the same shape of question — "what's the status of this
 parcel" — with no meaningful difference in user experience beyond how a hub is
-identified (an account, or a tracking code). That is why they are one setup
-flow, `SOURCE_ACCOUNT`/`SOURCE_TRACKING`, not two integrations.
+identified (an account, a tracking code, or a key). That is why they are one
+setup flow, `SOURCE_ACCOUNT`/`SOURCE_TRACKING`/`SOURCE_API`, not three
+integrations.
 
 ## Account source: country split
 
@@ -157,15 +165,65 @@ plan this shipped from specified `JJD[0-9]{21,24}` (21-24 digits after the
 regex would have rejected the shorter one. `DHL_GATEWAY_BARCODE_PATTERNS` in
 `const.py` uses `JJD[0-9]{18,24}`.
 
+## API source: one official endpoint, the user's own key
+
+`api/` sends every tracked code to DHL's *Shipment Tracking – Unified* API
+(`GET /track/shipments`, `DHL-API-Key` header, `language=en` so the status
+texts are stable). One key covers every DHL division by number, so there is
+no shape routing and no fallback into the tracking source's backends — and
+none the other way. Mechanics: `carrier-research/dhl/api/dhl/`.
+
+**A separate source, not a key on the tracking hub.** The tracking source's
+tripwires assume it holds no user credential (`DHLExpressCredentialError` is
+deliberately never `DHLAuthError`). Putting a reauthable key inside it would
+break that, so the key gets its own entry and its own reauth path — the
+`ha-usps` argument. The cost, two parcel lists for a user with both, is
+accepted.
+
+**One entry per key.** `unique_id` is `api:` plus the first 12 hex characters
+of the key's SHA-256, and the title carries six of them; the key itself is
+only ever in `entry.data`. Reauth accepts *any* working key and moves the
+`unique_id` with it (refusing one another entry already uses): a revoked key
+is usually replaced by a new one, so insisting on the old key's identity would
+make reauth impossible.
+
+**The key is one credential for every code.** A 401/403 on any code raises
+`ConfigEntryAuthFailed` for the whole poll. Validation in the config flow
+spends one call on a dummy code, where a 404 means the key works.
+
+**No budget, but two hard limits.** No `RequestBudget`, queue or `Store` —
+the account-less polling model. Requests are sequential and at least
+`DHL_UNIFIED_MIN_REQUEST_GAP_SECONDS` (5 s) apart, tracked across polls, never
+gathered: DHL allows one call per 5 s per key. A 429 stops the poll and raises
+`UpdateFailed` with `retry_after` (DHL's `Retry-After`, else `60 s · 2^n`,
+capped at an hour), like the scaffold. The standard key's 250 calls a day at
+the 30-minute tier cover about five parcels in transit; beyond that the day
+runs on backoff. Delivered codes are not fetched again, and with nothing left
+in flight the coordinator stops until an options change refreshes it.
+
+**Built against the OpenAPI spec, not a captured payload.** The status is the
+five-value `statusCode` baseline; `_REFINEMENTS` (keyed on
+`(service, status)`) stays empty until a real parcel shows which fine text
+means `out_for_delivery`, `at_pickup_point` or `returning`. A `statusCode`
+outside the enum is `unknown` with a one-shot WARNING. Several shipments for
+one code take the one whose `id` matches, else the first, and warn once.
+
+**DHL's terms, implemented.** Every entity of an API entry carries
+`"Delivered by Deutsche Post DHL Group"` as its attribution (`device.py::
+attribution`). The only copy of a shipment is the coordinator's in-memory
+cache; a parcel delivered more than `DHL_UNIFIED_MAX_RETENTION_DAYS` (30) ago
+is dropped from it and from every list, whatever the retention option says,
+and its code is never fetched again while it stays tracked.
+
 ## Project layout
 
 ```
 custom_components/dhl/
-├── __init__.py          source dispatch, setup/unload for both
-├── api.py / coordinator.py / parcels.py   compat re-exports onto account/*
+├── __init__.py          source dispatch, setup/unload for all three
+├── coordinator.py / parcels.py   compat re-exports onto account/*
 ├── const.py              shared + account + tracking constants, CAPABILITIES
 ├── config_flow.py        source menu + account's country router/OIDC flow +
-│                         tracking's setup/options steps
+│                         tracking's and api's setup/options steps
 ├── sensor.py              summary, per-parcel, outgoing and diagnostic sensors
 ├── button.py              refresh button
 ├── calendar.py            read-only deliveries calendar
@@ -187,10 +245,15 @@ custom_components/dhl/
     ├── budget.py            RequestBudget token bucket (Express only)
     ├── coordinator.py       poll loop, keyless chain, Express queue/throttle, events
     └── parcels.py           per-backend dispatch, sort, filters
+└── api/
+    ├── __init__.py          compat re-export of the account client (the old api.py)
+    ├── client.py            DHLUnifiedClient + DHLUnified… errors
+    ├── coordinator.py       sequential spaced poll, 429 backoff, retention cap, events
+    └── parcels.py           normalize_parcel_unified, pick_shipment
 ```
 
-`PLATFORMS` is `[Platform.BUTTON, Platform.CALENDAR, Platform.SENSOR]` for both
-sources.
+`PLATFORMS` is `[Platform.BUTTON, Platform.CALENDAR, Platform.SENSOR]` for all
+three sources.
 
 ## Authentication
 
@@ -422,7 +485,8 @@ Unconditional and status-driven — **no user-facing interval**.
 - a small per-install stagger so installs don't poll in sync.
 
 Account-based, so it **never fully stops** — the next poll is what detects a new
-shipment.
+shipment. The API source reuses the same tiers but does stop once nothing is
+in flight (see *API source* above).
 
 ## Diagnostics
 
@@ -444,9 +508,19 @@ queue's budget/backoff state (`tracking/coordinator.py`'s
 `express_standing_down`/`express_disabled` properties) — never anything about
 the credential itself, which this module never touches.
 
+The API source adds an `api` block instead (delivered-code count, consecutive
+429s, the retention cap). Its shipments nest addresses as objects under
+`address`, which the Freight Sweden payload uses as a string leaf, so an API
+entry redacts with `TO_REDACT_API`: `address` swapped for the leaves inside it
+(`postalCode`, `addressLocality`, …), plus names, reference numbers and
+per-shipment links. The key is in `entry.data`, which the export never
+includes.
+
 ## Fields
 
-`weight` and `dimensions` are always `None` on every source. `pickup_point` is
+`weight` is filled only on the API source, from `details.weight` converted to
+kg; an unknown unit leaves it `None` with one WARNING. `dimensions` is always
+`None`. `pickup_point` is
 populated for account/DE Packstation arrivals and for DHL Freight Sweden
 service-point and locker shipments — never on the gateway or Express.
 `history` is populated on every tracking backend.
@@ -462,6 +536,9 @@ day in Home Assistant's time zone (`delivery_window.py::end_of_day`) — the
 recipient's day, since a moment DHL sends in UTC can fall on another date
 there. The DE account source does the same when it only has a single
 `zustellzeitfenster`/`zustelldatum`; a real `Von`/`Bis` pair is kept as is.
-A delivered parcel has neither — only `delivered_at`, as in ha-dhl-nl. None of this changes `CAPABILITIES` in
-`const.py`, which already claimed all of these from the account source — keep
-it in sync if that ever changes.
+A delivered parcel has neither — only `delivered_at`, as in ha-dhl-nl. The API
+source keeps DHL's `estimatedDeliveryTimeFrame` pair, or makes a single
+`estimatedTimeOfDelivery` a point (`planned_from == planned_to`), with the
+offset exactly as DHL sends it. `CAPABILITIES_BY_VARIANT` in `const.py` holds
+this per source, keyed like `data/carriers.yml` on the docs site; keep it in
+sync.
