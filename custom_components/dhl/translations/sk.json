@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Sledovať zásielku",
-      "description": "Začne sledovať zásielku podľa sledovacieho čísla DHL, navyše k tomu, čo už zobrazuje váš účet DHL.",
+      "description": "Začne sledovať zásielku podľa čísla zásielky DHL. Pri účte DHL pribudne k tomu, čo účet už zobrazuje.",
       "fields": {
         "tracking_code": {
           "name": "Sledovací kód",
           "description": "Sledovacie číslo DHL."
         },
         "config_entry_id": {
-          "name": "Účet DHL",
-          "description": "Do ktorého nastaveného účtu DHL pridať túto zásielku. Potrebné iba vtedy, ak je nastavených viac."
+          "name": "Položka DHL",
+          "description": "Do ktorej nastavenej položky DHL sa má zásielka pridať. Bez nej ide zásielka do vašej jedinej položky DHL, inak do vášho jediného účtu DHL."
+        },
+        "direction": {
+          "name": "Smer",
+          "description": "Či zásielku prijímate, alebo odosielate. Sledovacie údaje DHL to nerozlíšia. Opätovné zavolanie s opačným smerom už sledovanú zásielku presunie. Pri účte DHL sa nepoužije, ten smer pozná sám."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Sledovacie číslo DHL, ktoré sa má prestať sledovať."
         },
         "config_entry_id": {
-          "name": "Účet DHL",
-          "description": "Z ktorého nastaveného účtu DHL odobrať túto zásielku. Potrebné iba vtedy, ak je nastavených viac."
+          "name": "Položka DHL",
+          "description": "Z ktorej nastavenej položky DHL sa má zásielka odobrať. Bez nej sa použije vaša jediná položka DHL, inak váš jediný účet DHL."
         }
       }
     }

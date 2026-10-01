@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Praćenje pošiljke",
-      "description": "Počnite pratiti pošiljku prema njenom DHL broju za praćenje, uz ono što vaš DHL račun već prikazuje.",
+      "description": "Počinje pratiti pošiljku prema DHL broju za praćenje. Na DHL računu dodaje se onome što račun već prikazuje.",
       "fields": {
         "tracking_code": {
           "name": "Kod za praćenje",
           "description": "DHL broj za praćenje."
         },
         "config_entry_id": {
-          "name": "DHL račun",
-          "description": "Kojem postavljenom DHL računu dodati ovu pošiljku. Potrebno samo ako ih je postavljeno više."
+          "name": "DHL unos",
+          "description": "U koji konfigurirani DHL unos dodati ovu pošiljku. Bez toga pošiljka ide u tvoj jedini DHL unos, inače na tvoj jedini DHL račun."
+        },
+        "direction": {
+          "name": "Smjer",
+          "description": "Primaš li ovu pošiljku ili je šalješ. DHL podaci za praćenje to ne razlikuju. Ponovni poziv s drugim smjerom premješta već praćenu pošiljku. Ne koristi se na DHL računu, koji sam zna smjer."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL pratni broj koji treba prestati pratiti."
         },
         "config_entry_id": {
-          "name": "DHL račun",
-          "description": "S kojeg postavljenog DHL računa ukloniti ovu pošiljku. Potrebno samo ako ih je postavljeno više."
+          "name": "DHL unos",
+          "description": "Iz kojeg konfiguriranog DHL unosa ukloniti ovu pošiljku. Bez toga koristi se tvoj jedini DHL unos, inače tvoj jedini DHL račun."
         }
       }
     }

@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Rian pacáiste",
-      "description": "Tosaigh ag rianú beart de réir a uimhir rianaithe DHL, chomh maith leis an méid a thaispeánann do chuntas DHL cheana.",
+      "description": "Tosaigh ag rianú beartáin de réir a uimhir rianaithe DHL. Ar chuntas DHL, cuirtear é leis an méid a thaispeánann an cuntas cheana.",
       "fields": {
         "tracking_code": {
           "name": "Cód rianaithe",
           "description": "An uimhir rianaithe DHL."
         },
         "config_entry_id": {
-          "name": "Cuntas DHL",
-          "description": "Cén cuntas DHL cumraithe ar cheart an beart seo a chur leis. Ní gá ach nuair atá níos mó ná ceann amháin socraithe."
+          "name": "Iontráil DHL",
+          "description": "Cén iontráil DHL cumraithe lena gcuirfear an beartán seo. Gan í, téann an beartán chuig d'aon iontráil DHL, nó murach sin chuig d'aon chuntas DHL."
+        },
+        "direction": {
+          "name": "Treo",
+          "description": "Cé acu atá tú ag fáil an bheartáin seo nó á sheoladh. Ní féidir le sonraí rianaithe DHL idirdhealú a dhéanamh. Má ghlaotar arís leis an treo eile, bogtar beartán atá á rianú cheana. Ní úsáidtear é ar chuntas DHL, a bhfuil an treo ar eolas aige féin."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "An uimhir rianaithe DHL nach bhfuil le rianú a thuilleadh."
         },
         "config_entry_id": {
-          "name": "Cuntas DHL",
-          "description": "Cén cuntas DHL cumraithe ar cheart an beart seo a bhaint de. Ní gá ach nuair atá níos mó ná ceann amháin socraithe."
+          "name": "Iontráil DHL",
+          "description": "Cén iontráil DHL cumraithe óna mbainfear an beartán seo. Gan í, úsáidtear d'aon iontráil DHL, nó murach sin d'aon chuntas DHL."
         }
       }
     }

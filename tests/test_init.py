@@ -184,13 +184,12 @@ async def test_tracking_setup_and_unload(hass):
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.LOADED
-    # No dedicated services for the tracking source — parcels are managed
-    # through this entry's own options flow instead.
-    assert not hass.services.has_service(DOMAIN, "track_parcel")
+    assert hass.services.has_service(DOMAIN, "track_parcel")
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.NOT_LOADED
+    assert not hass.services.has_service(DOMAIN, "track_parcel")
 
 
 async def test_removing_a_tracking_entry_deletes_its_cache(hass, hass_storage):

@@ -5,6 +5,13 @@ track_parcel:
       example: "3S00123456789"
       selector:
         text:
+    direction:
+      default: incoming
+      selector:
+        select:
+          options:
+            - "incoming"
+            - "outgoing"
     config_entry_id:
       required: false
       selector:

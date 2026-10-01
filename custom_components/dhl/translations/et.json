@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Jälgi pakki",
-      "description": "Alusta paki jälgimist DHL-i jälgimisnumbri järgi lisaks sellele, mida su DHL-i konto juba näitab.",
+      "description": "Alusta paki jälgimist DHL-i jälgimisnumbri järgi. DHL-i kontol lisandub see sellele, mida konto juba näitab.",
       "fields": {
         "tracking_code": {
           "name": "Jälgimiskood",
           "description": "DHL-i jälgimisnumber."
         },
         "config_entry_id": {
-          "name": "DHL-i konto",
-          "description": "Millisesse seadistatud DHL-i kontosse see pakk lisada. Vajalik ainult siis, kui neid on seadistatud rohkem kui üks."
+          "name": "DHL-i kirje",
+          "description": "Millisesse seadistatud DHL-i kirjesse pakk lisada. Ilma selleta läheb pakk sinu ainsasse DHL-i kirjesse, muidu sinu ainsale DHL-i kontole."
+        },
+        "direction": {
+          "name": "Suund",
+          "description": "Kas võtad selle paki vastu või saadad selle. DHL-i jälgimisandmed ei erista neid. Uus kutse teise suunaga liigutab juba jälgitava paki. DHL-i kontol ei kasutata, see teab suunda ise."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL-i jälgimisnumber, mille jälgimine lõpetada."
         },
         "config_entry_id": {
-          "name": "DHL-i konto",
-          "description": "Millisest seadistatud DHL-i kontost see pakk eemaldada. Vajalik ainult siis, kui neid on seadistatud rohkem kui üks."
+          "name": "DHL-i kirje",
+          "description": "Millisest seadistatud DHL-i kirjest pakk eemaldada. Ilma selleta kasutatakse sinu ainsat DHL-i kirjet, muidu sinu ainsat DHL-i kontot."
         }
       }
     }

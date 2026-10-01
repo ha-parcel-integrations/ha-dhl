@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Śledź przesyłkę",
-      "description": "Rozpocznij śledzenie przesyłki po numerze przesyłki DHL, oprócz tego, co pokazuje już Twoje konto DHL.",
+      "description": "Rozpocznij śledzenie przesyłki po numerze przesyłki DHL. Na koncie DHL dochodzi ona do tego, co konto już pokazuje.",
       "fields": {
         "tracking_code": {
           "name": "Numer przesyłki",
           "description": "Numer przesyłki DHL."
         },
         "config_entry_id": {
-          "name": "Konto DHL",
-          "description": "Do którego skonfigurowanego konta DHL dodać tę przesyłkę. Potrzebne tylko, gdy skonfigurowano więcej niż jedno konto."
+          "name": "Wpis DHL",
+          "description": "Do którego skonfigurowanego wpisu DHL dodać tę przesyłkę. Bez tego przesyłka trafia do jedynego wpisu DHL, a w przeciwnym razie do jedynego konta DHL."
+        },
+        "direction": {
+          "name": "Kierunek",
+          "description": "Czy odbierasz tę przesyłkę, czy ją wysyłasz. Dane śledzenia DHL nie rozróżniają tych dwóch przypadków. Ponowne wywołanie z drugim kierunkiem przenosi już śledzoną przesyłkę. Nie dotyczy konta DHL, które samo zna kierunek."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Numer przesyłki DHL, której śledzenie ma zostać zatrzymane."
         },
         "config_entry_id": {
-          "name": "Konto DHL",
-          "description": "Z którego skonfigurowanego konta DHL usunąć tę przesyłkę. Potrzebne tylko, gdy skonfigurowano więcej niż jedno konto."
+          "name": "Wpis DHL",
+          "description": "Z którego skonfigurowanego wpisu DHL usunąć tę przesyłkę. Bez tego używany jest jedyny wpis DHL, a w przeciwnym razie jedyne konto DHL."
         }
       }
     }

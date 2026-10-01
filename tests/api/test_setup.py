@@ -45,7 +45,7 @@ async def test_setup_and_unload(hass):
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.LOADED
-    assert not hass.services.has_service(DOMAIN, "track_parcel")
+    assert hass.services.has_service(DOMAIN, "track_parcel")
     state = hass.states.get("sensor.dhl_api_abcdef_incoming_parcels")
     assert state.state == "1"
     assert state.attributes["attribution"] == DHL_UNIFIED_ATTRIBUTION

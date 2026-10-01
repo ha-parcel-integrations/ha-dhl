@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Rastrear pacote",
-      "description": "Comece a rastrear um pacote pelo número de rastreamento DHL, além do que sua conta DHL já mostra.",
+      "description": "Começa a rastrear um pacote pelo código de rastreio DHL. Em uma conta DHL, ele se soma ao que a conta já mostra.",
       "fields": {
         "tracking_code": {
           "name": "Código de rastreio",
           "description": "O número de rastreamento DHL."
         },
         "config_entry_id": {
-          "name": "Conta DHL",
-          "description": "A conta DHL configurada à qual adicionar este pacote. Só é necessário quando há mais de uma."
+          "name": "Entrada DHL",
+          "description": "Em qual entrada DHL configurada adicionar este pacote. Sem ela, o pacote vai para sua única entrada DHL ou, caso contrário, para sua única conta DHL."
+        },
+        "direction": {
+          "name": "Direção",
+          "description": "Se você está recebendo ou enviando este pacote. Os dados de rastreio da DHL não distinguem os dois casos. Chamar de novo com a outra direção move um pacote já rastreado. Não é usado em uma conta DHL, que já sabe a direção."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "O número de rastreamento DHL que deixará de ser rastreado."
         },
         "config_entry_id": {
-          "name": "Conta DHL",
-          "description": "A conta DHL configurada da qual remover este pacote. Só é necessário quando há mais de uma."
+          "name": "Entrada DHL",
+          "description": "De qual entrada DHL configurada remover este pacote. Sem ela, é usada sua única entrada DHL ou, caso contrário, sua única conta DHL."
         }
       }
     }

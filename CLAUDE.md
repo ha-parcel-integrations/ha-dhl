@@ -204,9 +204,13 @@ Everything not listed here follows the scaffold exactly.
 
 *Options and reloads* — DHL is account-based (`async_schedule_reload`, no
 update listener) but is also the suite's **first account-based carrier with a
-`track_parcel` service**, for its by-number half. `services.py` nudges the
-coordinator directly with `async_request_refresh()` after an add/remove rather
-than using either stock mechanism. `options.async_init`'s form never touches
+`track_parcel` service**, for its by-number half. On an account entry
+`services.py` nudges the coordinator directly with `async_request_refresh()`
+after an add/remove rather than using either stock mechanism; on a tracking or
+api entry the update listener does it, so the service must not nudge too.
+**Without `config_entry_id` a lone account entry stays the default even next
+to code-based entries** — that is what pre-#14 automations rely on; don't
+"simplify" it to "more than one entry needs `config_entry_id`". `options.async_init`'s form never touches
 `CONF_TRACKED_CODES` — the schema carries it through untouched on submit, so a
 `dhl.track_parcel` call is never wiped by an unrelated options edit.
 
@@ -228,7 +232,7 @@ implementing:
 | `coordinator.py` / `parcels.py` (domain root) | no — compatibility re-exports onto `account/coordinator.py` etc., for the pre-split public import path |
 | `const.py` | partly (shared contract + DE-specific/PL-specific/tracking-specific constants) |
 | `config_flow.py` (source menu + account's country router/OIDC/SMS flows + tracking's and api's setup/options steps) | **yes** — no precedent elsewhere in the suite |
-| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — account-source only; filters to account entries, never picks a tracking or api entry |
+| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — every source; dispatches on the resolved entry's source (`CONF_TRACKED_CODES` for an account, `CONF_PARCELS` otherwise) |
 | `account/client.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |

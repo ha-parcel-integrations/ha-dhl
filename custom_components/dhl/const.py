@@ -287,9 +287,9 @@ SOURCE_TRACKING = "tracking"
 SOURCE_API = "api"
 
 # Tracking-mode tracked parcels, stored in entry.options as a list of
-# ``{tracking_code, direction}`` dicts (mirrors ha-packeta) — distinct from
-# CONF_TRACKED_CODES, which is the DE account's by-number `track_parcel`
-# service list and only ever holds DE-shaped codes.
+# ``{tracking_code, direction}`` dicts (mirrors ha-packeta), edited by the
+# options flow and `track_parcel` alike — distinct from CONF_TRACKED_CODES,
+# the account source's by-number list, which only ever holds DE-shaped codes.
 CONF_PARCELS = "parcels"
 
 # Neither tracking backend says whether the user sent or receives a parcel,

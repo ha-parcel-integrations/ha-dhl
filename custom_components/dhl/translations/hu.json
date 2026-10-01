@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Csomag követése",
-      "description": "Csomag követésének indítása DHL-nyomkövetési szám alapján, azon felül, amit a DHL-fiókja már mutat.",
+      "description": "Elkezdi követni a csomagot a DHL-követési száma alapján. DHL-fióknál ez azon felül jelenik meg, amit a fiók már mutat.",
       "fields": {
         "tracking_code": {
           "name": "Nyomkövetési kód",
           "description": "A DHL-nyomkövetési szám."
         },
         "config_entry_id": {
-          "name": "DHL-fiók",
-          "description": "Melyik beállított DHL-fiókhoz adja hozzá ezt a csomagot. Csak akkor szükséges, ha több is be van állítva."
+          "name": "DHL-bejegyzés",
+          "description": "Melyik beállított DHL-bejegyzéshez kerüljön a csomag. Enélkül az egyetlen DHL-bejegyzésedhez, különben az egyetlen DHL-fiókodhoz kerül."
+        },
+        "direction": {
+          "name": "Irány",
+          "description": "Hogy ezt a csomagot kapod vagy te adtad fel. A DHL követési adatai ezt nem tudják megkülönböztetni. A szolgáltatás ismételt hívása a másik iránnyal áthelyezi a már követett csomagot. DHL-fióknál nincs hatása, az maga ismeri az irányt."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "A DHL-nyomkövetési szám, amelynek követését le kell állítani."
         },
         "config_entry_id": {
-          "name": "DHL-fiók",
-          "description": "Melyik beállított DHL-fiókból távolítsa el ezt a csomagot. Csak akkor szükséges, ha több is be van állítva."
+          "name": "DHL-bejegyzés",
+          "description": "Melyik beállított DHL-bejegyzésből kerüljön ki a csomag. Enélkül az egyetlen DHL-bejegyzésed, különben az egyetlen DHL-fiókod lesz használva."
         }
       }
     }

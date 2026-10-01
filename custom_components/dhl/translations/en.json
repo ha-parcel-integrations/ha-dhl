@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Track parcel",
-      "description": "Start tracking a parcel by its DHL tracking number, in addition to whatever your DHL account already shows.",
+      "description": "Start tracking a parcel by its DHL tracking number. On a DHL account it comes in addition to whatever the account already shows.",
       "fields": {
         "tracking_code": {
           "name": "Tracking code",
           "description": "The DHL tracking number."
         },
         "config_entry_id": {
-          "name": "DHL account",
-          "description": "Which configured DHL account to add this parcel to. Only needed when more than one is set up."
+          "name": "DHL entry",
+          "description": "Which configured DHL entry to add this parcel to. Without it, the parcel goes to your only DHL entry, or else to your only DHL account."
+        },
+        "direction": {
+          "name": "Direction",
+          "description": "Whether you are receiving this parcel or sending it. DHL's tracking data cannot tell the two apart. Calling this again with the other direction moves an already tracked parcel. Not used on a DHL account, which knows the direction itself."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "The DHL tracking number to stop tracking."
         },
         "config_entry_id": {
-          "name": "DHL account",
-          "description": "Which configured DHL account to remove this parcel from. Only needed when more than one is set up."
+          "name": "DHL entry",
+          "description": "Which configured DHL entry to remove this parcel from. Without it, your only DHL entry is used, or else your only DHL account."
         }
       }
     }

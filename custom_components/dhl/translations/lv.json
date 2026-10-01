@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Izsekot sūtījumu",
-      "description": "Sākt izsekot sūtījumu pēc tā DHL izsekošanas numura papildus tam, ko jau rāda jūsu DHL konts.",
+      "description": "Sāk izsekot sūtījumu pēc tā DHL izsekošanas numura. DHL kontā tas tiek pievienots tam, ko konts jau rāda.",
       "fields": {
         "tracking_code": {
           "name": "Izsekošanas kods",
           "description": "DHL izsekošanas numurs."
         },
         "config_entry_id": {
-          "name": "DHL konts",
-          "description": "Kuram iestatītajam DHL kontam pievienot šo sūtījumu. Nepieciešams tikai tad, ja iestatīts vairāk nekā viens."
+          "name": "DHL ieraksts",
+          "description": "Kuram konfigurētajam DHL ierakstam pievienot šo sūtījumu. Bez tā sūtījums nonāk tavā vienīgajā DHL ierakstā, citādi tavā vienīgajā DHL kontā."
+        },
+        "direction": {
+          "name": "Virziens",
+          "description": "Vai tu šo sūtījumu saņem vai sūti. DHL izsekošanas dati to neatšķir. Atkārtots izsaukums ar otru virzienu pārvieto jau izsekotu sūtījumu. DHL kontā netiek izmantots, tas virzienu zina pats."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL izsekošanas numurs, kura izsekošanu pārtraukt."
         },
         "config_entry_id": {
-          "name": "DHL konts",
-          "description": "No kura iestatītā DHL konta noņemt šo sūtījumu. Nepieciešams tikai tad, ja iestatīts vairāk nekā viens."
+          "name": "DHL ieraksts",
+          "description": "No kura konfigurētā DHL ieraksta noņemt šo sūtījumu. Bez tā tiek izmantots tavs vienīgais DHL ieraksts, citādi tavs vienīgais DHL konts."
         }
       }
     }

@@ -62,7 +62,7 @@ See [API Tracking](#api-tracking) below.
 ## Features
 
 - Automatic parcel import from your DHL Kundenkonto — no tracking codes to enter for your own parcels
-- `dhl.track_parcel` / `dhl.untrack_parcel` services to also track a parcel that is not (yet) in your account's inbox
+- `dhl.track_parcel` / `dhl.untrack_parcel` services to add or remove a tracking number from an automation — on an account, for a parcel that is not (yet) in its inbox
 - Per-parcel sensor with the canonical status (`registered` / `in_transit` / `out_for_delivery` / `delivered` / …), DHL's own status text, the expected delivery window and a tracking deep-link
 - Summary sensors: incoming parcels, next delivery, recently delivered parcels, outgoing parcels
 - Read-only **Deliveries** calendar with the expected delivery windows
@@ -143,7 +143,8 @@ number, or use a [dashboard button](examples/dashboards/add_parcel_card.yaml).
 ### Tracking codes
 
 Choosing **Tracking codes** creates a single tracking hub with no parcels yet
-— add codes afterwards from **Configure → Incoming parcels** or **Outgoing parcels**. Nothing is validated
+— add codes afterwards from **Configure → Incoming parcels** or **Outgoing parcels**,
+or with the [`dhl.track_parcel`](#services) service. Nothing is validated
 against DHL at add time; a code only resolves (or doesn't) on the next poll.
 
 ### API Tracking
@@ -152,7 +153,8 @@ against DHL at add time; a code only resolves (or doesn't) on the next poll.
    created; the key is stored in Home Assistant's config-entry storage and
    never shown or logged.
 2. Add codes afterwards from **Configure → Incoming parcels** or **Outgoing
-   parcels**, exactly as on a tracking hub.
+   parcels**, or with [`dhl.track_parcel`](#services), exactly as on a
+   tracking hub.
 
 Every code goes to DHL's official API — there is no routing and no fallback
 to the tracking hub's backends. You can add one entry per key. An entry with
@@ -283,10 +285,17 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `dhl.track_parcel` | `tracking_code`, `config_entry_id` (optional) | Track a parcel that is not already in your account's inbox |
+| `dhl.track_parcel` | `tracking_code`, `direction` (optional, `incoming` by default), `config_entry_id` (optional) | Track a parcel by its tracking number |
 | `dhl.untrack_parcel` | `tracking_code`, `config_entry_id` (optional) | Stop tracking a manually-added parcel |
 
-`config_entry_id` is only needed if you have more than one DHL account set up.
+Both work on every kind of DHL entry. On an account, the number is tracked in
+addition to the account's own inbox, and `direction` is not used — the account
+knows it. On a tracking-codes or API entry, the number joins the same lists as
+**Configure → Incoming parcels** / **Outgoing parcels**; calling `track_parcel`
+again with the other `direction` moves it.
+
+`config_entry_id` picks the entry. Without it, the call goes to your only DHL
+entry, or — with several — to your only DHL account. Any other setup needs it.
 
 ## Examples
 

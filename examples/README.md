@@ -8,13 +8,15 @@ Ready-to-paste Home Assistant snippets for the DHL integration.
 | [`dashboards/`](dashboards/) | Lovelace card snippets, e.g. tracking a parcel by number straight from a dashboard. |
 
 Parcels addressed to your account show up automatically — there is nothing
-to register by hand for those. Use the [`dhl.track_parcel`](dashboards/add_parcel_card.yaml)
+to register by hand for those. On an account, use the [`dhl.track_parcel`](dashboards/add_parcel_card.yaml)
 service only for a parcel your account's own inbox would not otherwise
-carry (a parcel someone else is sending you, for example).
+carry (a parcel someone else is sending you, for example). On a tracking-codes
+or API entry it adds the code the way **Configure** does.
 
 All examples assume a single DHL account. Adjust entity IDs to match
 yours; with more than one account configured, every entity ID carries the
-account name, and `dhl.track_parcel`/`dhl.untrack_parcel` need `config_entry_id`.
+account name, and `dhl.track_parcel`/`dhl.untrack_parcel` need `config_entry_id`
+unless only one of your DHL entries is an account.
 
 ## Events used in the examples
 

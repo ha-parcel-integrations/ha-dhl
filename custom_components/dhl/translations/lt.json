@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Sekti siuntinį",
-      "description": "Pradėti sekti siuntinį pagal DHL sekimo numerį, papildomai prie to, ką jau rodo jūsų DHL paskyra.",
+      "description": "Pradeda sekti siuntą pagal jos DHL sekimo numerį. DHL paskyroje ji pridedama prie to, ką paskyra jau rodo.",
       "fields": {
         "tracking_code": {
           "name": "Sekimo kodas",
           "description": "DHL sekimo numeris."
         },
         "config_entry_id": {
-          "name": "DHL paskyra",
-          "description": "Į kurią nustatytą DHL paskyrą pridėti šį siuntinį. Reikia tik tada, kai nustatyta daugiau nei viena."
+          "name": "DHL įrašas",
+          "description": "Į kurį sukonfigūruotą DHL įrašą pridėti šią siuntą. Be jo siunta patenka į vienintelį jūsų DHL įrašą, kitu atveju – į vienintelę jūsų DHL paskyrą."
+        },
+        "direction": {
+          "name": "Kryptis",
+          "description": "Ar šią siuntą gaunate, ar siunčiate. DHL sekimo duomenys jų neatskiria. Pakartotinis iškvietimas su kita kryptimi perkelia jau sekamą siuntą. DHL paskyroje nenaudojama – ji kryptį žino pati."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL sekimo numeris, kurio nebereikia sekti."
         },
         "config_entry_id": {
-          "name": "DHL paskyra",
-          "description": "Iš kurios nustatytos DHL paskyros pašalinti šį siuntinį. Reikia tik tada, kai nustatyta daugiau nei viena."
+          "name": "DHL įrašas",
+          "description": "Iš kurio sukonfigūruoto DHL įrašo pašalinti šią siuntą. Be jo naudojamas vienintelis jūsų DHL įrašas, kitu atveju – vienintelė jūsų DHL paskyra."
         }
       }
     }

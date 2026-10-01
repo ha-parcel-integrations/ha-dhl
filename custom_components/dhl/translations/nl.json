@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Pakket volgen",
-      "description": "Begin een pakket te volgen op DHL-trackingnummer, naast wat je DHL-account al toont.",
+      "description": "Begin een pakket te volgen op DHL-trackingnummer. Bij een DHL-account komt het naast wat het account al toont.",
       "fields": {
         "tracking_code": {
           "name": "Trackingnummer",
           "description": "Het DHL-trackingnummer."
         },
         "config_entry_id": {
-          "name": "DHL-account",
-          "description": "Aan welk geconfigureerd DHL-account dit pakket wordt toegevoegd. Alleen nodig als er meer dan één is ingesteld."
+          "name": "DHL-item",
+          "description": "Aan welk geconfigureerd DHL-item dit pakket wordt toegevoegd. Zonder deze keuze gaat het pakket naar je enige DHL-item, of anders naar je enige DHL-account."
+        },
+        "direction": {
+          "name": "Richting",
+          "description": "Of je dit pakket ontvangt of verstuurt. De trackinggegevens van DHL kunnen dat niet onderscheiden. Roep je de service opnieuw aan met de andere richting, dan verplaatst een al gevolgd pakket. Niet gebruikt bij een DHL-account, dat de richting zelf kent."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Het DHL-trackingnummer om niet meer te volgen."
         },
         "config_entry_id": {
-          "name": "DHL-account",
-          "description": "Uit welk geconfigureerd DHL-account dit pakket wordt verwijderd. Alleen nodig als er meer dan één is ingesteld."
+          "name": "DHL-item",
+          "description": "Uit welk geconfigureerd DHL-item dit pakket wordt verwijderd. Zonder deze keuze wordt je enige DHL-item gebruikt, of anders je enige DHL-account."
         }
       }
     }

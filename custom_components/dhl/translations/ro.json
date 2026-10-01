@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Urmărește colet",
-      "description": "Începe urmărirea unui colet după numărul de urmărire DHL, pe lângă ce arată deja contul tău DHL.",
+      "description": "Începe urmărirea unui colet după numărul de urmărire DHL. La un cont DHL, se adaugă la ce arată deja contul.",
       "fields": {
         "tracking_code": {
           "name": "Cod de urmărire",
           "description": "Numărul de urmărire DHL."
         },
         "config_entry_id": {
-          "name": "Cont DHL",
-          "description": "Contul DHL configurat în care să fie adăugat acest colet. Necesar doar dacă sunt configurate mai multe."
+          "name": "Intrare DHL",
+          "description": "La ce intrare DHL configurată se adaugă acest colet. Fără ea, coletul ajunge la singura ta intrare DHL, altfel la singurul tău cont DHL."
+        },
+        "direction": {
+          "name": "Direcție",
+          "description": "Dacă primești acest colet sau îl expediezi. Datele de urmărire DHL nu pot face distincția. Un nou apel cu cealaltă direcție mută un colet deja urmărit. Nu se folosește la un cont DHL, care știe singur direcția."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Numărul de urmărire DHL care nu mai trebuie urmărit."
         },
         "config_entry_id": {
-          "name": "Cont DHL",
-          "description": "Contul DHL configurat din care să fie eliminat acest colet. Necesar doar dacă sunt configurate mai multe."
+          "name": "Intrare DHL",
+          "description": "Din ce intrare DHL configurată se elimină acest colet. Fără ea, se folosește singura ta intrare DHL, altfel singurul tău cont DHL."
         }
       }
     }

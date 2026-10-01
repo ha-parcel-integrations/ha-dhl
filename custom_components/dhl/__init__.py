@@ -72,8 +72,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
             session=session,
         )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        # Same live options model as the tracking source, and likewise no
-        # services: `dhl.track_parcel` stays account-only.
+        async_setup_services(hass)
+        # Same live options model as the tracking source.
         entry.async_on_unload(entry.add_update_listener(_async_tracking_options_updated))
         return True
 
@@ -99,15 +99,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
             session=session,
         )
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        async_setup_services(hass)
 
         # Unlike the account source's options flow (which calls
         # async_schedule_reload itself), tracking-mode options are applied
-        # live via a coordinator refresh — adding/removing a code shows up
-        # immediately, matching ha-bpost's tracking source. No
-        # async_setup_services here: `dhl.track_parcel`/`untrack_parcel` are
-        # the DE account's by-number merge-into-inbox mechanic and have
-        # nothing to act on for a tracking-mode entry — parcels are added
-        # and removed through this entry's own options flow instead.
+        # live via a coordinator refresh — adding/removing a code, from the
+        # options flow or `dhl.track_parcel`, shows up immediately, matching
+        # ha-bpost's tracking source.
         entry.async_on_unload(entry.add_update_listener(_async_tracking_options_updated))
 
         return True

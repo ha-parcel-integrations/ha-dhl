@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Suivre un colis",
-      "description": "Commencer à suivre un colis par son numéro de suivi DHL, en plus de ce que votre compte DHL affiche déjà.",
+      "description": "Commence à suivre un colis par son numéro de suivi DHL. Sur un compte DHL, il s'ajoute à ce que le compte affiche déjà.",
       "fields": {
         "tracking_code": {
           "name": "Code de suivi",
           "description": "Le numéro de suivi DHL."
         },
         "config_entry_id": {
-          "name": "Compte DHL",
-          "description": "Le compte DHL configuré auquel ajouter ce colis. Nécessaire uniquement s'il y en a plusieurs."
+          "name": "Entrée DHL",
+          "description": "L'entrée DHL configurée à laquelle ajouter ce colis. Sans elle, le colis va dans votre seule entrée DHL, sinon dans votre seul compte DHL."
+        },
+        "direction": {
+          "name": "Direction",
+          "description": "Indique si vous recevez ou envoyez ce colis. Les données de suivi DHL ne font pas la différence. Un nouvel appel avec l'autre direction déplace un colis déjà suivi. Ignoré pour un compte DHL, qui connaît lui-même la direction."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Le numéro de suivi DHL à ne plus suivre."
         },
         "config_entry_id": {
-          "name": "Compte DHL",
-          "description": "Le compte DHL configuré duquel retirer ce colis. Nécessaire uniquement s'il y en a plusieurs."
+          "name": "Entrée DHL",
+          "description": "L'entrée DHL configurée de laquelle retirer ce colis. Sans elle, votre seule entrée DHL est utilisée, sinon votre seul compte DHL."
         }
       }
     }

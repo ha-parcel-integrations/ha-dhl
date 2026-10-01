@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Spor pakke",
-      "description": "Begynn å spore en pakke med DHL-sporingsnummeret, i tillegg til det DHL-kontoen din allerede viser.",
+      "description": "Begynn å spore en pakke med DHL-sporingsnummeret. På en DHL-konto kommer den i tillegg til det kontoen allerede viser.",
       "fields": {
         "tracking_code": {
           "name": "Sporingskode",
           "description": "DHL-sporingsnummeret."
         },
         "config_entry_id": {
-          "name": "DHL-konto",
-          "description": "Hvilken konfigurert DHL-konto pakken skal legges til i. Bare nødvendig når mer enn én er satt opp."
+          "name": "DHL-oppføring",
+          "description": "Hvilken konfigurert DHL-oppføring pakken skal legges til. Uten den går pakken til din eneste DHL-oppføring, ellers til din eneste DHL-konto."
+        },
+        "direction": {
+          "name": "Retning",
+          "description": "Om du mottar eller sender denne pakken. DHLs sporingsdata kan ikke skille mellom de to. Et nytt kall med den andre retningen flytter en pakke som allerede spores. Brukes ikke på en DHL-konto, som selv kjenner retningen."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL-sporingsnummeret som ikke lenger skal spores."
         },
         "config_entry_id": {
-          "name": "DHL-konto",
-          "description": "Hvilken konfigurert DHL-konto pakken skal fjernes fra. Bare nødvendig når mer enn én er satt opp."
+          "name": "DHL-oppføring",
+          "description": "Hvilken konfigurert DHL-oppføring pakken skal fjernes fra. Uten den brukes din eneste DHL-oppføring, ellers din eneste DHL-konto."
         }
       }
     }

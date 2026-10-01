@@ -227,7 +227,7 @@ custom_components/dhl/
 ├── sensor.py              summary, per-parcel, outgoing and diagnostic sensors
 ├── button.py              refresh button
 ├── calendar.py            read-only deliveries calendar
-├── services.py            dhl.track_parcel / dhl.untrack_parcel (account, by-number)
+├── services.py            dhl.track_parcel / dhl.untrack_parcel (every source)
 ├── device.py / device_trigger.py / diagnostics.py
 ├── account/
 │   ├── client.py          transport dispatcher; error types live in const.py
@@ -328,8 +328,14 @@ inbox is fetched by number and folded into the same active/delivered split,
 sort and event-firing path.
 
 **`dhl.track_parcel` targets a config entry, not a hub.** Unlike an
-account-less carrier's `track_parcel`, more than one configured DHL account
-needs `config_entry_id` to disambiguate.
+account-less carrier's `track_parcel`, several DHL entries can be loaded at
+once, so the call resolves one: `config_entry_id` if given, else the only
+entry, else the only *account* entry — the service was account-only until
+issue #14, and automations written then pass no `config_entry_id`. On a
+tracking or api entry it edits `CONF_PARCELS` (validated and upper-cased the
+way the options flow does, `direction` included) and leaves the refresh to
+that entry's update listener; on an account it edits `CONF_TRACKED_CODES`
+and nudges the coordinator itself, since an account has no listener.
 
 ### The account link lives in a claim, and can go missing
 

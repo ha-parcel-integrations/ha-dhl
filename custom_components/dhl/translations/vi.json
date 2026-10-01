@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Theo dõi kiện hàng",
-      "description": "Bắt đầu theo dõi một bưu kiện bằng mã theo dõi DHL, ngoài những gì tài khoản DHL của bạn đã hiển thị.",
+      "description": "Bắt đầu theo dõi bưu kiện bằng mã theo dõi DHL. Với tài khoản DHL, bưu kiện được thêm vào những gì tài khoản đã hiển thị.",
       "fields": {
         "tracking_code": {
           "name": "Mã vận đơn",
           "description": "Mã theo dõi DHL."
         },
         "config_entry_id": {
-          "name": "Tài khoản DHL",
-          "description": "Tài khoản DHL đã cấu hình để thêm bưu kiện này vào. Chỉ cần khi có nhiều hơn một tài khoản."
+          "name": "Mục DHL",
+          "description": "Thêm bưu kiện này vào mục DHL đã cấu hình nào. Nếu bỏ trống, bưu kiện vào mục DHL duy nhất của bạn, nếu không thì vào tài khoản DHL duy nhất của bạn."
+        },
+        "direction": {
+          "name": "Hướng",
+          "description": "Bạn đang nhận hay gửi bưu kiện này. Dữ liệu theo dõi của DHL không phân biệt được hai trường hợp. Gọi lại với hướng còn lại sẽ chuyển bưu kiện đang được theo dõi. Không dùng cho tài khoản DHL, vốn tự biết hướng."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Mã theo dõi DHL sẽ ngừng theo dõi."
         },
         "config_entry_id": {
-          "name": "Tài khoản DHL",
-          "description": "Tài khoản DHL đã cấu hình để xóa bưu kiện này khỏi. Chỉ cần khi có nhiều hơn một tài khoản."
+          "name": "Mục DHL",
+          "description": "Xóa bưu kiện này khỏi mục DHL đã cấu hình nào. Nếu bỏ trống, dùng mục DHL duy nhất của bạn, nếu không thì tài khoản DHL duy nhất của bạn."
         }
       }
     }

@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Traccia pacco",
-      "description": "Inizia a tracciare un pacco tramite il suo numero di tracciamento DHL, oltre a ciò che il tuo account DHL mostra già.",
+      "description": "Inizia a tracciare un pacco tramite il numero di tracciamento DHL. Su un account DHL si aggiunge a quanto l'account mostra già.",
       "fields": {
         "tracking_code": {
           "name": "Codice di tracciamento",
           "description": "Il numero di tracciamento DHL."
         },
         "config_entry_id": {
-          "name": "Account DHL",
-          "description": "L'account DHL configurato a cui aggiungere questo pacco. Necessario solo se ne è configurato più di uno."
+          "name": "Voce DHL",
+          "description": "A quale voce DHL configurata aggiungere questo pacco. Senza, il pacco va alla tua unica voce DHL, altrimenti al tuo unico account DHL."
+        },
+        "direction": {
+          "name": "Direzione",
+          "description": "Se stai ricevendo o spedendo questo pacco. I dati di tracciamento DHL non distinguono i due casi. Una nuova chiamata con l'altra direzione sposta un pacco già tracciato. Non usato su un account DHL, che conosce già la direzione."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Il numero di tracciamento DHL da smettere di monitorare."
         },
         "config_entry_id": {
-          "name": "Account DHL",
-          "description": "L'account DHL configurato da cui rimuovere questo pacco. Necessario solo se ne è configurato più di uno."
+          "name": "Voce DHL",
+          "description": "Da quale voce DHL configurata rimuovere questo pacco. Senza, viene usata la tua unica voce DHL, altrimenti il tuo unico account DHL."
         }
       }
     }

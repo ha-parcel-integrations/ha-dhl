@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Sendung verfolgen",
-      "description": "Beginnt, eine Sendung anhand ihrer DHL-Sendungsnummer zu verfolgen — zusätzlich zu dem, was dein DHL-Konto bereits anzeigt.",
+      "description": "Beginnt, eine Sendung anhand ihrer DHL-Sendungsnummer zu verfolgen. Bei einem DHL-Konto kommt sie zu dem hinzu, was das Konto bereits anzeigt.",
       "fields": {
         "tracking_code": {
           "name": "Sendungsnummer",
           "description": "Die DHL-Sendungsnummer."
         },
         "config_entry_id": {
-          "name": "DHL-Konto",
-          "description": "Zu welchem eingerichteten DHL-Konto diese Sendung hinzugefügt wird. Nur nötig, wenn mehr als eines eingerichtet ist."
+          "name": "DHL-Eintrag",
+          "description": "Zu welchem eingerichteten DHL-Eintrag diese Sendung hinzugefügt wird. Ohne Angabe geht sie an deinen einzigen DHL-Eintrag, sonst an dein einziges DHL-Konto."
+        },
+        "direction": {
+          "name": "Richtung",
+          "description": "Ob du diese Sendung empfängst oder versendest. Die Tracking-Daten von DHL können das nicht unterscheiden. Ein erneuter Aufruf mit der anderen Richtung verschiebt eine bereits verfolgte Sendung. Bei einem DHL-Konto ohne Wirkung, da es die Richtung selbst kennt."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Die DHL-Sendungsnummer, die nicht mehr verfolgt werden soll."
         },
         "config_entry_id": {
-          "name": "DHL-Konto",
-          "description": "Aus welchem eingerichteten DHL-Konto diese Sendung entfernt wird. Nur nötig, wenn mehr als eines eingerichtet ist."
+          "name": "DHL-Eintrag",
+          "description": "Aus welchem eingerichteten DHL-Eintrag diese Sendung entfernt wird. Ohne Angabe wird dein einziger DHL-Eintrag verwendet, sonst dein einziges DHL-Konto."
         }
       }
     }

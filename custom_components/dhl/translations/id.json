@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Lacak paket",
-      "description": "Mulai melacak paket dengan nomor pelacakan DHL-nya, selain yang sudah ditampilkan akun DHL Anda.",
+      "description": "Mulai melacak paket berdasarkan nomor pelacakan DHL. Pada akun DHL, paket ini ditambahkan ke apa yang sudah ditampilkan akun.",
       "fields": {
         "tracking_code": {
           "name": "Kode resi",
           "description": "Nomor pelacakan DHL."
         },
         "config_entry_id": {
-          "name": "Akun DHL",
-          "description": "Akun DHL terkonfigurasi mana yang akan ditambahi paket ini. Hanya diperlukan jika ada lebih dari satu."
+          "name": "Entri DHL",
+          "description": "Entri DHL terkonfigurasi mana yang akan ditambahi paket ini. Tanpa ini, paket masuk ke satu-satunya entri DHL Anda, atau jika tidak ke satu-satunya akun DHL Anda."
+        },
+        "direction": {
+          "name": "Arah",
+          "description": "Apakah Anda menerima atau mengirim paket ini. Data pelacakan DHL tidak dapat membedakan keduanya. Memanggil lagi dengan arah lain memindahkan paket yang sudah dilacak. Tidak dipakai pada akun DHL, yang sudah mengetahui arahnya sendiri."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "Nomor pelacakan DHL yang tidak lagi dilacak."
         },
         "config_entry_id": {
-          "name": "Akun DHL",
-          "description": "Akun DHL terkonfigurasi mana yang akan dihapus paketnya. Hanya diperlukan jika ada lebih dari satu."
+          "name": "Entri DHL",
+          "description": "Entri DHL terkonfigurasi mana yang akan dihapus paketnya. Tanpa ini, satu-satunya entri DHL Anda yang dipakai, atau jika tidak satu-satunya akun DHL Anda."
         }
       }
     }

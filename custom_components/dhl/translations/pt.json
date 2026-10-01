@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Seguir encomenda",
-      "description": "Comece a seguir uma encomenda pelo número de seguimento DHL, além do que a sua conta DHL já mostra.",
+      "description": "Começa a seguir uma encomenda pelo número de seguimento DHL. Numa conta DHL, junta-se ao que a conta já mostra.",
       "fields": {
         "tracking_code": {
           "name": "Código de rastreio",
           "description": "O número de seguimento DHL."
         },
         "config_entry_id": {
-          "name": "Conta DHL",
-          "description": "A conta DHL configurada à qual adicionar esta encomenda. Só é necessário quando há mais do que uma."
+          "name": "Entrada DHL",
+          "description": "A que entrada DHL configurada adicionar esta encomenda. Sem ela, a encomenda vai para a sua única entrada DHL ou, caso contrário, para a sua única conta DHL."
+        },
+        "direction": {
+          "name": "Direção",
+          "description": "Se está a receber ou a enviar esta encomenda. Os dados de seguimento da DHL não distinguem os dois casos. Chamar de novo com a outra direção move uma encomenda já seguida. Não é usado numa conta DHL, que já conhece a direção."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "O número de seguimento DHL a deixar de seguir."
         },
         "config_entry_id": {
-          "name": "Conta DHL",
-          "description": "A conta DHL configurada da qual remover esta encomenda. Só é necessário quando há mais do que uma."
+          "name": "Entrada DHL",
+          "description": "De que entrada DHL configurada remover esta encomenda. Sem ela, é usada a sua única entrada DHL ou, caso contrário, a sua única conta DHL."
         }
       }
     }

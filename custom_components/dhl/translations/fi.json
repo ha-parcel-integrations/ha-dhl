@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Seuraa pakettia",
-      "description": "Aloita paketin seuraaminen DHL-seurantanumerolla sen lisäksi, mitä DHL-tilisi jo näyttää.",
+      "description": "Aloita paketin seuranta DHL-seurantanumerolla. DHL-tilillä se tulee tilin jo näyttämien lisäksi.",
       "fields": {
         "tracking_code": {
           "name": "Seurantakoodi",
           "description": "DHL-seurantanumero."
         },
         "config_entry_id": {
-          "name": "DHL-tili",
-          "description": "Mihin määritettyyn DHL-tiliin paketti lisätään. Tarvitaan vain, jos tilejä on useampi kuin yksi."
+          "name": "DHL-merkintä",
+          "description": "Mihin määritettyyn DHL-merkintään paketti lisätään. Ilman sitä paketti menee ainoaan DHL-merkintääsi, muuten ainoalle DHL-tilillesi."
+        },
+        "direction": {
+          "name": "Suunta",
+          "description": "Vastaanotatko vai lähetätkö tämän paketin. DHL:n seurantatiedot eivät erota näitä. Uusi kutsu toisella suunnalla siirtää jo seurattavan paketin. Ei käytössä DHL-tilillä, joka tietää suunnan itse."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL-seurantanumero, jonka seuraaminen lopetetaan."
         },
         "config_entry_id": {
-          "name": "DHL-tili",
-          "description": "Mistä määritetystä DHL-tilistä paketti poistetaan. Tarvitaan vain, jos tilejä on useampi kuin yksi."
+          "name": "DHL-merkintä",
+          "description": "Mistä määritetystä DHL-merkinnästä paketti poistetaan. Ilman sitä käytetään ainoaa DHL-merkintääsi, muuten ainoaa DHL-tiliäsi."
         }
       }
     }

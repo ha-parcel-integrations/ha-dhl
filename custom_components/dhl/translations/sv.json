@@ -170,15 +170,19 @@
   "services": {
     "track_parcel": {
       "name": "Spåra paket",
-      "description": "Börja spåra ett paket med dess DHL-spårningsnummer, utöver det ditt DHL-konto redan visar.",
+      "description": "Börja spåra ett paket med dess DHL-spårningsnummer. På ett DHL-konto kommer det utöver det som kontot redan visar.",
       "fields": {
         "tracking_code": {
           "name": "Spårningskod",
           "description": "DHL-spårningsnumret."
         },
         "config_entry_id": {
-          "name": "DHL-konto",
-          "description": "Vilket konfigurerat DHL-konto paketet ska läggas till i. Behövs bara om fler än ett är konfigurerat."
+          "name": "DHL-post",
+          "description": "Vilken konfigurerad DHL-post paketet ska läggas till i. Utan den hamnar paketet i din enda DHL-post, annars i ditt enda DHL-konto."
+        },
+        "direction": {
+          "name": "Riktning",
+          "description": "Om du tar emot eller skickar det här paketet. DHL:s spårningsdata kan inte skilja dem åt. Ett nytt anrop med den andra riktningen flyttar ett paket som redan spåras. Används inte på ett DHL-konto, som själv känner till riktningen."
         }
       }
     },
@@ -191,8 +195,8 @@
           "description": "DHL-spårningsnumret som inte längre ska spåras."
         },
         "config_entry_id": {
-          "name": "DHL-konto",
-          "description": "Vilket konfigurerat DHL-konto paketet ska tas bort från. Behövs bara om fler än ett är konfigurerat."
+          "name": "DHL-post",
+          "description": "Vilken konfigurerad DHL-post paketet ska tas bort från. Utan den används din enda DHL-post, annars ditt enda DHL-konto."
         }
       }
     }
