@@ -163,7 +163,7 @@
     "delivered_filter_type": {
       "options": {
         "days": "Tage",
-        "parcels": "Anzahl Sendungen"
+        "parcels": "Anzahl Pakete"
       }
     }
   },
@@ -224,33 +224,33 @@
     },
     "sensor": {
       "incoming_parcels": {
-        "name": "Eingehende Sendungen",
-        "unit_of_measurement": "Sendungen"
+        "name": "Eingehende Pakete",
+        "unit_of_measurement": "Pakete"
       },
       "next_delivery": {
         "name": "Nächste Zustellung"
       },
       "awaiting_pickup": {
         "name": "Abholbereit",
-        "unit_of_measurement": "Sendungen"
+        "unit_of_measurement": "Pakete"
       },
       "delivered_parcels": {
-        "name": "Zugestellte Sendungen",
-        "unit_of_measurement": "Sendungen"
+        "name": "Zugestellte Pakete",
+        "unit_of_measurement": "Pakete"
       },
       "outgoing_parcels": {
-        "name": "Ausgehende Sendungen",
-        "unit_of_measurement": "Sendungen"
+        "name": "Ausgehende Pakete",
+        "unit_of_measurement": "Pakete"
       },
       "outgoing_delivered_parcels": {
-        "name": "Zugestellte ausgehende Sendungen",
-        "unit_of_measurement": "Sendungen"
+        "name": "Ausgehende zugestellte Pakete",
+        "unit_of_measurement": "Pakete"
       },
       "last_update": {
         "name": "Letzte erfolgreiche Aktualisierung"
       },
       "parcel": {
-        "name": "Sendung {barcode}"
+        "name": "Paket {barcode}"
       }
     }
   }

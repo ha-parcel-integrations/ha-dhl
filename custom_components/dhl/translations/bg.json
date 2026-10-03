@@ -224,7 +224,7 @@
     },
     "sensor": {
       "incoming_parcels": {
-        "name": "Пристигащи колети",
+        "name": "Пристигащи пратки",
         "unit_of_measurement": "пратки"
       },
       "next_delivery": {

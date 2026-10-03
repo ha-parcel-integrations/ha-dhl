@@ -225,26 +225,26 @@
     "sensor": {
       "incoming_parcels": {
         "name": "Prihajajoči paketi",
-        "unit_of_measurement": "paketov"
+        "unit_of_measurement": "paketi"
       },
       "next_delivery": {
         "name": "Naslednja dostava"
       },
       "awaiting_pickup": {
         "name": "Pripravljeno za prevzem",
-        "unit_of_measurement": "paketov"
+        "unit_of_measurement": "paketi"
       },
       "delivered_parcels": {
         "name": "Dostavljeni paketi",
-        "unit_of_measurement": "paketov"
+        "unit_of_measurement": "paketi"
       },
       "outgoing_parcels": {
         "name": "Odhodni paketi",
-        "unit_of_measurement": "paketov"
+        "unit_of_measurement": "paketi"
       },
       "outgoing_delivered_parcels": {
         "name": "Odhodni dostavljeni paketi",
-        "unit_of_measurement": "paketov"
+        "unit_of_measurement": "paketi"
       },
       "last_update": {
         "name": "Zadnja uspešna posodobitev"
