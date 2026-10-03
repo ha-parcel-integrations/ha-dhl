@@ -232,7 +232,7 @@
       },
       "awaiting_pickup": {
         "name": "Готови за вземане",
-        "unit_of_measurement": "колети"
+        "unit_of_measurement": "пратки"
       },
       "delivered_parcels": {
         "name": "Доставени пратки",

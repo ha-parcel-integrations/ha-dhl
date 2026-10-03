@@ -240,11 +240,11 @@
       },
       "outgoing_parcels": {
         "name": "Odlazni paketi",
-        "unit_of_measurement": "paketa"
+        "unit_of_measurement": "pošiljke"
       },
       "outgoing_delivered_parcels": {
         "name": "Dostavljeni odlazni paketi",
-        "unit_of_measurement": "paketa"
+        "unit_of_measurement": "pošiljke"
       },
       "last_update": {
         "name": "Zadnje uspješno ažuriranje"

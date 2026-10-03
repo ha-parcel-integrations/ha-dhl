@@ -232,7 +232,7 @@
       },
       "awaiting_pickup": {
         "name": "Chờ nhận hàng",
-        "unit_of_measurement": "bưu kiện"
+        "unit_of_measurement": "kiện hàng"
       },
       "delivered_parcels": {
         "name": "Kiện hàng đã giao",

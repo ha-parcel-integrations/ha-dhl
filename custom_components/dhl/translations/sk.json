@@ -240,11 +240,11 @@
       },
       "outgoing_parcels": {
         "name": "Odchádzajúce zásielky",
-        "unit_of_measurement": "zásielky"
+        "unit_of_measurement": "zásielok"
       },
       "outgoing_delivered_parcels": {
         "name": "Odchádzajúce doručené zásielky",
-        "unit_of_measurement": "zásielky"
+        "unit_of_measurement": "zásielok"
       },
       "last_update": {
         "name": "Posledná úspešná aktualizácia"

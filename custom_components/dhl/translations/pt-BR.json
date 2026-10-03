@@ -232,7 +232,7 @@
       },
       "awaiting_pickup": {
         "name": "Aguardando retirada",
-        "unit_of_measurement": "encomendas"
+        "unit_of_measurement": "pacotes"
       },
       "delivered_parcels": {
         "name": "Pacotes entregues",

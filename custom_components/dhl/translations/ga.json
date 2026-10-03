@@ -232,7 +232,7 @@
       },
       "awaiting_pickup": {
         "name": "Ag fanacht le bailiú",
-        "unit_of_measurement": "beartán"
+        "unit_of_measurement": "pacáistí"
       },
       "delivered_parcels": {
         "name": "Pacáistí seachadta",

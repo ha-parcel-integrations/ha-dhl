@@ -232,7 +232,7 @@
       },
       "awaiting_pickup": {
         "name": "รอรับพัสดุ",
-        "unit_of_measurement": "ชิ้น"
+        "unit_of_measurement": "พัสดุ"
       },
       "delivered_parcels": {
         "name": "พัสดุที่จัดส่งแล้ว",
