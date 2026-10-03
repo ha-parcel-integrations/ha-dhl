@@ -14,7 +14,7 @@ Three places hold the knowledge, and they do not overlap:
 | What | Where |
 |---|---|
 | How this integration is built, and why it is built that way | [`ARCHITECTURE.md`](ARCHITECTURE.md) — read it before touching the OIDC session, the `fortschritt` ladder, the in/outgoing split, `account/countries/de/`, or anything in `tracking/` or `api/` |
-| Endpoint mechanics, status vocabularies | `carrier-research/dhl/api/` (private repo) — the OIDC discovery/token endpoints, the `int-verfolgen/data/search` envelope, the `fortschritt` ladder, the tracking gateway/Express mechanics, and every contested field. **Never** duplicated into this repo |
+| Endpoint mechanics, status vocabularies | `carrier-research/dhl/api/` (private repo). **Never** duplicated into this repo |
 | Suite-wide conventions | [`.github/CONVENTIONS.md`](https://github.com/ha-parcel-integrations/.github/blob/main/CONVENTIONS.md) |
 
 This file is the short list of things an agent must not get wrong.
