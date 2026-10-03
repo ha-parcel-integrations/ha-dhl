@@ -72,7 +72,7 @@ Re-authenticating is the only recovery, so `_async_refresh()` raises
 `sendungsdetails.sendungsverlauf`, so an un-enriched stub *is* "not found" by
 construction. Letting a failed by-number fetch fall through to the not-found
 drop makes a real parcel disappear on HTTP 200, with no warning and no reauth
-prompt — two tests used to assert exactly that. `async_get_incoming()` now
+prompt — `async_get_incoming()` therefore
 raises when enrichment failed for every element.
 
 **Requests must originate from a German IP.** The endpoint does not answer a
@@ -112,7 +112,7 @@ terminal hop from the independently-derived `delivered` bool, not
 
 **The outgoing direction value is `ABGEHEND`, not `AUSGEHEND`.** Both OSS
 sources named `AUSGEHEND`; the first real outgoing parcel ever seen on a real
-account (maintainer's own, 2026-09-19) said `ABGEHEND`, and until then every
+account (the maintainer's own) said `ABGEHEND`, and until then every
 outgoing element fell through to the incoming default. Both are recognised now.
 When a vocabulary in this integration comes only from reconstruction sources,
 treat it as a hypothesis — the unrecognised-value warning is what catches it.
@@ -172,9 +172,9 @@ what survives a restart.
 is what `/auth/recover` is for.** Refresh authenticates *with* the access-token
 cookie pair, so a token past its 30-minute life gets `401 invalid_token` and no
 amount of retrying helps. Any HA downtime longer than that window therefore
-used to cost the user a fresh SMS login. `_async_recover` trades the durable
+costs the user a fresh SMS login. `_async_recover` trades the durable
 `access-remember` cookie (the `rememberMe: true` artifact, verified live
-2026-09-12 against a session that had been dead for 36 minutes) for a new
+against a session that had been dead for 36 minutes) for a new
 token, with no Altcha and no SMS. **Do not "simplify" the 401 branch of
 `async_refresh` back into raising `DHLAuthError` directly** — that reintroduces
 an SMS prompt after every restart that takes more than half an hour. Only an
@@ -314,7 +314,7 @@ the category alone cannot express `at_pickup_point` or `returning`, and
 **Do not add `PARCEL_RETURNED_FROM_ROUTE` or `PARCEL_READY_FOR_RETURN_TO_HUB`
 back as `returning`.** On this gateway both show up in the normal outbound
 flow of a parcel dropped off at a ParcelShop, which then went on to be
-delivered (a real parcel, 2026-09-28). Only an unmapped *category* warns: the
+delivered (a real parcel). Only an unmapped *category* warns: the
 CDEx/Express fine statuses (`SCAN_OK_GATEWAY`, `PROCESSED_AT_LOCATION`, …)
 are not in the table and fall back to their category silently.
 
@@ -366,7 +366,7 @@ has too little shape to infer from reliably.
 ## Load-bearing API decisions — do not refactor away
 
 **`api/__init__.py` is also the compat shim.** `custom_components.dhl.api`
-used to be a module re-exporting the account client; it is a package now, and
+was a module re-exporting the account client; it is a package now, and
 its `__init__.py` still re-exports `DHLApiClient`/`DHLApiError`/`DHLAuthError`
 from `account/client.py`. Those names mean the *account* transport — the API
 source's own classes are `DHLUnified…` on purpose. `test_compat_shims.py`
