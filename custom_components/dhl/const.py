@@ -52,6 +52,12 @@ CAPABILITIES_BY_VARIANT = {
     "Account": frozenset({"delivery_window", "pickup_point", "url", "history"}),
     "API Tracking": frozenset({"weight", "delivery_window", "url", "history"}),
 }
+
+# Fields not confirmed yet — the docs site shows them as "awaiting data".
+# Move a field into the declaration above once a real parcel shows it.
+PENDING_CAPABILITIES_BY_VARIANT = {
+    "API Tracking": frozenset({"dimensions", "pickup_point"}),
+}
 # Legacy consumers import this flat value. New code must select from
 # CAPABILITIES_BY_VARIANT using the entry source.
 CAPABILITIES = frozenset().union(*CAPABILITIES_BY_VARIANT.values())
