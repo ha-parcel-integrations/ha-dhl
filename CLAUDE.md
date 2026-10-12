@@ -121,6 +121,9 @@ treat it as a hypothesis — the unrecognised-value warning is what catches it.
 `sendungsrichtung`**; an unrecognised direction warns once and leaves both
 `None` rather than guessing. `.zustellung.empfaenger.name` is **not** mapped to
 `receiver` — it means "who physically took the parcel", not the addressee.
+`sendungsdetails.panEmpfaenger.name` **is** mapped, but only as a fallback for
+an element that carried no `sendungsname` (issue #18) — reconstruction-grade,
+so drop it if a real export shows it naming anyone but the addressee.
 There is an open risk that the authenticated by-number path returns `ANKOMMEND`
 unconditionally; see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

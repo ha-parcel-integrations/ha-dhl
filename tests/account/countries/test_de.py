@@ -344,6 +344,36 @@ def test_normalize_abgehend_is_outgoing(caplog):
     assert "sendungsrichtung" not in caplog.text.lower()
 
 
+def test_normalize_outgoing_falls_back_to_pan_empfaenger_for_receiver():
+    """A real element can carry panEmpfaenger and no sendungsname (issue #18)."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsrichtung="ABGEHEND",
+        pan_empfaenger={"name": "Erika M &amp; Co", "ort": "Musterstadt"},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] is None
+    assert parcel["receiver"] == "Erika M & Co"
+
+
+def test_normalize_prefers_sendungsname_over_pan_empfaenger():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="ABGEHEND",
+        pan_empfaenger={"name": "Erika Musterfrau"},
+    )
+    assert normalize_parcel_de(raw)["receiver"] == "Jane Doe"
+
+
+@pytest.mark.parametrize("pan", ["Erika Musterfrau", {}, {"name": ""}, {"ort": "X"}])
+def test_normalize_unusable_pan_empfaenger_leaves_receiver_none(pan):
+    raw = element(ACTIVE_CODE, fortschritt=4, sendungsrichtung="ABGEHEND", pan_empfaenger=pan)
+    assert normalize_parcel_de(raw)["receiver"] is None
+
+
 def test_normalize_pan_empfaenger_and_heavy_package_are_recognised_keys(caplog):
     """Both were reported as unrecognised fields in issue #18."""
     raw = element(

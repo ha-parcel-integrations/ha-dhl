@@ -446,6 +446,25 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _receiver_from_pan_empfaenger(details: dict) -> str | None:
+    """Return `sendungsdetails.panEmpfaenger.name`, the addressee.
+
+    A fallback only: `sendungsname` is the confirmed source, and this block
+    is reconstruction-grade (issue #18 saw the key live but not its contents;
+    a third OSS client reads its `name`/`ort` as the recipient's name and
+    city). Unlike `.zustellung.empfaenger.name` it is not tied to who
+    physically took the parcel, and it has been seen on an element that
+    carried no `sendungsname` at all.
+    """
+    pan = details.get("panEmpfaenger")
+    if not isinstance(pan, dict):
+        return None
+    name = pan.get("name")
+    if not isinstance(name, str) or not name:
+        return None
+    return html.unescape(name)
+
+
 _ANCHOR_RE = re.compile(r"<a\b[^>]*>(.*?)</a>", re.IGNORECASE | re.DOTALL)
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -686,6 +705,8 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
     _warn_unexpected_sendungsdetails_keys(details)
+    if receiver is None:
+        receiver = _receiver_from_pan_empfaenger(details)
 
     verlauf = details.get("sendungsverlauf")
     verlauf = verlauf if isinstance(verlauf, dict) else {}

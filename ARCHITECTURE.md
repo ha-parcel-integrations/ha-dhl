@@ -443,6 +443,16 @@ single-source and means "who physically took the parcel"
 to `receiver` until a tester export confirms the semantics, and remains present
 but redacted in `raw`.
 
+**`sendungsdetails.panEmpfaenger.name` is a fallback for `receiver`**, used
+only when `sendungsname` gave nothing. The key was reported live on a
+reporter's account (issue #18) — as a key, not a value — and an OSS client
+reads its `name`/`ort` as the recipient's name and city, on an element that
+carried no `sendungsname` at all. So it fills a gap `sendungsname` leaves
+rather than competing with it, and it is not tied to who took the parcel the
+way `.zustellung.empfaenger.name` is. Still reconstruction-grade: if a real
+export ever shows it naming someone other than the addressee, drop the
+fallback. `name` and `ort` are both redacted leaves in diagnostics.
+
 ## Outgoing parcels come from the same list
 
 Unlike `ha-dhl-nl`'s `DhlSentShipmentsCoordinator` (a genuinely separate API),
