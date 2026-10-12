@@ -50,9 +50,11 @@ TO_REDACT = {
     "receiver",
     "url",
     # the DE payload's own field names — "id" is the tracking number,
-    # "name" is sendungsdetails.zustellung.empfaenger.name
+    # "name" is sendungsdetails.zustellung.empfaenger.name and
+    # sendungsdetails.panEmpfaenger.name, "ort" the latter's city
     "id",
     "name",
+    "ort",
     "sendungsnummer",
     # DHL Freight Sweden's shipment: its numbers, the parties' towns and the
     # service point near the recipient

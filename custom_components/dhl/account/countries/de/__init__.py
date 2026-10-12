@@ -365,6 +365,11 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "isShipperPlz",
     "showQualityLevelHint",
     "twoManHandling",
+    # Reported live on a reporter's account (issue #18). `isHeavyPackage` is a
+    # flag with no weight behind it, so it has no canonical home;
+    # `panEmpfaenger` is the recipient block below.
+    "isHeavyPackage",
+    "panEmpfaenger",
 }
 
 _INCOMING_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND"}

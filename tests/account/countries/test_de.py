@@ -344,6 +344,18 @@ def test_normalize_abgehend_is_outgoing(caplog):
     assert "sendungsrichtung" not in caplog.text.lower()
 
 
+def test_normalize_pan_empfaenger_and_heavy_package_are_recognised_keys(caplog):
+    """Both were reported as unrecognised fields in issue #18."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        pan_empfaenger={"name": "Erika Musterfrau", "ort": "Musterstadt"},
+        is_heavy_package=True,
+    )
+    normalize_parcel_de(raw)
+    assert "unrecognised field" not in caplog.text.lower()
+
+
 def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
     raw = element(
         ACTIVE_CODE,
