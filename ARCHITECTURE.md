@@ -379,11 +379,13 @@ an equivalent depot/hub scan: `REGISTERED` is reserved for before the carrier
 has physically scanned the parcel at all.
 
 **`problem` has no known mechanism at all.** `at_pickup_point` is derived, not
-laddered: a parcel at `fortschritt` 4 whose `zustellung` carries
-`packageStationType: PACKAGE_STATION` **and** `abholcodeAvailable: true` is
-ready to collect in a Packstation (issue #7 — both appeared together while it
-waited and both cleared once it was collected; `directlyAddressed` stays set
-afterwards, so it is not a signal). Unverified: whether either field is already
+laddered: a parcel at `fortschritt` 4 whose `zustellung` carries a
+`packageStationType` starting with `PACKAGE_STATION` **and**
+`abholcodeAvailable: true` is ready to collect in a Packstation (issue #7 —
+both appeared together while it waited and both cleared once it was collected;
+`directlyAddressed` stays set afterwards, so it is not a signal). The type is
+matched on its prefix because the screen-less smart stations report
+`PACKAGE_STATION_SMART`, which an exact match on `PACKAGE_STATION` missed. Unverified: whether either field is already
 set while the parcel is still on the vehicle, which would report pickup too
 early. **Filiale is not mapped** — only its event text was captured, no
 structured field. The coordinator warns when a parcel stays at

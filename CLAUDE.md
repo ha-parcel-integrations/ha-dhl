@@ -93,8 +93,10 @@ persisted (`pop_refresh_token_changed` → written back to `entry.data` after
 every poll) or a restart resumes with a dead token.
 
 **`AT_PICKUP_POINT` is not in `_LADDER`; it is derived.** A Packstation arrival
-is `fortschritt` 4 with `zustellung.packageStationType == "PACKAGE_STATION"` and
-`abholcodeAvailable` true (issue #7, one real parcel). Filiale is **not**
+is `fortschritt` 4 with a `zustellung.packageStationType` starting with
+`PACKAGE_STATION` and `abholcodeAvailable` true (issue #7). The prefix match is
+load-bearing: a smart Packstation reports `PACKAGE_STATION_SMART`, and an exact
+match left those parcels on `out_for_delivery`. Filiale is **not**
 mapped — no structured field was captured for it. Whether those two fields
 already appear while the parcel is still on the vehicle is unverified.
 

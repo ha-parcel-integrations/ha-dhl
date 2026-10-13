@@ -136,6 +136,15 @@ def test_packstation_arrival_is_at_pickup_point_with_the_station_named():
     assert parcel["pickup_point"] == "Packstation 216, Hauptstr. 1, 12345 Berlin"
 
 
+def test_a_smart_packstation_is_also_ready_for_pickup():
+    """Screen-less stations report PACKAGE_STATION_SMART (issue #7)."""
+    zustellung = {"packageStationType": "PACKAGE_STATION_SMART", "abholcodeAvailable": True}
+    parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Packstation 216, Hauptstr. 1, 12345 Berlin"
+
+
 def test_pickup_point_is_unescaped_plain_text():
     event = "Bereit in <a href='x'><span class='arrow'></span>Packstation &amp; Co, 1</a> zur Abholung."
     parcel = normalize_parcel(
@@ -158,6 +167,7 @@ def test_out_for_delivery_needs_both_packstation_signals():
         {"packageStationType": "PACKAGE_STATION", "abholcodeAvailable": False},
         {"abholcodeAvailable": True},
         {"directlyAddressed": True},
+        {"packageStationType": "RETAIL_OUTLET", "abholcodeAvailable": True},
     ):
         parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
         assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY

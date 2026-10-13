@@ -472,10 +472,14 @@ _TAG_RE = re.compile(r"<[^>]+>")
 def _is_ready_at_packstation(zustellung: dict) -> bool:
     """Both fields were seen together while a parcel waited in a Packstation.
 
-    Both cleared once it was collected (issue #7).
+    Both cleared once it was collected (issue #7). The type is matched on its
+    prefix: a screen-less smart Packstation reports `PACKAGE_STATION_SMART`
+    (issue #7, second reporter), so an exact match missed those parcels.
     """
+    station_type = zustellung.get("packageStationType")
     return (
-        zustellung.get("packageStationType") == "PACKAGE_STATION"
+        isinstance(station_type, str)
+        and station_type.startswith("PACKAGE_STATION")
         and zustellung.get("abholcodeAvailable") is True
     )
 
