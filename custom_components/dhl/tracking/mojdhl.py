@@ -8,7 +8,7 @@ from typing import Any
 import aiohttp
 
 from ..account.countries.pl import map_pl_status
-from ..account.countries.pl.session import solve_altcha
+from ..account.countries.pl.session import async_solve_altcha
 from ..const import (
     DHL_MOJDHL_MIN_CODE_LENGTH,
     DHL_PL_BASE_URL,
@@ -57,7 +57,7 @@ async def _post_status(
     body: dict[str, str] = {
         f"number{index}": code for index, code in enumerate(codes, 1)
     }
-    body["captcha-payload"] = solve_altcha(challenge)
+    body["captcha-payload"] = await async_solve_altcha(challenge)
     return await _json(session, "POST", "/shipment/status", json=body)
 
 

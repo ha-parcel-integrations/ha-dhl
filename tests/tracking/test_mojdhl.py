@@ -25,7 +25,8 @@ CHALLENGE = {
 @pytest.fixture(autouse=True)
 def _solved():
     with patch(
-        "custom_components.dhl.tracking.mojdhl.solve_altcha", return_value="solved"
+        "custom_components.dhl.tracking.mojdhl.async_solve_altcha",
+        new=AsyncMock(return_value="solved"),
     ):
         yield
 

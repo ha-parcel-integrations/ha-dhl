@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import hashlib
-from unittest.mock import AsyncMock, MagicMock
+import threading
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
 
 from custom_components.dhl.account.countries.pl.session import (
     DHLPlSession,
+    async_solve_altcha,
     new_device_id,
     solve_altcha,
 )
@@ -236,3 +238,15 @@ async def test_aclose_closes_the_underlying_session():
     await pl_session.aclose()
 
     session.close.assert_awaited_once()
+
+
+async def test_async_solve_altcha_runs_off_the_event_loop():
+    seen = []
+
+    def fake(challenge):
+        seen.append(threading.current_thread())
+        return "solved"
+
+    with patch("custom_components.dhl.account.countries.pl.session.solve_altcha", fake):
+        assert await async_solve_altcha({}) == "solved"
+    assert seen[0] is not threading.main_thread()

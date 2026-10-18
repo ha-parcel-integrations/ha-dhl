@@ -1,6 +1,7 @@
 """Mój DHL (Poland) SMS session and Altcha enrolment helpers."""
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -50,6 +51,11 @@ def solve_altcha(challenge: dict[str, Any]) -> str:
             }
             return base64.b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
     raise DHLApiError("Altcha challenge could not be solved within maxnumber")
+
+
+async def async_solve_altcha(challenge: dict[str, Any]) -> str:
+    """Run the CPU-bound proof of work in an executor so the event loop stays free."""
+    return await asyncio.get_running_loop().run_in_executor(None, solve_altcha, challenge)
 
 
 class DHLPlSession:
@@ -115,7 +121,7 @@ class DHLPlSession:
         status, challenge = await self._json("GET", "/auth/captcha/challenge")
         if status != 200 or not isinstance(challenge, dict):
             raise DHLApiError(f"Altcha challenge request failed: HTTP {status}")
-        return solve_altcha(challenge)
+        return await async_solve_altcha(challenge)
 
     async def async_send_sms(self, phone: str) -> int:
         """Validate a phone and request exactly one SMS; return DHL's lockout."""
