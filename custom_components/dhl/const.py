@@ -161,6 +161,7 @@ DHL_DE_COOKIE_NAME = "dhli"
 # A bare aiohttp request (no User-Agent, no Accept) to the tracking endpoint
 # stalls until timeout rather than getting a fast response — send a plain,
 # realistic header set.
+# suite: allow browser user-agent (the tracking endpoint stalls without a realistic UA, per the note above)
 DHL_DE_TRACKING_HEADERS = {
     "accept": "application/json",
     "content-type": "application/json",
