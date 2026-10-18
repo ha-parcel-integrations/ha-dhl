@@ -7,11 +7,11 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import aiohttp
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from homeassistant.util import dt as dt_util
 
 from ..const import (
     DHL_EXPRESS_APP_VERSION,
@@ -260,6 +260,10 @@ _COUNTRY_ZONES = {
 }
 
 
+# Built once at import: constructing a ZoneInfo reads the tz file from disk.
+_ZONES = {name: ZoneInfo(name) for name in set(_COUNTRY_ZONES.values())}
+
+
 def _location_zone(location: str | None):
     """Return the zone of the country ``location`` ends in, if it has one."""
     if not location:
@@ -267,7 +271,7 @@ def _location_zone(location: str | None):
     country = location.rsplit(" - ", 1)[-1].strip().upper()
     country = country.removesuffix(", THE").removeprefix("THE ").strip()
     name = _COUNTRY_ZONES.get(country)
-    return dt_util.get_time_zone(name) if name else None
+    return _ZONES[name] if name else None
 
 
 def _checkpoint_timestamp(checkpoint: dict) -> str | None:
