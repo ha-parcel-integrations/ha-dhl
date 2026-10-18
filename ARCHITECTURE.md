@@ -8,8 +8,8 @@ gateway and Express mechanics, and every contested field — live in the
 private `carrier-research/dhl/api/` and are never copied here.
 
 Four things shape this repo. It has **three setup-flow sources**: `account`
-(DE/PL, a logged-in inbox), `tracking` (a keyless DHL Parcel gateway plus
-DHL Express tracking, both code-based) and `api` (DHL's official Unified
+(DE/PL, a logged-in inbox), `tracking` (DHL's keyless public tracking backends, combined,
+plus DHL Express tracking, all code-based) and `api` (DHL's official Unified
 tracking API on the user's own key, code-based). DE auth is a **one-time browser hop**
 producing a refresh token; PL auth is a phone/SMS flow whose rotating cookie
 jar is its credential. And a large share of the account source's payload
@@ -63,30 +63,55 @@ has nothing in common with DE's OAuth flow, so its step will look nothing like
 points.** `unique_id` is `f"{country}:{subject}"`; reauth reads the country back
 off the existing entry (`entry_data[CONF_COUNTRY]`) and never asks again.
 
-## Tracking source: a keyless chain, plus shape-routed Express
+## Tracking source: combined keyless backends, plus shape-routed Express
 
 `tracking/` has no account and no login — a user pastes in tracking codes
 (`config_flow.py`'s `tracking` step creates an empty hub; codes are added
-through the options flow's "parcels" entry). The keyless backends form a
-fallback chain; the rationed Express backend is reached by the code's *shape*
-(`tracking/__init__.py::classify_shape`):
+through the options flow's "parcels" entry). The keyless backends are asked
+together and their answers combined; the rationed Express backend is reached
+by the code's *shape* (`tracking/__init__.py::classify_shape`):
 
-| Shape | Backends, in order | Modules |
+| Shape | Backends | Modules |
 |---|---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl` → `mojdhl.pl` | `tracking/gateway.py`, `tracking/mojdhl.py` |
-| Bare 10-digit number (a DHL Express AWB) | `dhle.dhl.com` → `hamta.dhl.com` | `tracking/express.py`, `tracking/hamta.py` |
-| Anything else | `api-gw.dhlparcel.nl` → `mojdhl.pl` (11+ characters) → `dhle.dhl.com` | all three |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl` + `mojdhl.pl` + `clientesparcel.dhl.es` | `tracking/gateway.py`, `tracking/mojdhl.py`, `tracking/iberia.py` |
+| 10 digits with the Express check digit (a DHL Express AWB) | `dhle.dhl.com`, then `hamta.dhl.com` + `clientesparcel.dhl.es` | `tracking/express.py`, `tracking/hamta.py`, `tracking/iberia.py` |
+| 10 digits without it | `hamta.dhl.com` + `clientesparcel.dhl.es` | `tracking/hamta.py`, `tracking/iberia.py` |
+| Anything else | all four keyless backends that accept it, then `dhle.dhl.com` | all five |
 
-**The keyless chain.** `_KEYLESS_CHAIN` in `tracking/coordinator.py` lists the
-backends that are keyless, unrationed and batchable, in the order they are
-tried: the gateway, then Mój DHL's public lookup. Every poll, each backend
-gets one batch: the codes it already owns (its marker in the cache), plus
-every code no backend owns yet that it can accept. A code one backend
-answers is stamped with that backend's marker and never offered to a later
-one, so the first backend to answer keeps it. A failing backend is logged
-and the chain goes on to the next. Adding a keyless backend is one more
-entry, a fetch that returns `{code: raw}` for the codes it knows, and a
-normalizer in `tracking/parcels.py`.
+**The keyless round.** `_KEYLESS_CHAIN` in `tracking/coordinator.py` lists the
+backends that are keyless and unrationed: the gateway, Mój DHL's public
+lookup, DHL eCommerce Iberia and DHL Freight Sweden. Every poll they run at
+the same time (`asyncio.gather`), one batch each. A backend's batch is the
+codes it has answered before, plus — while a code is not delivered and its
+answers so far show no more than an announcement (`registered`/`unknown`, or
+no answer at all) — every code it accepts. Once a code shows movement, only
+the backends that answered it are asked. The search stays open on an
+announcement because one parcel crosses networks: a German Weltpaket shows
+only `PRENOTIFICATION_RECEIVED` on the gateway and its whole Spanish journey
+on Iberia, which a first-answer-wins chain never reached. A failing backend
+costs only its own answers. Every answer is kept per backend
+(`_sources`); `tracking/parcels.py::merge_parcels` normalizes each with its
+history, and the backend with the newest scan (or delivery moment) decides
+status, dates, pickup point and `raw`; the chain order breaks a tie. Its
+`sender`/`receiver`/`weight`/`dimensions` gaps are filled from the others,
+and `history` is the union of all scans, oldest first. `raw` stays that one
+backend's full record. Adding a keyless backend is one more entry, a fetch
+that returns `{code: raw}` for the codes it knows, and a normalizer in
+`tracking/parcels.py`.
+
+**DHL eCommerce Iberia is one GET per code.** `clientesparcel.dhl.es`'s
+`shipment-detail` takes one number, so `async_fetch_iberia` runs a poll's
+codes in parallel, `DHL_IBERIA_MAX_PARALLEL_REQUESTS` at a time; one failing
+code keeps the others' answers. An unknown number is an empty `204` (a number
+it cannot parse a `409`); a non-JSON answer under `200` is its firewall and an
+error, never a miss. An answer counts only when its `ExpeditionNumber` echoes
+the code asked. Some shipments come back as a six-field shape without the
+header (no weight, no ServicePoint) and `Status: 0`, so the status comes from
+the scans alone: the newest mapped one, a movement after an `RT` being the
+return trip. Depot scans carry code `ZZZ` or none at all, and the
+registration is a code-less scan with `SolutionCode: DOC`. Scan times stay
+offset-less local time; for picking the freshest backend they are read as
+UTC, an hour or two off at most.
 
 **Mój DHL answers for more than Poland.** `mojdhl.pl`'s public
 `POST /shipment/status` is the lookup behind DHL Parcel Polska's tracking
@@ -100,23 +125,27 @@ named. The status comes from the same `TT_*` codes as the Polish account
 (`map_pl_status`), with `timelineStep` as the fallback. The payload has no
 event log, so `history` is always `None` for these parcels.
 
-**DHL Freight Sweden shares the Express shape.** Its shipment numbers are 10
-characters too, so shape cannot separate them from Express AWBs. A code that
-leaves an Express request without an Express record (not found, throttled,
-failed) is tried once against `hamta.dhl.com` (`tracking/hamta.py`), keyless
-and batchable. A code found there is cached with the `hamta` backend marker,
-leaves the Express queue for good, and is polled in one batch per cycle like
-the gateway. While Express is standing down or disabled, one code per cycle
-without any record yet is tried on Hamta instead; a miss there is not asked
-again from that path, only after the code's next Express request.
+**The Express check digit keeps other 10-digit numbers off its budget.**
+Every real Express AWB seen has the first nine digits modulo 7 as its last;
+DHL Iberia's 10-digit expedition numbers did not. A 10-digit code that fails
+the check (`SHAPE_TEN_DIGIT`) goes to Hamta and Iberia in the keyless round
+and never to Express. One that passes still shares the shape with DHL Freight
+Sweden and, one time in seven, Iberia: a code that leaves an Express request
+without an Express record (not found, throttled, failed) is tried once on
+`hamta.dhl.com` and Iberia together (`_async_try_fallbacks`). A code found
+there leaves the Express queue for good and joins the keyless round. While
+Express is standing down or disabled, one code per cycle without any record
+yet is tried on the fallbacks instead; a miss there is not asked again from
+that path, only after the code's next Express request.
 
 **Express is never a link in the keyless chain.** Every barcode-shaped code
 tried against the Express backend comes back a clean `[]` (not found, not an
 error) — technically harmless, but wasteful of Express's scarce request
 budget for a request that can never resolve. So a barcode-shaped code the
 keyless chain cannot answer stays unresolved, and only a code matching no
-known shape goes on to Express. A bare-digit code is not sent to the gateway
-either, which has never resolved one.
+known shape goes on to Express, and only when no keyless backend answered
+it. A bare-digit code is not sent to the gateway either, which has never
+resolved one.
 
 **The gateway is keyless, unthrottled, and batched.** One request per poll
 covers the whole batch the chain gives it, comma-separated
@@ -150,7 +179,9 @@ interval for gateway-only installs, which are the common case.
 
 **The Express queue state survives a restart.** Like `ha-ups`, the tracking
 coordinator keeps a per-entry `Store` (`dhl.tracking_cache.<entry_id>`) holding
-the last raw payload per code, the budget balance, the stand-down deadline,
+the last raw payload per code, every keyless backend's answer per code
+(`sources`; a store written before that holds one per code and is read as
+such), the budget balance, the stand-down deadline,
 consecutive stand-downs and the per-code fetch times. It is loaded in
 `__init__.py` before the first refresh and written debounced after every poll.
 Without it every boot started the budget full and dropped a running
@@ -246,9 +277,10 @@ custom_components/dhl/
     ├── express.py           dhle.dhl.com client + normalize_parcel_express
     ├── hamta.py             hamta.dhl.com client + normalize_parcel_hamta
     ├── mojdhl.py            mojdhl.pl public lookup client + normalize_parcel_mojdhl
+    ├── iberia.py            clientesparcel.dhl.es client + normalize_parcel_iberia
     ├── budget.py            RequestBudget token bucket (Express only)
-    ├── coordinator.py       poll loop, keyless chain, Express queue/throttle, events
-    └── parcels.py           per-backend dispatch, sort, filters
+    ├── coordinator.py       poll loop, keyless round, Express queue/throttle, events
+    └── parcels.py           per-backend dispatch, merge_parcels, sort, filters
 └── api/
     ├── __init__.py          compat re-export of the account client (the old api.py)
     ├── client.py            DHLUnifiedClient + DHLUnified… errors

@@ -27,9 +27,10 @@ DHL's Netherlands business is a separate integration,
 
 **Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
 and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
-domestic DHL Freight Sweden shipment numbers and DHL parcel numbers that only
+domestic DHL Freight Sweden shipment numbers, DHL parcel numbers that only
 DHL's Polish tracking (Mój DHL) knows, such as a parcel sent from Poland to
-another country — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
+another country, and parcels DHL eCommerce Iberia delivers in Spain and
+Portugal — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
 
 **API Tracking support:** every DHL business DHL's official *Shipment Tracking –
 Unified* API covers — DHL Paket Germany by number (no German IP or login
@@ -175,15 +176,23 @@ should only track your own parcels.
 
 ## Tracking codes
 
-Each code you add is routed automatically to whichever DHL backend can
-answer it — you never say which. A code is tried on one backend after the
-other until one of them knows it, and is followed there from then on:
+Each code you add is routed automatically to the DHL backends that can
+answer it — you never say which. DHL's public tracking backends each see part
+of the network, and one parcel can cross several: a parcel sent from Germany
+to Spain shows only its announcement on the DHL Parcel gateway and the rest
+of its journey on DHL eCommerce Iberia. So a new code is looked up on every
+public backend at once, in parallel. Once one of them shows the parcel
+moving, only the backends that knew it are asked from then on. Their answers
+are combined: the one with the newest scan sets the status, the history
+holds the scans of all of them, and a field one backend lacks, such as the
+weight, comes from another.
 
-| Code shape | Tried on, in order |
+| Code shape | Looked up on |
 |---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands; then Mój DHL's public tracking |
-| A bare 10-digit number (a DHL Express air waybill) | The DHL Express tracking backend; then DHL Freight Sweden's public tracking (Mitt DHL) |
-| Anything else | The DHL Parcel gateway; then Mój DHL's public tracking (codes of 11 characters or more); then the DHL Express backend |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands; Mój DHL's public tracking; DHL eCommerce Iberia |
+| A 10-digit DHL Express air waybill | The DHL Express tracking backend; if Express does not know it, DHL Freight Sweden's public tracking (Mitt DHL) and DHL eCommerce Iberia |
+| Any other 10-digit number (it fails the Express check digit) | DHL Freight Sweden and DHL eCommerce Iberia — never the slow Express backend |
+| Anything else | The DHL Parcel gateway, Mój DHL (codes of 11 characters or more), DHL eCommerce Iberia and DHL Freight Sweden (codes of 10 characters); only when none of them knows it, the DHL Express backend |
 
 **The DHL Express backend is intentionally slow to refresh — roughly once
 every 40 minutes per tracked Express code, shared across however many you
@@ -253,6 +262,8 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 **Tracking codes — DHL Express.** `DELIVERED` maps to `delivered`. Before delivery the status follows the newest checkpoint: *Shipment is out with courier for delivery* is `out_for_delivery`; *Delivery attempt could not be completed*, *Delivery not accepted*, *Further consignee information needed* and *On hold awaiting for payment of shipment related fees* are `problem`; *Shipment information received* is `registered`; *Shipment Accepted*, *Shipment picked up*, *Processed at …*, *Arrived at DHL Sort Facility …*, *Arrived at DHL Delivery Facility …*, *Shipment has departed from a DHL facility …*, *Shipment is in transit to destination*, *Customs clearance status updated*, *Clearance processing complete at …*, *Payment is received and recorded for shipment related fees* and *Shipment is scheduled for delivery* are `in_transit`. Any other checkpoint is `in_transit` while the estimated delivery date is still ahead, otherwise `unknown`. No pickup-point state has been observed on this backend yet. Checkpoint times are the local time of the DHL facility; they carry that country's time zone when it has only one, and no offset otherwise.
 
 **Tracking codes — DHL Freight Sweden.** Follows Mitt DHL's own status card: a collected shipment is `delivered`, one waiting too long at the service point is `returning`, a stopped one is `problem`, and one ready for collection is `at_pickup_point`. Otherwise the newest event decides: *OUT FOR DELIVERY* is `out_for_delivery`, a drop-off at the service point or locker is `at_pickup_point`, a return is `returning`, and terminal and transport events are `in_transit`. A shipment without events is `registered`. `pickup_point` is the service point's name.
+
+**Tracking codes — DHL eCommerce Iberia.** The newest scan decides: *Out for delivery* is `out_for_delivery`; *Delivered to DHL ServicePoint* is `at_pickup_point`; *Delivered*, *Delivered, POD pending* and *Parcel picked up by recipient* are `delivered`; *Shipment being returned to sender* is `returning`, and so is any movement after it; an absent consignee, a closed receiver, a postponed or delayed delivery, force majeure, special handling and an incident are `problem`; *Shipment data received* is `registered`; depot scans, drop-offs and agreed delivery dates are `in_transit`. A scan that is not mapped falls back to the one before it. `pickup_point` is the ServicePoint's name and `weight` is in kilograms; DHL Iberia does not always send either. Scan times are the local time in Spain or Portugal and carry no offset.
 
 **Tracking codes — Mój DHL.** Uses the same DHL Parcel Polska status codes as a Polish account: a delivered or collected parcel is `delivered`, one waiting in a locker or behind a notice is `at_pickup_point`, one handed to the courier is `out_for_delivery`, a return is `returning`, and delays and delivery problems are `problem`. This backend has no event log, so parcels found here have no `history`.
 

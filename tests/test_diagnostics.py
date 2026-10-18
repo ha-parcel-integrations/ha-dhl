@@ -166,7 +166,7 @@ async def test_diagnostics_tracking_source_reports_express_state_and_redacts_par
 
     entry = MagicMock()
     entry.data = {CONF_SOURCE: SOURCE_TRACKING}
-    entry.options = {CONF_PARCELS: [{"tracking_code": "1000000001"}]}
+    entry.options = {CONF_PARCELS: [{"tracking_code": "1000000013"}]}
     coordinator = entry.runtime_data.coordinator
     coordinator.data = []
     coordinator.delivered = []

@@ -2,6 +2,7 @@
 import time
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dhl.const import (
@@ -25,12 +26,14 @@ from .payloads import (
     express_in_transit,
     gateway_element,
     hamta_shipment,
+    iberia_event,
+    iberia_shipment,
     mojdhl_shipment,
 )
 
 GATEWAY_CODE = "3SXYZ0000000001"
 GATEWAY_CODE_2 = "3SXYZ0000000002"
-EXPRESS_CODE = "1000000001"
+EXPRESS_CODE = "1000000013"
 EXPRESS_CODE_2 = "1000000002"
 UNKNOWN_CODE = "ZZTOTALLYUNKNOWN123"
 MOJDHL_CODE = "31500000001"
@@ -354,7 +357,8 @@ async def test_credential_error_disables_express_and_never_retries(hass):
 
 
 async def test_soft_limit_warning_fires_once(hass, caplog):
-    codes = [f"100000000{i}" for i in range(DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT + 1)]
+    bases = [100000000 + i for i in range(DHL_EXPRESS_TRACKED_CODE_SOFT_LIMIT + 1)]
+    codes = [f"{base}{base % 7}" for base in bases]
     entry = _entry(codes)
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
@@ -785,7 +789,9 @@ async def test_a_code_the_gateway_cannot_answer_is_tried_on_mojdhl_before_expres
     assert coordinator.delivered[0]["raw"]["status"] == "TT_DOR"
 
 
-async def test_a_mojdhl_parcel_stays_there_and_skips_the_gateway(hass, fetch_mojdhl):
+async def test_once_a_parcel_moves_only_the_backends_that_answered_are_asked(
+    hass, fetch_mojdhl, fetch_iberia
+):
     entry = _entry([MOJDHL_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
@@ -798,24 +804,54 @@ async def test_a_mojdhl_parcel_stays_there_and_skips_the_gateway(hass, fetch_moj
         AsyncMock(return_value={}),
     ) as fetch_gateway:
         await coordinator._async_update_data()
-        await coordinator._async_update_data()
+        active = await coordinator._async_update_data()
 
-    fetch_gateway.assert_awaited_once()
+    assert active[0]["status"] == ParcelStatus.IN_TRANSIT
+    assert fetch_gateway.await_count == 1
+    assert fetch_iberia.await_count == 1
     assert fetch_mojdhl.await_count == 2
 
 
-async def test_a_code_the_gateway_answers_never_reaches_mojdhl(hass, fetch_mojdhl):
-    entry = _entry([GATEWAY_CODE])
+async def test_an_announcement_alone_keeps_the_search_going(hass, fetch_iberia):
+    entry = _entry([IBERIA_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
     with patch(
         "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+        AsyncMock(return_value={IBERIA_CODE: _gateway_announced(IBERIA_CODE)}),
     ):
         await coordinator._async_update_data()
+        fetch_iberia.return_value = {IBERIA_CODE: iberia_shipment(IBERIA_CODE)}
+        await coordinator._async_update_data()
 
-    fetch_mojdhl.assert_not_awaited()
+    assert fetch_iberia.await_count == 2
+    assert coordinator.delivered[0]["status"] == ParcelStatus.DELIVERED
+
+
+async def test_a_delivered_code_only_asks_the_backends_that_know_it(
+    hass, fetch_mojdhl, fetch_iberia
+):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    delivered = gateway_element(
+        barcode=GATEWAY_CODE,
+        category="DELIVERED",
+        status="DELIVERED",
+        delivered_at="2026-02-13T09:28:29Z",
+    )
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={GATEWAY_CODE: delivered}),
+    ) as fetch_gateway:
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    assert fetch_gateway.await_count == 2
+    assert fetch_mojdhl.await_count == 1
+    assert fetch_iberia.await_count == 1
 
 
 async def test_an_unanswered_barcode_goes_to_mojdhl_but_never_to_express(
@@ -877,3 +913,203 @@ async def test_a_mojdhl_parcel_is_restored_from_the_cache(hass, fetch_mojdhl):
         await restored.async_load_cache()
 
     assert restored._backend_of(MOJDHL_CODE) == "mojdhl"
+
+
+# ---------------------------------------------------------------------------
+# combined keyless answers + DHL Iberia
+# ---------------------------------------------------------------------------
+
+IBERIA_CODE = "CA000000001DE"
+
+
+def _gateway_announced(code: str) -> dict:
+    element = gateway_element(barcode=code)
+    element["events"] = element["events"][:1]
+    return element
+
+
+async def test_the_freshest_backend_decides_and_the_others_fill_in(hass, fetch_iberia):
+    entry = _entry([IBERIA_CODE], include_history=True)
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.return_value = {IBERIA_CODE: iberia_shipment(IBERIA_CODE)}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={IBERIA_CODE: _gateway_announced(IBERIA_CODE)}),
+    ):
+        await coordinator._async_update_data()
+
+    parcel = coordinator.delivered[0]
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert parcel["pickup_point"] == "EXAMPLE SHOP"
+    assert parcel["raw"]["ExpeditionNumber"] == IBERIA_CODE
+    statuses = [e["raw_status"] for e in parcel["history"]]
+    assert statuses[0] == "PRENOTIFICATION_RECEIVED"
+    assert statuses[-1] == "Parcel picked up by recipient"
+
+
+async def test_a_fresher_gateway_answer_outranks_iberia_but_keeps_its_weight(
+    hass, fetch_iberia
+):
+    entry = _entry([IBERIA_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    old = [iberia_event("01/01/2026", "10:00", "ZZZ", "Arrived at")]
+    fetch_iberia.return_value = {IBERIA_CODE: iberia_shipment(IBERIA_CODE, events=old)}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={IBERIA_CODE: gateway_element(barcode=IBERIA_CODE)}),
+    ):
+        active = await coordinator._async_update_data()
+
+    assert active[0]["status"] == ParcelStatus.OUT_FOR_DELIVERY
+    assert active[0]["weight"] == 2.0
+    assert active[0]["history"] is None
+    assert active[0]["raw"]["barcode"] == IBERIA_CODE
+
+
+async def test_one_failing_backend_does_not_cost_the_others_their_answer(
+    hass, fetch_iberia, caplog
+):
+    entry = _entry([IBERIA_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.return_value = {IBERIA_CODE: iberia_shipment(IBERIA_CODE)}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(side_effect=DHLApiError("HTTP 503")),
+    ):
+        await coordinator._async_update_data()
+
+    assert "DHL tracking gateway request failed" in caplog.text
+    assert coordinator.delivered[0]["barcode"] == IBERIA_CODE
+
+
+async def test_a_programming_error_in_a_backend_is_not_swallowed(hass, fetch_iberia):
+    entry = _entry([IBERIA_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.side_effect = TypeError("bug")
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={}),
+    ), pytest.raises(TypeError):
+        await coordinator._async_update_data()
+
+
+async def test_ten_digits_without_the_check_digit_never_spend_the_express_budget(
+    hass, fetch_iberia, fetch_hamta
+):
+    code = "5000000000"
+    entry = _entry([code])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.return_value = {code: iberia_shipment(code, full=False)}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway"
+    ) as fetch_gateway, patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express"
+    ) as fetch_express:
+        await coordinator._async_update_data()
+
+    fetch_gateway.assert_not_called()
+    fetch_express.assert_not_called()
+    fetch_hamta.assert_awaited_once()
+    assert coordinator.delivered[0]["barcode"] == code
+
+
+async def test_an_express_miss_is_tried_on_iberia_and_stays_there(hass, fetch_iberia):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    events = [iberia_event("01/10/2026", "09:00", "A", "Out for delivery")]
+    fetch_iberia.return_value = {
+        EXPRESS_CODE: iberia_shipment(EXPRESS_CODE, events=events)
+    }
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=None),
+    ) as fetch_express:
+        await coordinator._async_update_data()
+        coordinator._budget = coordinator._budget.from_dict(None, 5, 1)
+        active = await coordinator._async_update_data()
+
+    fetch_express.assert_awaited_once()
+    assert fetch_iberia.await_count == 2
+    assert active[0]["status"] == ParcelStatus.OUT_FOR_DELIVERY
+
+
+async def test_a_failing_express_fallback_is_logged_and_retried_later(
+    hass, fetch_iberia, caplog
+):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.side_effect = DHLApiError("HTTP 502")
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=None),
+    ):
+        await coordinator._async_update_data()
+
+    assert f"DHL Iberia fetch failed for {EXPRESS_CODE}" in caplog.text
+    assert EXPRESS_CODE in coordinator._fallback_misses
+
+
+async def test_an_express_fallback_programming_error_is_not_swallowed(
+    hass, fetch_iberia
+):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.side_effect = TypeError("bug")
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=None),
+    ), pytest.raises(TypeError):
+        await coordinator._async_update_data()
+
+
+async def test_combined_answers_survive_a_restart(hass, fetch_iberia):
+    entry = _entry([IBERIA_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_iberia.return_value = {IBERIA_CODE: iberia_shipment(IBERIA_CODE)}
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={IBERIA_CODE: _gateway_announced(IBERIA_CODE)}),
+    ):
+        await coordinator._async_update_data()
+    stored = {"raw_cache": coordinator._raw_cache, "sources": coordinator._sources}
+
+    restored = _coordinator(hass, entry)
+    with patch.object(restored._store, "async_load", AsyncMock(return_value=stored)):
+        await restored.async_load_cache()
+
+    assert set(restored._sources[IBERIA_CODE]) == {"gateway", "iberia"}
+
+
+async def test_a_store_from_before_combining_seeds_one_answer_per_code(hass):
+    entry = _entry([GATEWAY_CODE, EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    stored = {
+        "raw_cache": {
+            GATEWAY_CODE: {**gateway_element(barcode=GATEWAY_CODE), "_dhl_backend": "gateway"},
+            EXPRESS_CODE: {**express_in_transit(EXPRESS_CODE), "_dhl_backend": "express"},
+        },
+        "sources": {"x": "junk", GATEWAY_CODE: {"nope": {}}},
+    }
+    with patch.object(coordinator._store, "async_load", AsyncMock(return_value=stored)):
+        await coordinator.async_load_cache()
+
+    assert set(coordinator._sources) == {GATEWAY_CODE}
+    assert "_dhl_backend" not in coordinator._sources[GATEWAY_CODE]["gateway"]

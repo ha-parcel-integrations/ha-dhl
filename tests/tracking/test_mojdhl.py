@@ -124,7 +124,7 @@ async def test_fetch_batches_every_code_and_keys_on_the_echoed_number():
 
 async def test_fetch_never_sends_a_code_the_validator_would_reject_for_length():
     session = MagicMock()
-    assert await async_fetch_mojdhl(session, ["1000000001"]) == {}
+    assert await async_fetch_mojdhl(session, ["1000000013"]) == {}
     session.request.assert_not_called()
 
 

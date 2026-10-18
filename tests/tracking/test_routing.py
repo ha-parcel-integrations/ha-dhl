@@ -3,7 +3,9 @@ from custom_components.dhl.tracking import (
     BACKEND_EXPRESS,
     BACKEND_GATEWAY,
     BACKEND_UNKNOWN,
+    SHAPE_TEN_DIGIT,
     classify_shape,
+    express_check_digit_ok,
     normalize_tracking_code,
     valid_tracking_code,
 )
@@ -54,3 +56,9 @@ def test_valid_tracking_code_rejects_only_empty():
     assert valid_tracking_code("ANYTHING") is True
     assert valid_tracking_code("") is False
     assert valid_tracking_code(None) is False
+
+
+def test_10_digits_without_the_express_check_digit_is_never_express():
+    assert classify_shape("5001191987") == SHAPE_TEN_DIGIT
+    assert not express_check_digit_ok("5001191987")
+    assert express_check_digit_ok("8929341455")

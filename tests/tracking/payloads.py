@@ -49,7 +49,7 @@ def gateway_element(
     }
 
 
-def express_delivered(awb: str = "1000000001") -> dict:
+def express_delivered(awb: str = "1000000013") -> dict:
     return {
         "id": awb,
         "label": "Waybill",
@@ -176,5 +176,78 @@ def mojdhl_shipment(
         "receiptDateUtc": "2026-09-22T09:51:00Z",
         "faqCondition": "DeliveryByCourier",
         "options": [],
+        **fields,
+    }
+
+
+def iberia_event(
+    date: str, time: str, code: str | None, description: str, *,
+    solution: str | None = None, town: str = "Valencia",
+) -> dict:
+    """One DHL Iberia scan, in the feed's own field names."""
+    return {
+        "Date": date,
+        "Time": time,
+        "Description": description,
+        "Code": code,
+        "SolutionCode": solution,
+        "Town": town,
+    }
+
+
+IBERIA_DELIVERED_AT_SERVICE_POINT = [
+    iberia_event("18/08/2026", "16:46", "RS", "Parcel picked up by recipient", solution="DHL"),
+    iberia_event(
+        "18/08/2026", "15:58", "IS",
+        "Delivered to DHL ServicePoint, ready for collection by the recipient",
+        solution="DHL",
+    ),
+    iberia_event("18/08/2026", "15:31", "NH", "The delivery could not be made due to consignee absent", solution="CLI"),
+    iberia_event("18/08/2026", "09:28", "A", "Out for delivery", solution="ASI"),
+    iberia_event("18/08/2026", "07:34", "ZZZ", "Arrived at"),
+    iberia_event("17/08/2026", "20:42", None, "Shipment data received", solution="DOC", town="Zaragoza"),
+]
+
+
+def iberia_shipment(
+    number: str = "JJD00026900000000000001",
+    *,
+    events: list[dict] | None = None,
+    full: bool = True,
+    **fields,
+) -> dict:
+    """A DHL Iberia shipment; ``full=False`` is the six-field shape some return."""
+    tracking = IBERIA_DELIVERED_AT_SERVICE_POINT if events is None else events
+    if not full:
+        return {
+            "ExpeditionNumber": number,
+            "Status": 0,
+            "ChangeType": 0,
+            "Tracking": tracking,
+            "DestinationType": 2,
+            "DateAvailableInServicePoint": "01/01/0001",
+            **fields,
+        }
+    return {
+        "ExpeditionNumber": number,
+        "DeliveredInServicePoint": True,
+        "DeliveryDate": "2026-08-18T00:00:00Z",
+        "Status": 8,
+        "ServicePoint": {
+            "Code": "ES-0000001",
+            "Name": "EXAMPLE SHOP",
+            "Address": "EXAMPLE STREET 1",
+            "ZipCode": "46001",
+            "Location": "VALENCIA",
+        },
+        "LicensePlate": number,
+        "Tracking": tracking,
+        "Origin": "Zaragoza",
+        "Destination": "Valencia",
+        "Product": "DHL PARCEL IBERIA",
+        "Weight": "2",
+        "ItemsNumber": "1",
+        "EPOD": True,
+        "LastIncidence": "RS",
         **fields,
     }

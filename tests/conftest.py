@@ -1,5 +1,6 @@
 """pytest configuration for the DHL test suite."""
 import sys
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.plugins import hass  # noqa: F401
@@ -22,6 +23,7 @@ def reset_one_shot_warnings():
     """
     from custom_components.dhl.account.countries import de, pl
     from custom_components.dhl.account.countries.de import session
+    from custom_components.dhl.tracking import iberia
 
     de._unexpected_body_logged = False
     de._sendungsliste_values_logged.clear()
@@ -34,7 +36,42 @@ def reset_one_shot_warnings():
     de._timestamp_parse_failed_logged = False
     session._client_retirement_warned = False
     pl._unmapped_status_logged.clear()
+    iberia._warned.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def fetch_hamta():
+    """Keep the Freight fallback offline; a test sets ``return_value`` to use it."""
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_hamta",
+        AsyncMock(return_value={}),
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def fetch_mojdhl():
+    """Keep the Mój DHL fallback offline; a test sets ``return_value`` to use it."""
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_mojdhl",
+        AsyncMock(return_value={}),
+    ) as mock:
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def fetch_iberia():
+    """Keep DHL Iberia offline; a test sets ``return_value`` to use it.
+
+    Root-level like the other keyless backends: every one that accepts a code
+    is asked, so any tracking entry in any test would otherwise reach them.
+    """
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_iberia",
+        AsyncMock(return_value={}),
+    ) as mock:
+        yield mock
 
 
 if sys.platform == "win32":

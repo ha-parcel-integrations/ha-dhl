@@ -52,7 +52,7 @@ def test_bearer_token_derives_to_the_expected_shape():
 
 async def test_fetch_sends_the_derived_bearer_token_never_a_literal():
     session, resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
-    await async_fetch_express(session, "1000000001")
+    await async_fetch_express(session, "1000000013")
 
     _, kwargs = session.post.call_args
     assert kwargs["headers"]["Authorization"] == _derive_bearer_token()
@@ -63,7 +63,7 @@ async def test_fetch_names_the_service_before_the_method_in_the_url():
     # The backend 404s "Service URL params are not found/valid" on the
     # reversed order.
     session, resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
-    await async_fetch_express(session, "1000000001")
+    await async_fetch_express(session, "1000000013")
 
     url = session.post.call_args.args[0]
     assert "service=shipments-tracking" in url
@@ -73,7 +73,7 @@ async def test_connection_error_raises_api_error():
     session = MagicMock()
     session.post = MagicMock(side_effect=aiohttp.ClientConnectionError("boom"))
     with pytest.raises(DHLApiError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_not_found_is_a_clean_empty_array():
@@ -91,7 +91,7 @@ async def test_populated_array_returns_first_element():
 async def test_drg10012_in_body_raises_throttled_even_on_503():
     session, _ = _mock_session(status=503, body='{"error":"DRG10012"}')
     with pytest.raises(DHLExpressThrottledError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_drg10012_in_body_raises_throttled_on_other_statuses_too():
@@ -99,31 +99,31 @@ async def test_drg10012_in_body_raises_throttled_on_other_statuses_too():
     research notes this code could in principle ride a different status."""
     session, _ = _mock_session(status=200, body='{"error":"DRG10012"}')
     with pytest.raises(DHLExpressThrottledError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_401_raises_credential_error():
     session, _ = _mock_session(status=401, body="")
     with pytest.raises(DHLExpressCredentialError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_403_raises_credential_error():
     session, _ = _mock_session(status=403, body="")
     with pytest.raises(DHLExpressCredentialError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_other_error_status_raises_generic_api_error():
     session, _ = _mock_session(status=500, body="")
     with pytest.raises(DHLApiError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 async def test_invalid_json_raises_api_error():
     session, _ = _mock_session(status=200, body="not json")
     with pytest.raises(DHLApiError):
-        await async_fetch_express(session, "1000000001")
+        await async_fetch_express(session, "1000000013")
 
 
 # ---------------------------------------------------------------------------
@@ -166,8 +166,8 @@ def test_unmapped_status_warns_once(caplog):
 
 
 def test_barcode_is_the_echoed_id():
-    parcel = normalize_parcel_express(express_delivered(awb="9998887770"))
-    assert parcel["barcode"] == "9998887770"
+    parcel = normalize_parcel_express(express_delivered(awb="9998887776"))
+    assert parcel["barcode"] == "9998887776"
 
 
 def test_history_is_reversed_to_oldest_first():

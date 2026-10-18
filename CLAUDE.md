@@ -1,9 +1,10 @@
 # Working in this repository
 
 Home Assistant custom integration for **DHL**: an `account` source (DHL Paket
-Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (a
-chain of keyless lookups — the DHL Parcel gateway, then Mój DHL — plus DHL
-Express with DHL Freight Sweden behind it, all code-based, no account), and
+Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (keyless
+lookups asked together and combined — the DHL Parcel gateway, Mój DHL, DHL
+eCommerce Iberia, DHL Freight Sweden — plus DHL Express, all code-based, no
+account), and
 an `api` source (DHL's official Unified tracking API on the user's own key,
 code-based). Distributed via HACS; not part of HA core. One carrier in the
 [ha-parcel-integrations](https://github.com/ha-parcel-integrations) suite,
@@ -250,9 +251,10 @@ implementing:
 | `tracking/express.py` (client + `normalize_parcel_express`) | **yes** |
 | `tracking/hamta.py` (client + `normalize_parcel_hamta`) | **yes** |
 | `tracking/mojdhl.py` (client + `normalize_parcel_mojdhl`; reuses the PL Altcha solver and status map) | **yes** |
+| `tracking/iberia.py` (client + `normalize_parcel_iberia`) | **yes** |
 | `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
 | `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and the normalizers don't) |
-| `tracking/parcels.py` (per-backend dispatch, sort, filters) | no |
+| `tracking/parcels.py` (per-backend dispatch, `merge_parcels`, sort, filters) | no |
 | `api/__init__.py` | no — the old `api.py`: re-exports the *account* client for the pre-split import path |
 | `api/client.py` (`DHLUnifiedClient`, `DHLUnified…` errors) | **yes** |
 | `api/parcels.py` (`normalize_parcel_unified`, `pick_shipment`) | **yes** |
@@ -260,13 +262,28 @@ implementing:
 
 ## Load-bearing tracking decisions — do not refactor away
 
-**The keyless backends are a fallback chain; Express is never part of it.**
-`_KEYLESS_CHAIN` (gateway, then Mój DHL) tries a code no backend owns yet on
-each keyless backend in turn, and the first to answer keeps it. A
-barcode-shaped code the chain can't resolve must still never go to Express,
-and a bare 10-digit code never goes to the gateway — see `ARCHITECTURE.md`'s
-"Tracking source" section for why. Only a code matching no known shape goes
-on to Express after the chain.
+**The keyless backends are asked together and combined; Express is never one
+of them.** `_KEYLESS_CHAIN` (gateway, Mój DHL, Iberia, Hamta) runs in parallel
+every poll. **Do not go back to first-answer-wins**: one parcel crosses
+networks — a German Weltpaket shows only its announcement on the gateway and
+its delivery on Iberia — so while a code's answers show no more than
+`registered`, every backend that accepts it is asked. Once it moves, and once
+it is delivered, only the backends that answered are. `merge_parcels` lets
+the backend with the newest scan decide (chain order breaks a tie) and fills
+gaps from the others. A barcode-shaped code the round can't resolve must
+still never go to Express, and a bare 10-digit code never goes to the
+gateway — see `ARCHITECTURE.md`'s "Tracking source" section for why. Only a
+code matching no known shape goes on to Express after the round.
+
+**The Express check digit is a routing decision.** A 10-digit code whose last
+digit is not the first nine modulo 7 is `SHAPE_TEN_DIGIT`: Hamta and Iberia
+only, never Express. Every real Express AWB seen passes it; test fixtures
+for Express codes must too.
+
+**DHL Iberia's answer is bound to its echo.** `async_fetch_iberia` drops an
+answer whose `ExpeditionNumber` is not the code asked, treats `204`/`409` as
+not found and a non-JSON `200` (its firewall) as an error, and never sends an
+empty number — Iberia answers that with someone else's parcel.
 
 **Mój DHL's `422` fails the whole batch.** One number its validator rejects
 (anything under 11 characters, or malformed) turns the entire
@@ -274,11 +291,11 @@ on to Express after the chain.
 skips short codes and retries once without the named numbers; drop either
 and one bad tracked code stops every Mój DHL parcel from updating.
 
-**DHL Freight Sweden is a fallback behind Express, never a first try.**
-Freight numbers share the 10-character Express shape, so only an Express
-request that leaves no Express record sends the code on to Hamta. Once
-Hamta has it, the `hamta` marker in the cache is the routing decision: that
-code never re-enters the Express queue. The status follows Mitt DHL's own
+**DHL Freight Sweden is a fallback behind Express for a code with a valid
+Express check digit.** Only an Express request that leaves no Express record
+sends such a code on to Hamta and Iberia (`_async_try_fallbacks`). Once
+either has it, the code is in `_sources` and never re-enters the Express
+queue. The status follows Mitt DHL's own
 card precedence (`isCollected` → `isTimeout` → `isTerminated` →
 `isReadyForCollection` → newest event), and hand-over is `21/0` for home
 delivery but `21/908`/`21/13` for a service point, where `21/0` is only the

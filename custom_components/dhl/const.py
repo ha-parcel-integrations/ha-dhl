@@ -45,10 +45,15 @@ KNOWN_CAPABILITIES = frozenset(
 # delivery window is contested between two shapes but both are implemented, so
 # it counts.
 #
+# Tracking: ``weight`` comes from DHL Iberia, the only keyless backend that
+# sends one.
+#
 # API Tracking: the Unified API names ``details.weight``; dimensions and a pickup point
 # stay ``None`` until a real payload shows them.
 CAPABILITIES_BY_VARIANT = {
-    "Tracking": frozenset({"delivery_window", "pickup_point", "url", "history"}),
+    "Tracking": frozenset(
+        {"weight", "delivery_window", "pickup_point", "url", "history"}
+    ),
     "Account": frozenset({"delivery_window", "pickup_point", "url", "history"}),
     "API Tracking": frozenset({"weight", "delivery_window", "url", "history"}),
 }
@@ -404,6 +409,16 @@ DHL_HAMTA_REQUEST_TIMEOUT_SECONDS = 30
 # Answers for more than Poland (a PL→CZ parcel, a JJD barcode). Its validator
 # rejects anything shorter, and one rejected number fails the whole batch.
 DHL_MOJDHL_MIN_CODE_LENGTH = 11
+
+# ---------------------------------------------------------------------------
+# Tracking source, fallback: DHL eCommerce Iberia's public tracking (ES/PT).
+# ---------------------------------------------------------------------------
+
+# One GET per code, so a poll's codes go out in parallel, a few at a time.
+DHL_IBERIA_URL = "https://clientesparcel.dhl.es/LiveTracking.GTW/api/shipment-detail"
+DHL_IBERIA_HEADERS = {"accept": "application/json", "accept-language": "en-US"}
+DHL_IBERIA_REQUEST_TIMEOUT_SECONDS = 30
+DHL_IBERIA_MAX_PARALLEL_REQUESTS = 4
 
 # Per-entry Store for the tracking source. Without it every restart starts the
 # Express budget full and forgets a running stand-down, so a reboot during a
