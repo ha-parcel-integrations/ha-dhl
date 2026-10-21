@@ -1,8 +1,10 @@
 """Tests for tracking/parcels.py's dispatcher and list helpers."""
+
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
-import pytest
 from homeassistant.util import dt as dt_util
+import pytest
 
 from custom_components.dhl.delivery_window import end_of_day
 from custom_components.dhl.tracking.parcels import (
@@ -64,10 +66,9 @@ def test_sort_parcels_by_ts_puts_missing_timestamps_last():
 def test_apply_delivered_filter_by_days():
     entry = MagicMock()
     entry.options = {"delivered_filter_type": "days", "delivered_filter_amount": 1}
-    from datetime import datetime, timedelta, timezone
 
-    recent = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-    old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    recent = (datetime.now(UTC) - timedelta(hours=1)).isoformat()
+    old = (datetime.now(UTC) - timedelta(days=30)).isoformat()
     parcels = [
         {"barcode": "recent", "delivered_at": recent},
         {"barcode": "old", "delivered_at": old},
@@ -85,11 +86,11 @@ def test_apply_delivered_filter_by_parcel_count():
 
 
 def test_dispatch_strips_only_the_backend_marker_from_raw():
-    from custom_components.dhl.tracking.parcels import BACKEND_KEY, normalize_parcel
 
-    from .payloads import express_delivered, gateway_element
-
-    for payload, backend in ((gateway_element(), "gateway"), (express_delivered(), "express")):
+    for payload, backend in (
+        (gateway_element(), "gateway"),
+        (express_delivered(), "express"),
+    ):
         parcel = normalize_parcel({**payload, BACKEND_KEY: backend})
         assert parcel["raw"] == payload
 

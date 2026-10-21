@@ -13,6 +13,7 @@ The tracking source shares the same shape (``incoming``/``delivered``/
 budget/backoff state. The API source adds an ``api`` block instead, and its
 ``raw`` shipments carry addresses and names, redacted leaf by leaf below.
 """
+
 from __future__ import annotations
 
 from typing import Any

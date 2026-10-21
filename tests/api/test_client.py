@@ -1,5 +1,6 @@
 """Tests for api/client.py: request shape and the status-code error mapping."""
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -105,6 +106,6 @@ def test_retry_after_parses_seconds_and_http_dates():
     assert _retry_after("30") == 30
     assert _retry_after("-5") == 0
     assert _retry_after("not a date") is None
-    later = datetime.now(timezone.utc) + timedelta(seconds=90)
+    later = datetime.now(UTC) + timedelta(seconds=90)
     assert 60 < _retry_after(format_datetime(later, usegmt=True)) <= 90
     assert _retry_after("Wed, 21 Oct 2015 07:28:00") == 0

@@ -1,4 +1,5 @@
 """Tests for tracking/gateway.py: batching, 404 handling, normalisation."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
@@ -41,8 +42,9 @@ async def test_empty_code_list_skips_the_request():
 
 
 async def test_batches_codes_into_one_comma_separated_request():
-    session, resp = _mock_session(
-        status=200, json_body=[gateway_element(barcode="A"), gateway_element(barcode="B")]
+    session, _resp = _mock_session(
+        status=200,
+        json_body=[gateway_element(barcode="A"), gateway_element(barcode="B")],
     )
     result = await async_fetch_gateway(session, ["A", "B"])
 
@@ -154,8 +156,12 @@ def test_unmapped_category_falls_back_to_unknown_and_warns_once(caplog):
         assert parcel["status"] == ParcelStatus.UNKNOWN
         assert len(caplog.records) == 1
 
-        normalize_parcel_gateway(gateway_element(category="SOMETHING_NEW", status="WEIRD2"))
-        assert len(caplog.records) == 1  # second call is suppressed — one-shot per category
+        normalize_parcel_gateway(
+            gateway_element(category="SOMETHING_NEW", status="WEIRD2")
+        )
+        assert (
+            len(caplog.records) == 1
+        )  # second call is suppressed — one-shot per category
 
 
 def test_planned_from_is_the_last_events_moment_indication():
@@ -213,11 +219,31 @@ def test_every_history_event_gets_its_own_status():
         status="DELIVERED",
         delivered_at="2026-02-13T13:00:00+01:00",
         extra_events=[
-            {"category": "UNDERWAY", "status": "PARCEL_SORTED_AT_HUB", "timestamp": "2026-02-12T01:00:00Z"},
-            {"category": "CUSTOMS", "status": "FACILITY_CHECK_IN", "timestamp": "2026-02-12T02:00:00Z"},
-            {"category": "PROBLEM", "status": "NOT_HOME_NEW_DELIVERY", "timestamp": "2026-02-12T03:00:00Z"},
-            {"category": "UNDERWAY", "status": "RETURNED_TO_SHIPPER", "timestamp": "2026-02-12T04:00:00Z"},
-            {"category": "IN_DELIVERY", "status": "LOAD_VEHICLE", "timestamp": "2026-02-12T05:00:00Z"},
+            {
+                "category": "UNDERWAY",
+                "status": "PARCEL_SORTED_AT_HUB",
+                "timestamp": "2026-02-12T01:00:00Z",
+            },
+            {
+                "category": "CUSTOMS",
+                "status": "FACILITY_CHECK_IN",
+                "timestamp": "2026-02-12T02:00:00Z",
+            },
+            {
+                "category": "PROBLEM",
+                "status": "NOT_HOME_NEW_DELIVERY",
+                "timestamp": "2026-02-12T03:00:00Z",
+            },
+            {
+                "category": "UNDERWAY",
+                "status": "RETURNED_TO_SHIPPER",
+                "timestamp": "2026-02-12T04:00:00Z",
+            },
+            {
+                "category": "IN_DELIVERY",
+                "status": "LOAD_VEHICLE",
+                "timestamp": "2026-02-12T05:00:00Z",
+            },
         ],
     )
 
@@ -237,8 +263,16 @@ def test_every_history_event_gets_its_own_status():
 def test_an_unmapped_history_category_warns_once_and_maps_to_unknown(caplog):
     raw = gateway_element(
         extra_events=[
-            {"category": "SOMETHING_NEW", "status": "X", "timestamp": "2026-02-12T01:00:00Z"},
-            {"category": "SOMETHING_NEW", "status": "Y", "timestamp": "2026-02-12T02:00:00Z"},
+            {
+                "category": "SOMETHING_NEW",
+                "status": "X",
+                "timestamp": "2026-02-12T01:00:00Z",
+            },
+            {
+                "category": "SOMETHING_NEW",
+                "status": "Y",
+                "timestamp": "2026-02-12T02:00:00Z",
+            },
         ],
     )
 
@@ -281,7 +315,11 @@ def test_a_collection_notice_is_at_pickup_point():
 
 def test_raw_keeps_every_event_even_when_history_is_capped():
     extra = [
-        {"category": "UNDERWAY", "status": "PARCEL_SORTED_AT_HUB", "timestamp": f"2026-02-12T{i:02d}:00:00Z"}
+        {
+            "category": "UNDERWAY",
+            "status": "PARCEL_SORTED_AT_HUB",
+            "timestamp": f"2026-02-12T{i:02d}:00:00Z",
+        }
         for i in range(HISTORY_MAX_EVENTS + 5)
     ]
     raw = gateway_element(extra_events=extra)

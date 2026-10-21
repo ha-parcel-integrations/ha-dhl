@@ -1,12 +1,13 @@
 """The DHL Express app backend (dhle.dhl.com): fetch + normalize."""
+
 from __future__ import annotations
 
 import base64
+from datetime import UTC, datetime
 import json
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -30,9 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _TIMEOUT = aiohttp.ClientTimeout(total=DHL_EXPRESS_REQUEST_TIMEOUT_SECONDS)
 
-_CIPHERTEXT_B64 = (
-    "ArnvnwcNI+HBw27G2csnAMJGPW3qTpB5xaDSOeNfaEcIeQd9mlcT3C1vZIkWV9Ph"
-)
+_CIPHERTEXT_B64 = "ArnvnwcNI+HBw27G2csnAMJGPW3qTpB5xaDSOeNfaEcIeQd9mlcT3C1vZIkWV9Ph"
 _AES_KEY = b"MyBillSDSHOLIENBTAICGKREANTDIMON"
 _AES_IV = b"hq1wNoGMkcqcKAR6"
 
@@ -49,7 +48,7 @@ def _derive_bearer_token() -> str:
 
 
 def _get_bearer_token() -> str:
-    global _bearer_token
+    global _bearer_token  # noqa: PLW0603 - process-wide token, generated once
     if _bearer_token is None:
         _bearer_token = _derive_bearer_token()
     return _bearer_token
@@ -61,11 +60,8 @@ def _transaction_id() -> str:
     Per the mechanics research, the field is not validated server-side — this
     only needs to be *shaped* like the app's own guest fallback.
     """
-    now = datetime.now(timezone.utc)
-    return (
-        f"UNKNOWN-XX-GUST-0000-{now:%Y%m%d}-AH-000000-"
-        f"{uuid.uuid4().hex[:4].upper()}"
-    )
+    now = datetime.now(UTC)
+    return f"UNKNOWN-XX-GUST-0000-{now:%Y%m%d}-AH-000000-{uuid.uuid4().hex[:4].upper()}"
 
 
 def _request_envelope(awb: str) -> dict:
@@ -156,10 +152,10 @@ def _edd_is_future(edd_date: str | None) -> bool:
     if not edd_date:
         return False
     try:
-        parsed = datetime.strptime(edd_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        parsed = datetime.strptime(edd_date, "%Y-%m-%d").replace(tzinfo=UTC)
     except ValueError:
         return False
-    return parsed >= datetime.now(timezone.utc)
+    return parsed >= datetime.now(UTC)
 
 
 def _warn_unmapped_status(raw_status: str) -> None:
@@ -355,9 +351,7 @@ def _build_history(checkpoints: list) -> list[dict]:
 
 
 def _newest_checkpoint(raw: dict) -> dict:
-    return next(
-        (c for c in raw.get("checkpoints") or [] if isinstance(c, dict)), {}
-    )
+    return next((c for c in raw.get("checkpoints") or [] if isinstance(c, dict)), {})
 
 
 def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dict:

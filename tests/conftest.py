@@ -1,15 +1,19 @@
 """pytest configuration for the DHL test suite."""
+
 import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.plugins import hass  # noqa: F401
 
+from custom_components.dhl.account.countries import de, pl
+from custom_components.dhl.account.countries.de import session
+from custom_components.dhl.tracking import iberia
+
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Make ``custom_components.dhl`` loadable from config-flow / setup tests."""
-    yield
 
 
 @pytest.fixture(autouse=True)
@@ -21,10 +25,6 @@ def reset_one_shot_warnings():
     makes them leak across tests, so whether a warning fires would otherwise
     depend on test order.
     """
-    from custom_components.dhl.account.countries import de, pl
-    from custom_components.dhl.account.countries.de import session
-    from custom_components.dhl.tracking import iberia
-
     de._unexpected_body_logged = False
     de._sendungsliste_values_logged.clear()
     de._unmapped_fortschritt_logged.clear()
@@ -37,7 +37,6 @@ def reset_one_shot_warnings():
     session._client_retirement_warned = False
     pl._unmapped_status_logged.clear()
     iberia._warned.clear()
-    yield
 
 
 @pytest.fixture(autouse=True)
@@ -91,7 +90,7 @@ if sys.platform == "win32":
     # HA's aiohttp helper hardcodes aiohttp's AsyncResolver, whose aiodns
     # backend refuses the Proactor loop the suite runs on under Windows.
     # Swap in the threaded resolver for the tests — no test resolves DNS.
-    import homeassistant.helpers.aiohttp_client as _ha_aiohttp_client
     from aiohttp.resolver import ThreadedResolver
+    import homeassistant.helpers.aiohttp_client as _ha_aiohttp_client
 
     _ha_aiohttp_client.AsyncResolver = ThreadedResolver

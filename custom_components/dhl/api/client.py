@@ -4,11 +4,12 @@ One ``GET /track/shipments`` per tracking code, authenticated by the user's
 own ``DHL-API-Key`` header. The key is never logged, and neither is the full
 request URL (it carries the tracking code).
 """
+
 from __future__ import annotations
 
-import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+import logging
 
 import aiohttp
 
@@ -62,8 +63,8 @@ def _retry_after(value: str | None) -> float | None:
     except (TypeError, ValueError):
         return None
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return max(0.0, (moment - datetime.now(timezone.utc)).total_seconds())
+        moment = moment.replace(tzinfo=UTC)
+    return max(0.0, (moment - datetime.now(UTC)).total_seconds())
 
 
 class DHLUnifiedClient:
@@ -87,7 +88,9 @@ class DHLUnifiedClient:
                 headers={"DHL-API-Key": self._api_key, "accept": "application/json"},
                 timeout=_TIMEOUT,
             ) as resp:
-                _LOGGER.debug("DHL Unified API: GET /track/shipments -> HTTP %s", resp.status)
+                _LOGGER.debug(
+                    "DHL Unified API: GET /track/shipments -> HTTP %s", resp.status
+                )
                 if resp.status in (401, 403):
                     raise DHLUnifiedKeyError(f"HTTP {resp.status}")
                 if resp.status == 404:

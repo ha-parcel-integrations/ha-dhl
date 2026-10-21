@@ -1,9 +1,10 @@
 """DHL eCommerce Iberia's public tracking (clientesparcel.dhl.es): fetch + normalize."""
+
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime
+import logging
 
 import aiohttp
 
@@ -128,7 +129,7 @@ async def async_fetch_iberia(
         _LOGGER.debug("DHL Iberia request failed for one code: %s", error)
     return {
         code: answer
-        for code, answer in zip(codes, answers)
+        for code, answer in zip(codes, answers, strict=True)
         if isinstance(answer, dict)
     }
 
@@ -193,9 +194,7 @@ def normalize_parcel_iberia(raw: dict, *, include_history: bool = False) -> dict
     events = [e for e in raw.get("Tracking") or [] if isinstance(e, dict)]
     mapped = [(event, _map_event(event)) for event in events]
 
-    newest = next(
-        ((e, s) for e, s in mapped if s is not ParcelStatus.UNKNOWN), None
-    )
+    newest = next(((e, s) for e, s in mapped if s is not ParcelStatus.UNKNOWN), None)
     if newest is not None:
         last_event, status = newest
     elif events:

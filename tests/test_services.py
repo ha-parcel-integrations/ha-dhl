@@ -1,9 +1,10 @@
 """Tests for the DHL track_parcel / untrack_parcel services."""
+
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import ServiceValidationError
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dhl.const import (
@@ -51,7 +52,7 @@ def test_normalize_tracking_code_strips_whitespace():
 
 
 @pytest.mark.parametrize(
-    "code,expected",
+    ("code", "expected"),
     [
         ("00340434161094681228", True),
         ("JVGL06258198000117303", True),
@@ -209,8 +210,11 @@ async def test_track_parcel_targets_an_api_entry_by_config_entry_id(hass):
     await hass.services.async_call(
         DOMAIN,
         "track_parcel",
-        {"tracking_code": "jd014600006000000000", "direction": "outgoing",
-         "config_entry_id": "a1"},
+        {
+            "tracking_code": "jd014600006000000000",
+            "direction": "outgoing",
+            "config_entry_id": "a1",
+        },
         blocking=True,
     )
 

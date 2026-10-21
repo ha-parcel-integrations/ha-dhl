@@ -1,4 +1,5 @@
 """Tests for the Mój DHL (Poland) session lifecycle (countries/pl/session.py)."""
+
 from __future__ import annotations
 
 import hashlib
@@ -17,7 +18,9 @@ from custom_components.dhl.account.countries.pl.session import (
 from custom_components.dhl.const import DHLApiError, DHLAuthError
 
 CHALLENGE = {
-    "algorithm": "SHA-256", "salt": "test-salt", "signature": "sig",
+    "algorithm": "SHA-256",
+    "salt": "test-salt",
+    "signature": "sig",
     "maxnumber": 50,
     "challenge": hashlib.sha256(b"test-salt7").hexdigest(),
 }
@@ -98,7 +101,9 @@ async def test_send_sms_raises_on_http_error():
         await pl_session.async_send_sms("501234567")
 
 
-def _jwt(header: str = "header", payload: str = "payload", signature: str = "signature") -> str:
+def _jwt(
+    header: str = "header", payload: str = "payload", signature: str = "signature"
+) -> str:
     return f"{header}.{payload}.{signature}"
 
 
@@ -151,7 +156,9 @@ async def test_refresh_recovers_from_an_expired_token():
     """HA down longer than the 30-minute window: refresh 401s, recover saves it."""
     session = _session(
         _response(401, {}),
-        _response(200, {"token": _jwt("h3", "p3", "s3"), "expires": "2026-09-11T23:36:36Z"}),
+        _response(
+            200, {"token": _jwt("h3", "p3", "s3"), "expires": "2026-09-11T23:36:36Z"}
+        ),
     )
     pl_session = DHLPlSession(session)
 
@@ -219,10 +226,24 @@ async def test_export_cookies_only_returns_mojdhl_domain():
     session = MagicMock()
     session.cookie_jar = aiohttp.CookieJar()
     pl_session = DHLPlSession(session)
-    pl_session.import_cookies([
-        {"name": "access-token", "value": "v", "domain": "mojdhl.pl", "path": "/", "secure": True},
-        {"name": "unrelated", "value": "v", "domain": "example.com", "path": "/", "secure": True},
-    ])
+    pl_session.import_cookies(
+        [
+            {
+                "name": "access-token",
+                "value": "v",
+                "domain": "mojdhl.pl",
+                "path": "/",
+                "secure": True,
+            },
+            {
+                "name": "unrelated",
+                "value": "v",
+                "domain": "example.com",
+                "path": "/",
+                "secure": True,
+            },
+        ]
+    )
 
     domains = {c["domain"] for c in pl_session.export_cookies()}
 

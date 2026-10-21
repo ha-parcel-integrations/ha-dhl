@@ -5,6 +5,7 @@ poll's tracked codes goes out as one batched, comma-separated request. Unknown
 barcodes are dropped silently from a mixed batch rather than erred, so a
 result is matched on the returned ``barcode`` field, never on array position.
 """
+
 from __future__ import annotations
 
 import logging

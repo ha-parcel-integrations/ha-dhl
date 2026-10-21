@@ -1,6 +1,7 @@
 """Tests for the tracking coordinator's persisted cache."""
-import time
+
 from datetime import timedelta
+import time
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.util import dt as dt_util

@@ -1,4 +1,5 @@
 """Setup, isolation, attribution and diagnostics for an API entry."""
+
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.config_entries import ConfigEntryState
@@ -17,8 +18,8 @@ from custom_components.dhl.const import (
     SOURCE_TRACKING,
 )
 from custom_components.dhl.diagnostics import async_get_config_entry_diagnostics
+from tests.tracking.payloads import gateway_element
 
-from ..tracking.payloads import gateway_element
 from .payloads import body, shipment
 
 API_CODE = "JJD000390007000000001"
@@ -103,7 +104,9 @@ async def test_api_entry_beside_a_tracking_entry_shares_no_parcels(hass):
         patch(GET, AsyncMock(return_value=body(shipment(API_CODE)))) as api_get,
         patch(
             "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-            AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+            AsyncMock(
+                return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}
+            ),
         ),
         patch(
             "custom_components.dhl.tracking.coordinator.async_fetch_mojdhl",
@@ -117,11 +120,14 @@ async def test_api_entry_beside_a_tracking_entry_shares_no_parcels(hass):
 
     assert [c.args[0] for c in api_get.await_args_list] == [API_CODE]
     assert [p["barcode"] for p in api.runtime_data.coordinator.data] == [API_CODE]
-    assert [p["barcode"] for p in tracking.runtime_data.coordinator.data] == [GATEWAY_CODE]
+    assert [p["barcode"] for p in tracking.runtime_data.coordinator.data] == [
+        GATEWAY_CODE
+    ]
 
     registry = er.async_get(hass)
     tracking_ids = {
-        e.unique_id for e in er.async_entries_for_config_entry(registry, tracking.entry_id)
+        e.unique_id
+        for e in er.async_entries_for_config_entry(registry, tracking.entry_id)
     }
     assert not any(API_CODE in uid for uid in tracking_ids)
     tracking_state = hass.states.get("sensor.dhl_dhl_tracking_incoming_parcels")

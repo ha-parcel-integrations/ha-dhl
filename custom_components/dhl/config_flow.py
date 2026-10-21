@@ -15,17 +15,17 @@ the abstraction is wrong. This module also holds the account-vs-tracking
 source menu (``SOURCE_ACCOUNT``/``SOURCE_TRACKING``/``SOURCE_API``, modelled
 on ha-bpost and ha-usps) and the code-based sources' setup/options steps.
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 import hashlib
 import logging
 import re
-from collections.abc import Mapping
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import aiohttp
-import voluptuous as vol
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -37,6 +37,7 @@ from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .account.countries.de.session import (
     DHLDeAuthError,
@@ -83,9 +84,11 @@ from .const import (
     SOURCE_API,
     SOURCE_TRACKING,
 )
-from .tracking import normalize_tracking_code as normalize_tracking_source_code
-from .tracking import tracked_direction
-from .tracking import valid_tracking_code as valid_tracking_source_code
+from .tracking import (
+    normalize_tracking_code as normalize_tracking_source_code,
+    tracked_direction,
+    valid_tracking_code as valid_tracking_source_code,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,6 +116,7 @@ _CODE_SOURCE_OPTIONS = {
 def _api_key_digest(api_key: str) -> str:
     """Identify a key without storing or showing it anywhere but entry data."""
     return hashlib.sha256(api_key.encode()).hexdigest()[:12]
+
 
 # First-run form: pick which DHL country to set up. Mirrors ha-gls's
 # _COUNTRY_SELECTOR — selector option values double as translation keys
@@ -405,7 +409,9 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             self._pl_session = DHLPlSession(session)
         return self._pl_session
 
-    async def async_step_pl(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_pl(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Ask for a Polish mobile number and explicitly send one SMS."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -424,15 +430,21 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                     self._pl_phone = phone
                     self._pl_device_id = self._pl_device_id or new_device_id()
                     return await self.async_step_pl_sms()
-        return self.async_show_form(step_id="pl", data_schema=_PL_PHONE_SCHEMA, errors=errors)
+        return self.async_show_form(
+            step_id="pl", data_schema=_PL_PHONE_SCHEMA, errors=errors
+        )
 
-    async def async_step_pl_sms(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_pl_sms(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Verify the user-entered code; this flow never retries or resends it."""
         errors: dict[str, str] = {}
         if user_input is not None and self._pl_phone and self._pl_device_id:
             try:
                 session = self._get_pl_session()
-                await session.async_verify_sms(self._pl_phone, user_input["sms_code"], self._pl_device_id)
+                await session.async_verify_sms(
+                    self._pl_phone, user_input["sms_code"], self._pl_device_id
+                )
             except Exception:
                 _LOGGER.debug("Mój DHL SMS verification failed", exc_info=True)
                 errors["sms_code"] = "invalid_sms_code"
@@ -456,13 +468,24 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
                         },
                     )
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=_entry_title("PL", ""), data={
-                    CONF_COUNTRY: "PL", CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
-                    CONF_DHL_PL_PHONE: self._pl_phone, CONF_DHL_PL_COOKIES: cookies,
-                }, options={CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
-                            CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
-                            CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY, CONF_TRACKED_CODES: []})
-        return self.async_show_form(step_id="pl_sms", data_schema=_PL_SMS_SCHEMA, errors=errors)
+                return self.async_create_entry(
+                    title=_entry_title("PL", ""),
+                    data={
+                        CONF_COUNTRY: "PL",
+                        CONF_DHL_PL_DEVICE_ID: self._pl_device_id,
+                        CONF_DHL_PL_PHONE: self._pl_phone,
+                        CONF_DHL_PL_COOKIES: cookies,
+                    },
+                    options={
+                        CONF_DELIVERED_FILTER_TYPE: DEFAULT_DELIVERED_FILTER_TYPE,
+                        CONF_DELIVERED_FILTER_AMOUNT: DEFAULT_DELIVERED_FILTER_AMOUNT,
+                        CONF_INCLUDE_HISTORY: DEFAULT_INCLUDE_HISTORY,
+                        CONF_TRACKED_CODES: [],
+                    },
+                )
+        return self.async_show_form(
+            step_id="pl_sms", data_schema=_PL_SMS_SCHEMA, errors=errors
+        )
 
     async def async_step_de(
         self, user_input: dict[str, Any] | None = None
@@ -689,9 +712,7 @@ class DHLOptionsFlowHandler(OptionsFlow):
                 # Applied live via the entry's update listener — no reload,
                 # so per-parcel sensors don't flicker unavailable.
                 carried: dict[str, Any] = {
-                    CONF_PARCELS: list(
-                        self.config_entry.options.get(CONF_PARCELS, [])
-                    )
+                    CONF_PARCELS: list(self.config_entry.options.get(CONF_PARCELS, []))
                 }
             else:
                 # No update listener is registered on an account entry —

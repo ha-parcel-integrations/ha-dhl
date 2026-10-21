@@ -1,8 +1,9 @@
 """DHL parcel tracker custom component for Home Assistant."""
+
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
+import logging
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -74,7 +75,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         async_setup_services(hass)
         # Same live options model as the tracking source.
-        entry.async_on_unload(entry.add_update_listener(_async_tracking_options_updated))
+        entry.async_on_unload(
+            entry.add_update_listener(_async_tracking_options_updated)
+        )
         return True
 
     if source == SOURCE_TRACKING:
@@ -82,9 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         # session is fine.
         session = async_get_clientsession(hass)
         client = session
-        coordinator = DHLTrackingCoordinator(
-            hass, client, entry
-        )
+        coordinator = DHLTrackingCoordinator(hass, client, entry)
         de_session = None
         pl_session = None
 
@@ -106,7 +107,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         # live via a coordinator refresh — adding/removing a code, from the
         # options flow or `dhl.track_parcel`, shows up immediately, matching
         # ha-bpost's tracking source.
-        entry.async_on_unload(entry.add_update_listener(_async_tracking_options_updated))
+        entry.async_on_unload(
+            entry.add_update_listener(_async_tracking_options_updated)
+        )
 
         return True
 
@@ -120,10 +123,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         connector_owner=False,
         cookie_jar=aiohttp.CookieJar(),
     )
-    de_session = DHLDeSession(session, refresh_token=entry.data.get(CONF_REFRESH_TOKEN)) if country == "DE" else None
-    pl_session = DHLPlSession(session, entry.data.get(CONF_DHL_PL_COOKIES)) if country == "PL" else None
-    client = DHLApiClient(session, country=country, de_session=de_session,
-                          pl_session=pl_session, pl_device_id=entry.data.get(CONF_DHL_PL_DEVICE_ID))
+    de_session = (
+        DHLDeSession(session, refresh_token=entry.data.get(CONF_REFRESH_TOKEN))
+        if country == "DE"
+        else None
+    )
+    pl_session = (
+        DHLPlSession(session, entry.data.get(CONF_DHL_PL_COOKIES))
+        if country == "PL"
+        else None
+    )
+    client = DHLApiClient(
+        session,
+        country=country,
+        de_session=de_session,
+        pl_session=pl_session,
+        pl_device_id=entry.data.get(CONF_DHL_PL_DEVICE_ID),
+    )
     coordinator = DHLCoordinator(hass, client, entry, de_session=de_session)
 
     try:
@@ -140,7 +156,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         raise
 
     entry.runtime_data = DHLData(
-        client=client, coordinator=coordinator, de_session=de_session, pl_session=pl_session, session=session
+        client=client,
+        coordinator=coordinator,
+        de_session=de_session,
+        pl_session=pl_session,
+        session=session,
     )
 
     try:

@@ -7,10 +7,11 @@ delayed. Persisted by the coordinator, like ha-ups's: a budget that starts
 full on every boot would let each restart spend a request the backend never
 granted.
 """
+
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
+import time
 from typing import Any
 
 
@@ -54,8 +55,7 @@ class RequestBudget:
         if self.available(now) < 1:
             return False
         self.tokens -= 1
-        if self.updated_utc < now:
-            self.updated_utc = now
+        self.updated_utc = max(self.updated_utc, now)
         return True
 
     def seconds_until_token(self, now: float | None = None) -> float:

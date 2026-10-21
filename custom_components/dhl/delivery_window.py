@@ -1,4 +1,5 @@
 """Delivery-window helpers shared by the account and tracking sources."""
+
 from __future__ import annotations
 
 from datetime import datetime, tzinfo
@@ -13,7 +14,7 @@ def end_of_day(moment: str, zone: tzinfo | None = None) -> str | None:
     calendar day there. A moment without an offset keeps its own day.
     """
     try:
-        parsed = datetime.fromisoformat(moment.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(moment)
     except ValueError:
         return None
     if parsed.tzinfo is not None:

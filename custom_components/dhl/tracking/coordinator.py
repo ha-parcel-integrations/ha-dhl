@@ -16,14 +16,15 @@ A code Express cannot answer is tried once against DHL Freight Sweden and DHL
 Iberia; a code found there is polled with the keyless backends from then on
 and never queued for Express again.
 """
+
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import hashlib
 import logging
 import random
 import time
-from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -224,12 +225,10 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._fallback_misses: set[str] = set()
 
         self._known_state: dict[str, ParcelStatus] | None = None
-        self._known_delivery_times: (
-            dict[str, tuple[str | None, str | None]] | None
-        ) = None
-        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = (
+        self._known_delivery_times: dict[str, tuple[str | None, str | None]] | None = (
             None
         )
+        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = None
         self._cached_device_id: str | None = None
         self.last_success_time: datetime | None = None
 
@@ -355,9 +354,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
     @property
     def _include_history(self) -> bool:
         return bool(
-            self.config_entry.options.get(
-                CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY
-            )
+            self.config_entry.options.get(CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY)
         )
 
     def _tracked_codes(self) -> list[str]:
@@ -459,7 +456,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             return_exceptions=True,
         )
         found = False
-        for (backend, label, _), answer in zip(fallbacks, answers):
+        for (backend, label, _), answer in zip(fallbacks, answers, strict=True):
             if isinstance(answer, DHLApiError):
                 _LOGGER.warning("%s fetch failed for %s: %s", label, code, answer)
                 continue
@@ -541,7 +538,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         answers = await asyncio.gather(
             *(job for *_, job in jobs), return_exceptions=True
         )
-        for (backend, label, batch, _), answer in zip(jobs, answers):
+        for (backend, label, batch, _), answer in zip(jobs, answers, strict=True):
             if isinstance(answer, DHLApiError):
                 _LOGGER.warning("%s request failed: %s", label, answer)
                 continue
@@ -646,7 +643,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         ]
         raws = [(code, self._raw_cache.get(code)) for code in codes]
         locale = tracking_page_locale(self.hass)
-        for (code, _), parcel in zip(raws, normalized):
+        for (code, _), parcel in zip(raws, normalized, strict=True):
             if not parcel.get("barcode"):
                 parcel["barcode"] = code
             parcel["url"] = tracking_page_url(code, locale)
@@ -658,10 +655,13 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                 parcel["raw"] = {}
 
         self._delivered_codes = {
-            code for (code, _), parcel in zip(raws, normalized) if parcel["delivered"]
+            code
+            for (code, _), parcel in zip(raws, normalized, strict=True)
+            if parcel["delivered"]
         }
         self._status_by_code = {
-            code: parcel["status"] for (code, _), parcel in zip(raws, normalized)
+            code: parcel["status"]
+            for (code, _), parcel in zip(raws, normalized, strict=True)
         }
 
         outgoing_codes = {
@@ -672,12 +672,12 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         }
         received = [
             parcel
-            for (code, _), parcel in zip(raws, normalized)
+            for (code, _), parcel in zip(raws, normalized, strict=True)
             if code not in outgoing_codes
         ]
         sent = [
             parcel
-            for (code, _), parcel in zip(raws, normalized)
+            for (code, _), parcel in zip(raws, normalized, strict=True)
             if code in outgoing_codes
         ]
 
@@ -720,7 +720,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel.get("barcode")
         }
 
-        self.last_success_time = datetime.now(timezone.utc)
+        self.last_success_time = datetime.now(UTC)
         self._schedule(normalized_active + self.outgoing)
         self._persist_cache()
         return normalized_active
@@ -737,7 +737,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         """
         base = compute_poll_interval(self.config_entry.entry_id, active_parcels)
         standdown_left = (
-            self._standdown_until_utc - time.time() if self._standdown_until_utc else 0.0
+            self._standdown_until_utc - time.time()
+            if self._standdown_until_utc
+            else 0.0
         )
         if standdown_left > base.total_seconds():
             self.update_interval = timedelta(seconds=standdown_left)

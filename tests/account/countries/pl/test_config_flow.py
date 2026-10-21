@@ -1,4 +1,5 @@
 """Tests for the PL leg of the config/reauth flow — the phone/SMS dance."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import SOURCE_USER
@@ -37,7 +38,9 @@ def _fake_pl_session(
         side_effect=send_sms_side_effect, return_value=60
     )
     session.async_verify_sms = AsyncMock(side_effect=verify_sms_side_effect)
-    session.export_cookies = MagicMock(return_value=cookies or [{"name": "access-token"}])
+    session.export_cookies = MagicMock(
+        return_value=cookies or [{"name": "access-token"}]
+    )
     session.aclose = AsyncMock()
     return session
 
@@ -156,7 +159,9 @@ async def test_pl_flow_creates_entry(hass):
     assert result["type"] == "create_entry"
     assert result["data"][CONF_COUNTRY] == "PL"
     assert result["data"][CONF_DHL_PL_PHONE] == "501234567"
-    assert result["data"][CONF_DHL_PL_COOKIES] == [{"name": "access-token", "value": "v"}]
+    assert result["data"][CONF_DHL_PL_COOKIES] == [
+        {"name": "access-token", "value": "v"}
+    ]
     assert result["options"][CONF_TRACKED_CODES] == []
 
 
@@ -206,7 +211,9 @@ async def test_reauth_updates_pl_cookies(hass):
 
     assert result["type"] == "abort"
     assert result["reason"] == "reauth_successful"
-    assert entry.data[CONF_DHL_PL_COOKIES] == [{"name": "access-token", "value": "rotated"}]
+    assert entry.data[CONF_DHL_PL_COOKIES] == [
+        {"name": "access-token", "value": "rotated"}
+    ]
 
 
 async def test_abandoned_pl_flow_closes_its_throwaway_session(hass):

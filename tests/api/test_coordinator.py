@@ -1,10 +1,11 @@
 """Tests for api/coordinator.py: spacing, reauth, 429 backoff, retention."""
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dhl.api.client import (
@@ -36,9 +37,7 @@ CODE_B = "JJD000390007000000002"
 
 
 def _entry(codes, **options) -> MockConfigEntry:
-    parcels = [
-        c if isinstance(c, dict) else {CONF_TRACKING_CODE: c} for c in codes
-    ]
+    parcels = [c if isinstance(c, dict) else {CONF_TRACKING_CODE: c} for c in codes]
     return MockConfigEntry(
         domain=DOMAIN,
         title="API (abcdef)",
@@ -90,7 +89,10 @@ async def test_requests_are_sequential_and_spaced(hass, api_sleep):
 
     data = await coordinator._async_update_data()
 
-    assert [c.args[0] for c in client.async_get_shipments.await_args_list] == [CODE_A, CODE_B]
+    assert [c.args[0] for c in client.async_get_shipments.await_args_list] == [
+        CODE_A,
+        CODE_B,
+    ]
     assert {p["barcode"] for p in data} == {CODE_A, CODE_B}
     # The second request waits; the first had nothing before it.
     assert api_sleep.await_count == 1
@@ -178,7 +180,10 @@ async def test_429_stops_the_poll_and_honours_retry_after(hass):
     coordinator, client = _coordinator(
         hass,
         entry,
-        {CODE_A: DHLUnifiedRateLimitError("HTTP 429", 300), CODE_B: body(shipment(CODE_B))},
+        {
+            CODE_A: DHLUnifiedRateLimitError("HTTP 429", 300),
+            CODE_B: body(shipment(CODE_B)),
+        },
     )
 
     with pytest.raises(UpdateFailed) as err:
@@ -229,12 +234,15 @@ async def test_429_keeps_what_was_fetched_before_it(hass):
 
 
 async def test_delivered_codes_are_not_fetched_again(hass):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     entry = _entry([CODE_A, CODE_B])
     coordinator, client = _coordinator(
         hass,
         entry,
-        {CODE_A: _delivered(CODE_A, now - timedelta(days=1)), CODE_B: body(shipment(CODE_B))},
+        {
+            CODE_A: _delivered(CODE_A, now - timedelta(days=1)),
+            CODE_B: body(shipment(CODE_B)),
+        },
     )
 
     await coordinator._async_update_data()
@@ -252,7 +260,7 @@ async def test_delivered_data_is_dropped_after_30_days(hass):
     coordinator, client = _coordinator(
         hass,
         entry,
-        {CODE_A: _delivered(CODE_A, datetime.now(timezone.utc) - timedelta(days=31))},
+        {CODE_A: _delivered(CODE_A, datetime.now(UTC) - timedelta(days=31))},
     )
 
     await coordinator._async_update_data()
@@ -266,7 +274,7 @@ async def test_delivered_data_is_dropped_after_30_days(hass):
 async def test_nothing_in_flight_stops_polling(hass):
     entry = _entry([CODE_A])
     coordinator, _ = _coordinator(
-        hass, entry, {CODE_A: _delivered(CODE_A, datetime.now(timezone.utc))}
+        hass, entry, {CODE_A: _delivered(CODE_A, datetime.now(UTC))}
     )
 
     await coordinator._async_update_data()
@@ -297,16 +305,16 @@ async def test_removed_codes_leave_the_cache(hass):
     coordinator, _ = _coordinator(hass, entry, {CODE_A: body(shipment(CODE_A))})
     await coordinator._async_update_data()
 
-    hass.config_entries.async_update_entry(entry, options={**entry.options, CONF_PARCELS: []})
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_PARCELS: []}
+    )
     await coordinator._async_update_data()
 
     assert coordinator._raw_cache == {}
 
 
 async def test_outgoing_codes_are_split_out(hass):
-    entry = _entry(
-        [CODE_A, {CONF_TRACKING_CODE: CODE_B, CONF_DIRECTION: "outgoing"}]
-    )
+    entry = _entry([CODE_A, {CONF_TRACKING_CODE: CODE_B, CONF_DIRECTION: "outgoing"}])
     coordinator, _ = _coordinator(
         hass, entry, {CODE_A: body(shipment(CODE_A)), CODE_B: body(shipment(CODE_B))}
     )
@@ -318,9 +326,7 @@ async def test_outgoing_codes_are_split_out(hass):
 
 
 async def test_events_fire_after_the_first_refresh(hass):
-    entry = _entry(
-        [CODE_A, {CONF_TRACKING_CODE: CODE_B, CONF_DIRECTION: "outgoing"}]
-    )
+    entry = _entry([CODE_A, {CONF_TRACKING_CODE: CODE_B, CONF_DIRECTION: "outgoing"}])
     coordinator, _ = _coordinator(
         hass,
         entry,
@@ -334,12 +340,12 @@ async def test_events_fire_after_the_first_refresh(hass):
                         estimatedTimeOfDelivery="2026-10-01T12:00:00+02:00",
                     )
                 ),
-                _delivered(CODE_A, datetime.now(timezone.utc)),
+                _delivered(CODE_A, datetime.now(UTC)),
             ],
             CODE_B: [
                 body(shipment(CODE_B, status_code="pre-transit")),
                 body(shipment(CODE_B, status_code="transit")),
-                _delivered(CODE_B, datetime.now(timezone.utc)),
+                _delivered(CODE_B, datetime.now(UTC)),
             ],
         },
     )
@@ -361,7 +367,11 @@ async def test_events_fire_after_the_first_refresh(hass):
     await coordinator._async_update_data()
     await hass.async_block_till_done()
     assert sorted(fired) == sorted(
-        ["parcel_status_changed", "parcel_delivery_time_changed", "outgoing_parcel_status_changed"]
+        [
+            "parcel_status_changed",
+            "parcel_delivery_time_changed",
+            "outgoing_parcel_status_changed",
+        ]
     )
 
     fired.clear()
@@ -377,7 +387,9 @@ async def test_a_new_code_fires_registered(hass):
     )
     await coordinator._async_update_data()
     fired = []
-    hass.bus.async_listen(f"{DOMAIN}_parcel_registered", lambda e: fired.append(e.data["barcode"]))
+    hass.bus.async_listen(
+        f"{DOMAIN}_parcel_registered", lambda e: fired.append(e.data["barcode"])
+    )
 
     hass.config_entries.async_update_entry(
         entry,
@@ -392,7 +404,9 @@ async def test_a_new_code_fires_registered(hass):
     assert fired == [CODE_B]
 
 
-async def test_sensor_and_link_follow_the_entered_code_when_dhl_answers_another_id(hass):
+async def test_sensor_and_link_follow_the_entered_code_when_dhl_answers_another_id(
+    hass,
+):
     entry = _entry(["00340434292135100186"])
     coordinator, _ = _coordinator(
         hass, entry, {"00340434292135100186": body(shipment("JJD000390007000000001"))}

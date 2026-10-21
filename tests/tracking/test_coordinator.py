@@ -1,4 +1,5 @@
 """Tests for the tracking coordinator: routing, fallback, queue, throttle."""
+
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -17,9 +18,12 @@ from custom_components.dhl.const import (
     DOMAIN,
     SOURCE_TRACKING,
     DHLApiError,
+    DHLExpressCredentialError,
+    DHLExpressThrottledError,
     ParcelStatus,
 )
 from custom_components.dhl.tracking.coordinator import DHLTrackingCoordinator
+from custom_components.dhl.tracking.gateway import DHLGatewayError
 
 from .payloads import (
     express_delivered,
@@ -90,12 +94,15 @@ async def test_express_shaped_code_never_goes_to_the_gateway(hass):
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ) as fetch_gateway, patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express",
-        AsyncMock(return_value=express_delivered(EXPRESS_CODE)),
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ) as fetch_gateway,
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=express_delivered(EXPRESS_CODE)),
+        ),
     ):
         await coordinator._async_update_data()
 
@@ -127,12 +134,17 @@ async def test_unknown_shape_tries_gateway_first(hass):
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={UNKNOWN_CODE: gateway_element(barcode=UNKNOWN_CODE)}),
-    ) as fetch_gateway, patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express"
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(
+                return_value={UNKNOWN_CODE: gateway_element(barcode=UNKNOWN_CODE)}
+            ),
+        ) as fetch_gateway,
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express"
+        ) as fetch_express,
+    ):
         data = await coordinator._async_update_data()
 
     fetch_gateway.assert_awaited_once()
@@ -145,17 +157,22 @@ async def test_unknown_shape_falls_back_to_express_when_gateway_cannot_resolve(h
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ), patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express",
-        AsyncMock(return_value=express_delivered(UNKNOWN_CODE)),
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=express_delivered(UNKNOWN_CODE)),
+        ) as fetch_express,
+    ):
         data = await coordinator._async_update_data()
 
     fetch_express.assert_awaited_once_with(coordinator._client, UNKNOWN_CODE)
-    assert data == [] or data[0]["delivered"] is True  # DELIVERED -> in coordinator.delivered
+    assert (
+        data == [] or data[0]["delivered"] is True
+    )  # DELIVERED -> in coordinator.delivered
     assert coordinator.delivered[0]["barcode"] == UNKNOWN_CODE
 
 
@@ -166,12 +183,15 @@ async def test_fallback_never_fires_for_a_confidently_classified_code(hass):
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ), patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express"
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express"
+        ) as fetch_express,
+    ):
         await coordinator._async_update_data()
 
     fetch_express.assert_not_called()
@@ -297,7 +317,6 @@ async def test_only_one_express_code_is_fetched_per_cycle(hass):
 
 
 async def test_drg10012_throttle_stands_down_at_least_the_refill_interval(hass):
-    from custom_components.dhl.const import DHLExpressThrottledError
 
     entry = _entry([EXPRESS_CODE])
     entry.add_to_hass(hass)
@@ -341,7 +360,6 @@ async def test_schedule_never_shorter_than_an_active_standdown(hass):
 
 
 async def test_credential_error_disables_express_and_never_retries(hass):
-    from custom_components.dhl.const import DHLExpressCredentialError
 
     entry = _entry([EXPRESS_CODE])
     entry.add_to_hass(hass)
@@ -363,14 +381,21 @@ async def test_soft_limit_warning_fires_once(hass, caplog):
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with caplog.at_level("WARNING"), patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express",
-        AsyncMock(return_value=express_in_transit()),
+    with (
+        caplog.at_level("WARNING"),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=express_in_transit()),
+        ),
     ):
         await coordinator._async_update_data()
-        first_count = sum("roughly one request per" in r.message for r in caplog.records)
+        first_count = sum(
+            "roughly one request per" in r.message for r in caplog.records
+        )
         await coordinator._async_update_data()
-        second_count = sum("roughly one request per" in r.message for r in caplog.records)
+        second_count = sum(
+            "roughly one request per" in r.message for r in caplog.records
+        )
 
     assert first_count == 1
     assert second_count == 1
@@ -461,7 +486,6 @@ async def test_device_id_is_cached_after_first_lookup(hass):
 
 
 async def test_gateway_request_failure_is_logged_and_treated_as_unresolved(hass):
-    from custom_components.dhl.tracking.gateway import DHLGatewayError
 
     entry = _entry([GATEWAY_CODE])
     entry.add_to_hass(hass)
@@ -484,8 +508,6 @@ async def test_generic_express_api_error_is_logged_with_its_code_and_spends_the_
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    from custom_components.dhl.const import DHLApiError
-
     fetch = AsyncMock(side_effect=DHLApiError("HTTP 404"))
     with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", fetch):
         await coordinator._async_update_data()
@@ -502,7 +524,9 @@ async def test_generic_express_api_error_is_logged_with_its_code_and_spends_the_
     assert coordinator.express_standing_down is False
 
 
-async def test_a_result_missing_its_own_barcode_field_falls_back_to_the_requested_code(hass):
+async def test_a_result_missing_its_own_barcode_field_falls_back_to_the_requested_code(
+    hass,
+):
     entry = _entry([GATEWAY_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
@@ -526,7 +550,8 @@ async def test_delivered_event_and_delivery_time_changed_event_fire(hass):
         f"{DOMAIN}_parcel_delivered", lambda e: delivered_events.append(e)
     )
     hass.bus.async_listen(
-        f"{DOMAIN}_parcel_delivery_time_changed", lambda e: time_changed_events.append(e)
+        f"{DOMAIN}_parcel_delivery_time_changed",
+        lambda e: time_changed_events.append(e),
     )
 
     with patch(
@@ -630,7 +655,9 @@ async def test_every_parcel_links_to_the_dhl_tracking_page_in_the_ha_locale(hass
     with (
         patch(
             "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-            AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+            AsyncMock(
+                return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}
+            ),
         ),
         patch(
             "custom_components.dhl.tracking.coordinator.async_fetch_express",
@@ -659,7 +686,10 @@ async def test_a_code_dhl_has_not_answered_for_has_an_empty_raw(hass):
     ):
         data = await coordinator._async_update_data()
 
-    assert {p["barcode"]: p["raw"] for p in data} == {GATEWAY_CODE: {}, EXPRESS_CODE: {}}
+    assert {p["barcode"]: p["raw"] for p in data} == {
+        GATEWAY_CODE: {},
+        EXPRESS_CODE: {},
+    }
     assert all(p["status"] == ParcelStatus.UNKNOWN for p in data)
 
 
@@ -699,7 +729,9 @@ async def test_a_code_express_cannot_find_falls_back_to_freight_and_stays_there(
     fetch_hamta.return_value = {EXPRESS_CODE: hamta_shipment(EXPRESS_CODE)}
     express = AsyncMock(return_value=None)
 
-    with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", express):
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express", express
+    ):
         data = await coordinator._async_update_data()
         assert data[0]["status"] == ParcelStatus.OUT_FOR_DELIVERY
         assert data[0]["raw"]["trackingNumber"] == EXPRESS_CODE
@@ -735,7 +767,9 @@ async def test_a_standdown_tries_freight_once_per_unknown_code(hass, fetch_hamta
     coordinator._standdown_until_utc = time.time() + 3600
     express = AsyncMock()
 
-    with patch("custom_components.dhl.tracking.coordinator.async_fetch_express", express):
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express", express
+    ):
         await coordinator._async_update_data()
         await coordinator._async_update_data()
 
@@ -756,7 +790,9 @@ async def test_a_freight_parcel_is_restored_from_the_cache(hass, fetch_hamta):
     stored = coordinator._raw_cache
 
     restored = _coordinator(hass, entry)
-    with patch.object(restored._store, "async_load", AsyncMock(return_value={"raw_cache": stored})):
+    with patch.object(
+        restored._store, "async_load", AsyncMock(return_value={"raw_cache": stored})
+    ):
         await restored.async_load_cache()
 
     assert restored._backend_of(EXPRESS_CODE) == "hamta"
@@ -775,12 +811,15 @@ async def test_a_code_the_gateway_cannot_answer_is_tried_on_mojdhl_before_expres
     coordinator = _coordinator(hass, entry)
     fetch_mojdhl.return_value = {MOJDHL_CODE: mojdhl_shipment(MOJDHL_CODE)}
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ) as fetch_gateway, patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express"
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ) as fetch_gateway,
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express"
+        ) as fetch_express,
+    ):
         await coordinator._async_update_data()
 
     fetch_gateway.assert_awaited_once()
@@ -861,12 +900,15 @@ async def test_an_unanswered_barcode_goes_to_mojdhl_but_never_to_express(
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ), patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express"
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express"
+        ) as fetch_express,
+    ):
         await coordinator._async_update_data()
 
     _, codes = fetch_mojdhl.call_args.args
@@ -882,13 +924,16 @@ async def test_a_failing_mojdhl_is_logged_and_express_still_gets_the_code(
     coordinator = _coordinator(hass, entry)
     fetch_mojdhl.side_effect = DHLApiError("HTTP 503")
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ), patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express",
-        AsyncMock(return_value=express_in_transit(UNKNOWN_CODE)),
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=express_in_transit(UNKNOWN_CODE)),
+        ) as fetch_express,
+    ):
         await coordinator._async_update_data()
 
     assert "Mój DHL request failed" in caplog.text
@@ -909,7 +954,9 @@ async def test_a_mojdhl_parcel_is_restored_from_the_cache(hass, fetch_mojdhl):
     stored = coordinator._raw_cache
 
     restored = _coordinator(hass, entry)
-    with patch.object(restored._store, "async_load", AsyncMock(return_value={"raw_cache": stored})):
+    with patch.object(
+        restored._store, "async_load", AsyncMock(return_value={"raw_cache": stored})
+    ):
         await restored.async_load_cache()
 
     assert restored._backend_of(MOJDHL_CODE) == "mojdhl"
@@ -994,10 +1041,13 @@ async def test_a_programming_error_in_a_backend_is_not_swallowed(hass, fetch_ibe
     coordinator = _coordinator(hass, entry)
     fetch_iberia.side_effect = TypeError("bug")
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={}),
-    ), pytest.raises(TypeError):
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+            AsyncMock(return_value={}),
+        ),
+        pytest.raises(TypeError),
+    ):
         await coordinator._async_update_data()
 
 
@@ -1010,11 +1060,14 @@ async def test_ten_digits_without_the_check_digit_never_spend_the_express_budget
     coordinator = _coordinator(hass, entry)
     fetch_iberia.return_value = {code: iberia_shipment(code, full=False)}
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_gateway"
-    ) as fetch_gateway, patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express"
-    ) as fetch_express:
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_gateway"
+        ) as fetch_gateway,
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express"
+        ) as fetch_express,
+    ):
         await coordinator._async_update_data()
 
     fetch_gateway.assert_not_called()
@@ -1071,10 +1124,13 @@ async def test_an_express_fallback_programming_error_is_not_swallowed(
     coordinator = _coordinator(hass, entry)
     fetch_iberia.side_effect = TypeError("bug")
 
-    with patch(
-        "custom_components.dhl.tracking.coordinator.async_fetch_express",
-        AsyncMock(return_value=None),
-    ), pytest.raises(TypeError):
+    with (
+        patch(
+            "custom_components.dhl.tracking.coordinator.async_fetch_express",
+            AsyncMock(return_value=None),
+        ),
+        pytest.raises(TypeError),
+    ):
         await coordinator._async_update_data()
 
 
@@ -1103,8 +1159,14 @@ async def test_a_store_from_before_combining_seeds_one_answer_per_code(hass):
     coordinator = _coordinator(hass, entry)
     stored = {
         "raw_cache": {
-            GATEWAY_CODE: {**gateway_element(barcode=GATEWAY_CODE), "_dhl_backend": "gateway"},
-            EXPRESS_CODE: {**express_in_transit(EXPRESS_CODE), "_dhl_backend": "express"},
+            GATEWAY_CODE: {
+                **gateway_element(barcode=GATEWAY_CODE),
+                "_dhl_backend": "gateway",
+            },
+            EXPRESS_CODE: {
+                **express_in_transit(EXPRESS_CODE),
+                "_dhl_backend": "express",
+            },
         },
         "sources": {"x": "junk", GATEWAY_CODE: {"nope": {}}},
     }

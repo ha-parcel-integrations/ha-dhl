@@ -1,4 +1,5 @@
 """Shared fixtures for the API-source tests."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -12,7 +13,6 @@ def reset_api_one_shot_warnings():
     api_parcels._warned_status_codes.clear()
     api_parcels._warned_weight_units.clear()
     api_parcels._warned_multiple_shipments = False
-    yield
 
 
 @pytest.fixture(autouse=True)

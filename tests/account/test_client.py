@@ -1,11 +1,11 @@
 """Tests for the top-level DHL API dispatcher."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from custom_components.dhl.account.client import DHLApiClient, DHLApiError
-
-from ..payloads import (
+from tests.payloads import (
     ACTIVE_CODE,
     active_sample,
     archived_sample,

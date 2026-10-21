@@ -8,12 +8,13 @@ allows one call per 5 s per key), and a 429 stops the poll and backs off.
 The key is one credential covering every code, so a 401/403 on any of them
 is a reauth for the whole entry, not a per-parcel error.
 """
+
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import logging
 import time
-from datetime import datetime, timedelta, timezone
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -94,12 +95,10 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         self._last_request_at: float | None = None
 
         self._known_state: dict[str, ParcelStatus] | None = None
-        self._known_delivery_times: (
-            dict[str, tuple[str | None, str | None]] | None
-        ) = None
-        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = (
+        self._known_delivery_times: dict[str, tuple[str | None, str | None]] | None = (
             None
         )
+        self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = None
         self._cached_device_id: str | None = None
         self.last_success_time: datetime | None = None
 
@@ -131,7 +130,9 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
             return self._cached_device_id
         registry = dr.async_get(self.hass)
         device = next(
-            iter(dr.async_entries_for_config_entry(registry, self.config_entry.entry_id)),
+            iter(
+                dr.async_entries_for_config_entry(registry, self.config_entry.entry_id)
+            ),
             None,
         )
         if device is not None:
@@ -156,7 +157,7 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         delivered_at = parse_iso(parcel.get("delivered_at"))
         if not parcel["delivered"] or delivered_at is None:
             return False
-        cutoff = datetime.now(timezone.utc) - timedelta(days=DHL_UNIFIED_MAX_RETENTION_DAYS)
+        cutoff = datetime.now(UTC) - timedelta(days=DHL_UNIFIED_MAX_RETENTION_DAYS)
         return delivered_at < cutoff
 
     async def _async_update_data(self) -> list[dict]:
@@ -167,7 +168,9 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         self._expired_codes &= tracked
 
         to_fetch = [
-            c for c in codes if c not in self._delivered_codes and c not in self._expired_codes
+            c
+            for c in codes
+            if c not in self._delivered_codes and c not in self._expired_codes
         ]
         rate_limited: DHLUnifiedRateLimitError | None = None
         errors = 0
@@ -198,7 +201,9 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
                 DHL_UNIFIED_BACKOFF_BASE_SECONDS * 2**self._consecutive_429,
                 DHL_UNIFIED_BACKOFF_CAP_SECONDS,
             )
-            raise UpdateFailed("DHL API rate limit reached (429)", retry_after=retry_after)
+            raise UpdateFailed(
+                "DHL API rate limit reached (429)", retry_after=retry_after
+            )
         self._consecutive_429 = 0
         if to_fetch and errors == len(to_fetch):
             raise UpdateFailed("DHL API unreachable for every tracked parcel")
@@ -222,7 +227,9 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
                 continue
             entries.append((code, parcel))
 
-        self._delivered_codes = {code for code, parcel in entries if parcel["delivered"]}
+        self._delivered_codes = {
+            code for code, parcel in entries if parcel["delivered"]
+        }
 
         outgoing_codes = {
             item[CONF_TRACKING_CODE]
@@ -244,7 +251,9 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         )
         incoming = normalized_active + self.delivered
         self._fire_change_events(incoming)
-        self._known_state = {p["barcode"]: p["status"] for p in incoming if p.get("barcode")}
+        self._known_state = {
+            p["barcode"]: p["status"] for p in incoming if p.get("barcode")
+        }
         self._known_delivery_times = {
             p["barcode"]: (p.get("planned_from"), p.get("planned_to"))
             for p in incoming
@@ -263,11 +272,13 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         outgoing = self.outgoing + self.delivered_outgoing
         self._fire_outgoing_change_events(outgoing)
         self._known_outgoing_state = {
-            p["barcode"]: (p["status"], p["delivered"]) for p in outgoing if p.get("barcode")
+            p["barcode"]: (p["status"], p["delivered"])
+            for p in outgoing
+            if p.get("barcode")
         }
 
         if not to_fetch or errors < len(to_fetch):
-            self.last_success_time = datetime.now(timezone.utc)
+            self.last_success_time = datetime.now(UTC)
 
         in_flight = normalized_active + self.outgoing
         # Nothing left in flight: stop until the user adds a code, which

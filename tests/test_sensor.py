@@ -1,5 +1,6 @@
 """Tests for DHL sensor property logic."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from custom_components.dhl.const import ParcelStatus
@@ -75,12 +76,14 @@ def test_parcel_sensor_missing_barcode():
 
 
 def test_next_delivery_picks_earliest():
-    coordinator = _coordinator([
-        _parcel("A", planned_from="2026-05-02T10:00:00Z"),
-        _parcel("B", planned_from="2026-05-01T10:00:00Z"),
-    ])
+    coordinator = _coordinator(
+        [
+            _parcel("A", planned_from="2026-05-02T10:00:00Z"),
+            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+        ]
+    )
     sensor = DHLNextDeliverySensor(coordinator, _entry())
-    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
+    assert sensor.native_value == datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
@@ -91,16 +94,20 @@ def test_next_delivery_none_without_moments():
 
 
 def test_next_delivery_skips_unparseable_moment():
-    coordinator = _coordinator([
-        _parcel("A", planned_from="not-a-date"),
-        _parcel("B", planned_from="2026-05-01T10:00:00Z"),
-    ])
+    coordinator = _coordinator(
+        [
+            _parcel("A", planned_from="not-a-date"),
+            _parcel("B", planned_from="2026-05-01T10:00:00Z"),
+        ]
+    )
     sensor = DHLNextDeliverySensor(coordinator, _entry())
     assert sensor.extra_state_attributes["barcode"] == "B"
 
 
 def test_delivered_sensor():
-    coordinator = _coordinator([], delivered=[_parcel("D", status=ParcelStatus.DELIVERED)])
+    coordinator = _coordinator(
+        [], delivered=[_parcel("D", status=ParcelStatus.DELIVERED)]
+    )
     sensor = DHLDeliveredParcelsSensor(coordinator, _entry())
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "D"
@@ -108,7 +115,9 @@ def test_delivered_sensor():
 
 def test_awaiting_pickup_sensor_counts_only_parcels_at_a_pickup_point():
     waiting = _parcel("P", status=ParcelStatus.AT_PICKUP_POINT, pickup=True)
-    coordinator = _coordinator([waiting, _parcel("A", status=ParcelStatus.OUT_FOR_DELIVERY)])
+    coordinator = _coordinator(
+        [waiting, _parcel("A", status=ParcelStatus.OUT_FOR_DELIVERY)]
+    )
     sensor = DHLAwaitingPickupSensor(coordinator, _entry())
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["parcels"][0]["barcode"] == "P"
@@ -132,7 +141,7 @@ def test_outgoing_delivered_sensor():
 
 def test_last_update_sensor():
     coordinator = _coordinator([])
-    moment = datetime(2026, 6, 30, 12, 0, tzinfo=timezone.utc)
+    moment = datetime(2026, 6, 30, 12, 0, tzinfo=UTC)
     coordinator.last_success_time = moment
     sensor = DHLLastUpdateSensor(coordinator, _entry())
     assert sensor.native_value == moment
@@ -140,6 +149,8 @@ def test_last_update_sensor():
 
 def test_awaiting_pickup_counts_rerouted_parcel_without_pickup_flag():
     rerouted = _parcel("REROUTED", status=ParcelStatus.AT_PICKUP_POINT)
-    sensor = DHLAwaitingPickupSensor(_coordinator([rerouted, _parcel("HOME")]), _entry())
+    sensor = DHLAwaitingPickupSensor(
+        _coordinator([rerouted, _parcel("HOME")]), _entry()
+    )
     assert sensor.native_value == 1
     assert sensor.extra_state_attributes["parcels"] == [rerouted]

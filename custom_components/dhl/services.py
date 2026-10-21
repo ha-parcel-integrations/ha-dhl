@@ -7,15 +7,16 @@ account's auto-import. On a tracking or api entry it edits the same
 ``{tracking_code, direction}`` list the options flow manages, so an
 automation can feed numbers in without opening Configure.
 """
+
 from __future__ import annotations
 
 import re
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+import voluptuous as vol
 
 from .const import (
     CONF_DIRECTION,
@@ -30,9 +31,11 @@ from .const import (
     SOURCE_ACCOUNT,
     TRACKING_CODE_REGEX,
 )
-from .tracking import normalize_tracking_code as normalize_code_based
-from .tracking import tracked_direction
-from .tracking import valid_tracking_code as valid_code_based
+from .tracking import (
+    normalize_tracking_code as normalize_code_based,
+    tracked_direction,
+    valid_tracking_code as valid_code_based,
+)
 
 SERVICE_TRACK_PARCEL = "track_parcel"
 SERVICE_UNTRACK_PARCEL = "untrack_parcel"
@@ -100,9 +103,7 @@ def _resolve_entry(hass: HomeAssistant, call: ServiceCall) -> ConfigEntry:
 def _request_refresh(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Nudge the coordinator so the new/removed code shows up without waiting for the next poll."""
     if entry.state is ConfigEntryState.LOADED:
-        hass.async_create_task(
-            entry.runtime_data.coordinator.async_request_refresh()
-        )
+        hass.async_create_task(entry.runtime_data.coordinator.async_request_refresh())
 
 
 def _track_on_account(hass: HomeAssistant, entry: ConfigEntry, raw_code: str) -> None:
@@ -163,7 +164,9 @@ def _untrack_on_account(hass: HomeAssistant, entry: ConfigEntry, raw_code: str) 
     _request_refresh(hass, entry)
 
 
-def _untrack_on_code_based(hass: HomeAssistant, entry: ConfigEntry, raw_code: str) -> None:
+def _untrack_on_code_based(
+    hass: HomeAssistant, entry: ConfigEntry, raw_code: str
+) -> None:
     tracking_code = normalize_code_based(raw_code)
     current = entry.options.get(CONF_PARCELS, [])
     kept = [p for p in current if p.get(CONF_TRACKING_CODE) != tracking_code]

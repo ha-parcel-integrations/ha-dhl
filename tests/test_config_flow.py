@@ -1,4 +1,7 @@
 """Tests for the DHL config and options flow — the browser-paste OIDC dance."""
+
+import base64
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import SOURCE_USER
@@ -37,8 +40,8 @@ def _fake_session(
     verifier: str = "verifier",
     state: str = "state123",
     exchange_side_effect=None,
-    refresh_token: str = "the-refresh-token",
-    id_token: str = "the-id-token",
+    refresh_token: str = "the-refresh-token",  # noqa: S107 - fake test value
+    id_token: str = "the-id-token",  # noqa: S107 - fake test value
 ) -> MagicMock:
     session = MagicMock()
     session.async_authorization_url = AsyncMock(return_value=(url, verifier, state))
@@ -68,8 +71,6 @@ def _entry() -> MockConfigEntry:
 
 
 def _jwt_for(sub: str) -> str:
-    import base64
-    import json
 
     encoded = base64.urlsafe_b64encode(json.dumps({"sub": sub}).encode()).rstrip(b"=")
     return f"h.{encoded.decode()}.s"
@@ -326,9 +327,7 @@ async def test_reauth_aborts_when_discovery_fails(hass):
     entry = _entry()
     entry.add_to_hass(hass)
     session = _fake_session()
-    session.async_authorization_url = AsyncMock(
-        side_effect=DHLDeSessionError("outage")
-    )
+    session.async_authorization_url = AsyncMock(side_effect=DHLDeSessionError("outage"))
 
     with patch(SESSION_CLASS, return_value=session):
         result = await entry.start_reauth_flow(hass)
@@ -349,9 +348,7 @@ async def test_options_flow_saves_and_reloads(hass):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["step_id"] == "init"
 
-    with patch.object(
-        hass.config_entries, "async_schedule_reload"
-    ) as schedule_reload:
+    with patch.object(hass.config_entries, "async_schedule_reload") as schedule_reload:
         result = await hass.config_entries.options.async_configure(
             result["flow_id"],
             {
@@ -491,9 +488,7 @@ async def test_tracking_options_settings_applies_live_without_reload(hass):
     )
     assert result["step_id"] == "settings"
 
-    with patch.object(
-        hass.config_entries, "async_schedule_reload"
-    ) as schedule_reload:
+    with patch.object(hass.config_entries, "async_schedule_reload") as schedule_reload:
         result = await hass.config_entries.options.async_configure(
             result["flow_id"],
             {

@@ -1,4 +1,5 @@
 """Tests for the Mój DHL public lookup backend: fetch and normalizer."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

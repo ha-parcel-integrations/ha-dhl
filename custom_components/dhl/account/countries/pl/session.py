@@ -1,13 +1,14 @@
 """Mój DHL (Poland) SMS session and Altcha enrolment helpers."""
+
 from __future__ import annotations
 
 import asyncio
 import base64
 import hashlib
-import json
-import uuid
 from http.cookies import SimpleCookie
+import json
 from typing import Any
+import uuid
 
 import aiohttp
 
@@ -49,19 +50,25 @@ def solve_altcha(challenge: dict[str, Any]) -> str:
                 "salt": salt,
                 "signature": signature,
             }
-            return base64.b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
+            return base64.b64encode(
+                json.dumps(payload, separators=(",", ":")).encode()
+            ).decode()
     raise DHLApiError("Altcha challenge could not be solved within maxnumber")
 
 
 async def async_solve_altcha(challenge: dict[str, Any]) -> str:
     """Run the CPU-bound proof of work in an executor so the event loop stays free."""
-    return await asyncio.get_running_loop().run_in_executor(None, solve_altcha, challenge)
+    return await asyncio.get_running_loop().run_in_executor(
+        None, solve_altcha, challenge
+    )
 
 
 class DHLPlSession:
     """Owns Mój DHL's cookie credential and the rotating access-token pair."""
 
-    def __init__(self, session: aiohttp.ClientSession, cookies: list[dict] | None = None) -> None:
+    def __init__(
+        self, session: aiohttp.ClientSession, cookies: list[dict] | None = None
+    ) -> None:
         """Wrap an aiohttp session, seeding its jar from a stored cookie snapshot."""
         self._session = session
         self.import_cookies(cookies or [])
@@ -69,7 +76,9 @@ class DHLPlSession:
     def import_cookies(self, cookies: list[dict]) -> None:
         """Load a stored cookie snapshot into the session's live jar."""
         for item in cookies:
-            if not all(isinstance(item.get(key), str) for key in ("name", "value", "domain")):
+            if not all(
+                isinstance(item.get(key), str) for key in ("name", "value", "domain")
+            ):
                 continue
             cookie = SimpleCookie()
             cookie[item["name"]] = item["value"]
@@ -83,8 +92,13 @@ class DHLPlSession:
     def export_cookies(self) -> list[dict[str, Any]]:
         """Serialize all cookies, including session cookies, for HA storage."""
         return [
-            {"name": cookie.key, "value": cookie.value, "domain": cookie["domain"],
-             "path": cookie["path"] or "/", "secure": bool(cookie["secure"])}
+            {
+                "name": cookie.key,
+                "value": cookie.value,
+                "domain": cookie["domain"],
+                "path": cookie["path"] or "/",
+                "secure": bool(cookie["secure"]),
+            }
             for cookie in self._session.cookie_jar
             if cookie["domain"].endswith("mojdhl.pl")
         ]
@@ -110,7 +124,11 @@ class DHLPlSession:
     async def _json(self, method: str, path: str, **kwargs: Any) -> tuple[int, Any]:
         headers = {**DHL_PL_HEADERS, **kwargs.pop("headers", {})}
         async with self._session.request(
-            method, f"{DHL_PL_BASE_URL}{path}", headers=headers, timeout=_TIMEOUT, **kwargs
+            method,
+            f"{DHL_PL_BASE_URL}{path}",
+            headers=headers,
+            timeout=_TIMEOUT,
+            **kwargs,
         ) as response:
             try:
                 return response.status, await response.json(content_type=None)
@@ -127,7 +145,10 @@ class DHLPlSession:
         """Validate a phone and request exactly one SMS; return DHL's lockout."""
         for path, body in (
             ("/auth/validate-account", {"phoneNumber": phone, "prefix": "48"}),
-            ("/auth/generate-code", {"phoneNumber": phone, "prefix": "48", "isMobileDevice": False}),
+            (
+                "/auth/generate-code",
+                {"phoneNumber": phone, "prefix": "48", "isMobileDevice": False},
+            ),
         ):
             body["captcha-payload"] = await self._captcha()
             status, response = await self._json("POST", path, json=body)
@@ -141,11 +162,21 @@ class DHLPlSession:
         """Redeem the user-entered SMS code and adopt the returned access token."""
         # rememberMe buys the durable `access-remember` cookie that
         # `_async_recover` later trades for a fresh token.
-        body = {"phoneNumber": phone, "prefix": "48", "smsCode": sms_code,
-                "deviceId": device_id, "deviceName": DEVICE_NAME,
-                "rememberMe": True, "captcha-payload": await self._captcha()}
+        body = {
+            "phoneNumber": phone,
+            "prefix": "48",
+            "smsCode": sms_code,
+            "deviceId": device_id,
+            "deviceName": DEVICE_NAME,
+            "rememberMe": True,
+            "captcha-payload": await self._captcha(),
+        }
         status, response = await self._json("POST", "/auth/validate-code", json=body)
-        token = response.get("token", {}).get("token") if isinstance(response, dict) else None
+        token = (
+            response.get("token", {}).get("token")
+            if isinstance(response, dict)
+            else None
+        )
         if status != 200 or not response.get("success") or not isinstance(token, str):
             raise DHLAuthError("Mój DHL rejected the SMS code")
         self._adopt_access_token(token)
@@ -174,7 +205,9 @@ class DHLPlSession:
         an outright rejection raises :class:`DHLAuthError`.
         """
         status, response = await self._json(
-            "POST", "/auth/recover", json={"deviceId": device_id, "deviceName": DEVICE_NAME}
+            "POST",
+            "/auth/recover",
+            json={"deviceId": device_id, "deviceName": DEVICE_NAME},
         )
         token = response.get("token") if isinstance(response, dict) else None
         if status in (400, 401, 403):
@@ -186,7 +219,11 @@ class DHLPlSession:
 
     async def async_refresh(self, device_id: str) -> str:
         """Mint a fresh bearer token from the stored cookie jar before a poll."""
-        status, response = await self._json("GET", "/auth/refresh", params={"deviceId": device_id, "deviceName": DEVICE_NAME})
+        status, response = await self._json(
+            "GET",
+            "/auth/refresh",
+            params={"deviceId": device_id, "deviceName": DEVICE_NAME},
+        )
         if status in (401, 403):
             return await self._async_recover(device_id)
         token = response.get("token") if isinstance(response, dict) else None

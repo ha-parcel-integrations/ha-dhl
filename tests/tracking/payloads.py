@@ -3,6 +3,7 @@
 Shapes match the mechanics research, values are fabricated — no real
 tracking numbers or PII from a captured payload.
 """
+
 from __future__ import annotations
 
 
@@ -60,7 +61,10 @@ def express_delivered(awb: str = "1000000013") -> dict:
         "signature": {
             "type": "epod",
             "label": "Delivered",
-            "link": {"label": "Get Proof of Delivery", "url": "https://example.invalid/pod"},
+            "link": {
+                "label": "Get Proof of Delivery",
+                "url": "https://example.invalid/pod",
+            },
         },
         "checkpoints": [
             {
@@ -181,8 +185,13 @@ def mojdhl_shipment(
 
 
 def iberia_event(
-    date: str, time: str, code: str | None, description: str, *,
-    solution: str | None = None, town: str = "Valencia",
+    date: str,
+    time: str,
+    code: str | None,
+    description: str,
+    *,
+    solution: str | None = None,
+    town: str = "Valencia",
 ) -> dict:
     """One DHL Iberia scan, in the feed's own field names."""
     return {
@@ -196,16 +205,33 @@ def iberia_event(
 
 
 IBERIA_DELIVERED_AT_SERVICE_POINT = [
-    iberia_event("18/08/2026", "16:46", "RS", "Parcel picked up by recipient", solution="DHL"),
     iberia_event(
-        "18/08/2026", "15:58", "IS",
+        "18/08/2026", "16:46", "RS", "Parcel picked up by recipient", solution="DHL"
+    ),
+    iberia_event(
+        "18/08/2026",
+        "15:58",
+        "IS",
         "Delivered to DHL ServicePoint, ready for collection by the recipient",
         solution="DHL",
     ),
-    iberia_event("18/08/2026", "15:31", "NH", "The delivery could not be made due to consignee absent", solution="CLI"),
+    iberia_event(
+        "18/08/2026",
+        "15:31",
+        "NH",
+        "The delivery could not be made due to consignee absent",
+        solution="CLI",
+    ),
     iberia_event("18/08/2026", "09:28", "A", "Out for delivery", solution="ASI"),
     iberia_event("18/08/2026", "07:34", "ZZZ", "Arrived at"),
-    iberia_event("17/08/2026", "20:42", None, "Shipment data received", solution="DOC", town="Zaragoza"),
+    iberia_event(
+        "17/08/2026",
+        "20:42",
+        None,
+        "Shipment data received",
+        solution="DOC",
+        town="Zaragoza",
+    ),
 ]
 
 

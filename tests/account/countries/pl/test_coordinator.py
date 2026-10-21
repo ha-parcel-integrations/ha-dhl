@@ -1,4 +1,5 @@
 """Tests for the PL-specific slice of the coordinator: cookie-jar persistence."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -59,7 +60,9 @@ async def test_pl_unchanged_cookies_are_not_rewritten(hass):
     coordinator = DHLCoordinator(hass, client, entry, de_session=None)
 
     with patch.object(
-        hass.config_entries, "async_update_entry", wraps=hass.config_entries.async_update_entry
+        hass.config_entries,
+        "async_update_entry",
+        wraps=hass.config_entries.async_update_entry,
     ) as update_entry:
         await coordinator._async_update_data()
 

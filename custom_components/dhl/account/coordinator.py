@@ -6,11 +6,12 @@ models: the account inbox is fetched unconditionally,
 and any manually-tracked code (`dhl.track_parcel`) not already present in the
 inbox is fetched by number and merged in.
 """
+
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 import logging
-from datetime import datetime, timedelta, timezone
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
@@ -132,9 +133,9 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         # that already existed when the integration started — otherwise every
         # restart would flood users with "registered" notifications.
         self._known_state: dict[str, ParcelStatus] | None = None
-        self._known_delivery_times: (
-            dict[str, tuple[str | None, str | None]] | None
-        ) = None
+        self._known_delivery_times: dict[str, tuple[str | None, str | None]] | None = (
+            None
+        )
         # Same suppression, for the outgoing bucket — see
         # `_fire_outgoing_change_events`. Keyed on (status, delivered) rather
         # than status alone: status is force-``UNKNOWN`` for every outgoing
@@ -188,9 +189,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
     def _include_history(self) -> bool:
         """Whether the opt-in per-parcel history option is enabled."""
         return bool(
-            self.config_entry.options.get(
-                CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY
-            )
+            self.config_entry.options.get(CONF_INCLUDE_HISTORY, DEFAULT_INCLUDE_HISTORY)
         )
 
     def _tracked_codes(self) -> list[str]:
@@ -213,11 +212,13 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             return_exceptions=True,
         )
         extra: list[dict] = []
-        for code, result in zip(missing, results):
+        for code, result in zip(missing, results, strict=True):
             if isinstance(result, DHLAuthError):
                 raise result
             if isinstance(result, (DHLApiError, aiohttp.ClientError)):
-                _LOGGER.warning("DHL fetch failed for tracked code %s: %s", code, result)
+                _LOGGER.warning(
+                    "DHL fetch failed for tracked code %s: %s", code, result
+                )
                 continue
             if isinstance(result, BaseException):
                 raise result
@@ -309,9 +310,18 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             pl_session = self._client.pl_session
             cookies = pl_session.export_cookies() if pl_session else []
             if cookies and cookies != self.config_entry.data.get(CONF_DHL_PL_COOKIES):
-                self.hass.config_entries.async_update_entry(self.config_entry, data={**self.config_entry.data, CONF_DHL_PL_COOKIES: cookies})
-        inbox_barcodes = {element.get("id") for element in elements if element.get("id")}
-        missing = [code for code in self._tracked_codes() if code not in inbox_barcodes] if country == "DE" else []
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={**self.config_entry.data, CONF_DHL_PL_COOKIES: cookies},
+                )
+        inbox_barcodes = {
+            element.get("id") for element in elements if element.get("id")
+        }
+        missing = (
+            [code for code in self._tracked_codes() if code not in inbox_barcodes]
+            if country == "DE"
+            else []
+        )
         try:
             elements.extend(await self._async_fetch_missing_tracked(missing))
         except DHLAuthError as err:
@@ -373,7 +383,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel.get("barcode")
         }
 
-        self.last_success_time = datetime.now(timezone.utc)
+        self.last_success_time = datetime.now(UTC)
         self.update_interval = compute_poll_interval(
             self.config_entry.entry_id, normalized_active
         )

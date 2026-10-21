@@ -6,9 +6,10 @@ one dispatch. ``sort_parcels_by_ts`` and ``apply_delivered_filter`` stay here:
 they operate on already-normalized canonical dicts and are identical
 regardless of which country produced them.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 
@@ -20,8 +21,10 @@ from ..const import (
     DEFAULT_DELIVERED_FILTER_TYPE,
 )
 from .countries.de import is_outgoing_element, normalize_parcel_de
-from .countries.pl import is_outgoing_element as is_outgoing_element_pl
-from .countries.pl import normalize_parcel_pl
+from .countries.pl import (
+    is_outgoing_element as is_outgoing_element_pl,
+    normalize_parcel_pl,
+)
 
 _NORMALIZERS = {
     "DE": normalize_parcel_de,
@@ -59,11 +62,11 @@ def parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -98,14 +101,12 @@ def apply_delivered_filter(parcels: list[dict], entry: ConfigEntry) -> list[dict
     shows.
     """
     options = entry.options
-    filter_type = options.get(
-        CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-    )
+    filter_type = options.get(CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE)
     amount = int(
         options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
     )
     if filter_type == "days":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+        cutoff = datetime.now(UTC) - timedelta(days=amount)
         return [
             parcel
             for parcel in parcels

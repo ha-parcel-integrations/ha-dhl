@@ -3,6 +3,7 @@
 Fixtures come from ``tests/payloads.py``. Every still-contested field
 (raw_status) is tested on both branches rather than just the preferred one.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -23,11 +24,11 @@ from custom_components.dhl.account.countries.de import (
 from custom_components.dhl.account.countries.de.session import (
     DHLDeAuthError,
     DHLDeSession,
+    DHLDeSessionError,
 )
 from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
 from custom_components.dhl.delivery_window import end_of_day
-
-from ...payloads import (
+from tests.payloads import (
     ACTIVE_CODE,
     active_sample,
     archived_sample,
@@ -81,9 +82,7 @@ def test_select_active_elements_falls_back_when_all_archived():
 
 
 def test_select_active_elements_ignores_non_dict_entries():
-    assert select_active_elements([active_sample(), "junk", None]) == [
-        active_sample()
-    ]
+    assert select_active_elements([active_sample(), "junk", None]) == [active_sample()]
 
 
 def test_select_active_elements_warns_unrecognised_sendungsliste_value(caplog):
@@ -150,7 +149,7 @@ def _session_returning(status: int, body: dict) -> MagicMock:
     return session
 
 
-def _de_session(id_token: str = "id-token") -> MagicMock:
+def _de_session(id_token: str = "id-token") -> MagicMock:  # noqa: S107 - fake test value
     de_session = MagicMock(spec=DHLDeSession)
     de_session.async_get_id_token = AsyncMock(return_value=id_token)
     de_session.async_handle_unauthorized = AsyncMock(return_value=id_token)
@@ -217,7 +216,7 @@ async def test_transport_converts_rejected_refresh_token_to_auth_error():
 
 
 @pytest.mark.parametrize(
-    "fortschritt,expected",
+    ("fortschritt", "expected"),
     [
         (0, ParcelStatus.REGISTERED),
         (1, ParcelStatus.REGISTERED),
@@ -370,7 +369,9 @@ def test_normalize_prefers_sendungsname_over_pan_empfaenger():
 
 @pytest.mark.parametrize("pan", ["Erika Musterfrau", {}, {"name": ""}, {"ort": "X"}])
 def test_normalize_unusable_pan_empfaenger_leaves_receiver_none(pan):
-    raw = element(ACTIVE_CODE, fortschritt=4, sendungsrichtung="ABGEHEND", pan_empfaenger=pan)
+    raw = element(
+        ACTIVE_CODE, fortschritt=4, sendungsrichtung="ABGEHEND", pan_empfaenger=pan
+    )
     assert normalize_parcel_de(raw)["receiver"] is None
 
 
@@ -436,7 +437,10 @@ def test_normalize_outgoing_retoure_still_wins_over_unknown():
 
 def test_is_outgoing_element_true_for_ausgehend():
     raw = element(
-        ACTIVE_CODE, fortschritt=4, sendungsname="Jane Doe", sendungsrichtung="AUSGEHEND"
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
     )
     assert is_outgoing_element(raw) is True
 
@@ -474,7 +478,9 @@ def test_delivered_derived_when_flag_absent():
 
 
 def test_delivered_conflict_between_flag_and_derivation_warns_once(caplog):
-    raw = element(ACTIVE_CODE, fortschritt=5, maximal_fortschritt=5, ist_zugestellt=False)
+    raw = element(
+        ACTIVE_CODE, fortschritt=5, maximal_fortschritt=5, ist_zugestellt=False
+    )
     parcel = normalize_parcel_de(raw)
     assert parcel["delivered"] is False  # explicit flag wins
     assert "disagrees" in caplog.text.lower()
@@ -484,7 +490,9 @@ def test_delivered_conflict_between_flag_and_derivation_warns_once(caplog):
 
 
 def test_raw_status_prefers_status_over_kurz_status():
-    raw = element(ACTIVE_CODE, fortschritt=3, status_text="Status Text", kurz_status="Kurz")
+    raw = element(
+        ACTIVE_CODE, fortschritt=3, status_text="Status Text", kurz_status="Kurz"
+    )
     assert normalize_parcel_de(raw)["raw_status"] == "Status Text"
 
 
@@ -644,7 +652,6 @@ def test_unexpected_sendungsdetails_key_warns_once(caplog):
 
 
 async def test_transport_generic_session_error_becomes_api_error():
-    from custom_components.dhl.account.countries.de.session import DHLDeSessionError
 
     de_session = MagicMock(spec=DHLDeSession)
     de_session.async_get_id_token = AsyncMock(side_effect=DHLDeSessionError("outage"))
@@ -670,7 +677,9 @@ def test_unexpected_sendungsdetails_key_fires_only_once(caplog):
 
 
 def test_delivered_conflict_warns_once_per_barcode(caplog):
-    raw = element(ACTIVE_CODE, fortschritt=5, maximal_fortschritt=5, ist_zugestellt=False)
+    raw = element(
+        ACTIVE_CODE, fortschritt=5, maximal_fortschritt=5, ist_zugestellt=False
+    )
     normalize_parcel_de(raw)
     normalize_parcel_de(raw)
     assert caplog.text.lower().count("disagrees") == 1

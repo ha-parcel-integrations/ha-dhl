@@ -1,4 +1,5 @@
 """Tests for the DHL Freight Sweden (Mitt DHL) backend: fetch and normalizer."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
@@ -37,7 +38,9 @@ def test_no_events_is_registered():
 
 def test_dropped_at_the_service_point_is_at_pickup_point():
     parcel = normalize_parcel_hamta(
-        hamta_shipment(events=[_PROCESSED, _DROPPED, _NOTIFIED], isReadyForCollection=True)
+        hamta_shipment(
+            events=[_PROCESSED, _DROPPED, _NOTIFIED], isReadyForCollection=True
+        )
     )
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["delivered"] is False

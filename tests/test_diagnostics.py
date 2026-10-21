@@ -5,13 +5,20 @@ run through the redactor must keep the exact same key set, at every depth,
 before and after — the thing a naive top-level redactor misses on
 ``sendungsdetails.zustellung.empfaenger.name``.
 """
+
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from homeassistant.components.diagnostics import async_redact_data
 
-from custom_components.dhl.const import CONF_TRACKED_CODES
+from custom_components.dhl.const import (
+    CONF_PARCELS,
+    CONF_SOURCE,
+    CONF_TRACKED_CODES,
+    SOURCE_TRACKING,
+)
 from custom_components.dhl.diagnostics import (
     TO_REDACT,
     async_get_config_entry_diagnostics,
@@ -110,7 +117,6 @@ async def test_diagnostics_redacts_and_counts(hass):
 
 async def test_diagnostics_report_the_session_claims_by_name_only(hass):
     """Claim names tell an emptied inbox from an empty account; values are PII."""
-    from datetime import datetime, timezone
 
     entry = MagicMock()
     entry.options = {}
@@ -121,12 +127,8 @@ async def test_diagnostics_report_the_session_claims_by_name_only(hass):
     coordinator.delivered_outgoing = []
     coordinator.last_element_count = 0
     coordinator.de_session.id_token_claim_names = ["email", "exp", "sub"]
-    coordinator.de_session.id_token_expires_at = datetime(
-        2026, 9, 19, 7, 0, tzinfo=timezone.utc
-    )
-    coordinator.de_session.last_refresh_at = datetime(
-        2026, 9, 19, 6, 30, tzinfo=timezone.utc
-    )
+    coordinator.de_session.id_token_expires_at = datetime(2026, 9, 19, 7, 0, tzinfo=UTC)
+    coordinator.de_session.last_refresh_at = datetime(2026, 9, 19, 6, 30, tzinfo=UTC)
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
@@ -161,8 +163,9 @@ async def test_diagnostics_session_block_without_a_de_session(hass):
     }
 
 
-async def test_diagnostics_tracking_source_reports_express_state_and_redacts_parcels(hass):
-    from custom_components.dhl.const import CONF_PARCELS, CONF_SOURCE, SOURCE_TRACKING
+async def test_diagnostics_tracking_source_reports_express_state_and_redacts_parcels(
+    hass,
+):
 
     entry = MagicMock()
     entry.data = {CONF_SOURCE: SOURCE_TRACKING}

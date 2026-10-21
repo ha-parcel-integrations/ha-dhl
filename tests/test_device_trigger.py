@@ -1,4 +1,5 @@
 """Tests for DHL device triggers."""
+
 from unittest.mock import AsyncMock
 
 from custom_components.dhl.const import DOMAIN

@@ -1,4 +1,5 @@
 """Tests for the DHL eCommerce Iberia backend: fetch and normalizer."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
@@ -50,7 +51,9 @@ def test_waiting_at_the_service_point_after_a_delivered_scan_is_at_pickup_point(
 
 def test_a_round_after_a_delivered_scan_undoes_it():
     events = [
-        iberia_event("15/10/2025", "12:00", "EC", "Delivery agreed with recipient 16/10/2025"),
+        iberia_event(
+            "15/10/2025", "12:00", "EC", "Delivery agreed with recipient 16/10/2025"
+        ),
         iberia_event("14/10/2025", "18:07", "PC", "Delivered, POD pending"),
     ]
     assert normalize_parcel_iberia(iberia_shipment(events=events))["status"] == (
@@ -84,7 +87,9 @@ def test_an_unknown_scan_warns_once_and_falls_back_to_the_previous_one(caplog):
         iberia_event("02/06/2026", "09:00", None, "Something else new"),
         iberia_event("01/06/2026", "09:00", "A", "Out for delivery"),
     ]
-    parcel = normalize_parcel_iberia(iberia_shipment(events=events), include_history=True)
+    parcel = normalize_parcel_iberia(
+        iberia_shipment(events=events), include_history=True
+    )
     normalize_parcel_iberia(iberia_shipment(events=events))
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
     assert parcel["history"][-1]["status"] == ParcelStatus.UNKNOWN
@@ -104,7 +109,9 @@ def test_no_scans_is_registered_and_an_odd_clock_has_no_timestamp():
         ParcelStatus.REGISTERED
     )
     events = [iberia_event("01/01/0001", "", "R", "Delivered")]
-    parcel = normalize_parcel_iberia(iberia_shipment(events=events), include_history=True)
+    parcel = normalize_parcel_iberia(
+        iberia_shipment(events=events), include_history=True
+    )
     assert parcel["delivered_at"] is None
     assert parcel["history"][0]["timestamp"] is None
 

@@ -8,9 +8,10 @@ identical regardless of which one produced it. Every raw payload carries a priva
 ``_dhl_backend`` marker (stamped by the coordinator, stripped again in
 ``raw`` before publishing) so this dispatch never has to re-guess the shape.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import quote
 
 from homeassistant.config_entries import ConfigEntry
@@ -46,7 +47,7 @@ _NORMALIZERS = {
 # pickup point always come from the freshest answer as a whole.
 _FILLABLE = ("sender", "receiver", "weight", "dimensions")
 
-_OLDEST = datetime.min.replace(tzinfo=timezone.utc)
+_OLDEST = datetime.min.replace(tzinfo=UTC)
 
 
 def normalize_parcel(raw: dict, *, include_history: bool = False) -> dict:
@@ -122,11 +123,11 @@ def parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 
@@ -156,14 +157,12 @@ def apply_delivered_filter(parcels: list[dict], entry: ConfigEntry) -> list[dict
     ``parcels`` must already be sorted newest-first.
     """
     options = entry.options
-    filter_type = options.get(
-        CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE
-    )
+    filter_type = options.get(CONF_DELIVERED_FILTER_TYPE, DEFAULT_DELIVERED_FILTER_TYPE)
     amount = int(
         options.get(CONF_DELIVERED_FILTER_AMOUNT, DEFAULT_DELIVERED_FILTER_AMOUNT)
     )
     if filter_type == "days":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=amount)
+        cutoff = datetime.now(UTC) - timedelta(days=amount)
         return [
             parcel
             for parcel in parcels

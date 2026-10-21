@@ -1,4 +1,5 @@
 """Tests for tracking/express.py: fetch, throttle detection, normalisation."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -51,18 +52,17 @@ def test_bearer_token_derives_to_the_expected_shape():
 
 
 async def test_fetch_sends_the_derived_bearer_token_never_a_literal():
-    session, resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
+    session, _resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
     await async_fetch_express(session, "1000000013")
 
     _, kwargs = session.post.call_args
     assert kwargs["headers"]["Authorization"] == _derive_bearer_token()
 
 
-
 async def test_fetch_names_the_service_before_the_method_in_the_url():
     # The backend 404s "Service URL params are not found/valid" on the
     # reversed order.
-    session, resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
+    session, _resp = _mock_session(status=200, body=json.dumps([express_delivered()]))
     await async_fetch_express(session, "1000000013")
 
     url = session.post.call_args.args[0]
@@ -161,7 +161,9 @@ def test_unmapped_status_warns_once(caplog):
         assert parcel["status"] == ParcelStatus.UNKNOWN
         assert len(caplog.records) == 1
 
-        normalize_parcel_express({"id": "Y", "status": "SOMETHING_ELSE", "checkpoints": []})
+        normalize_parcel_express(
+            {"id": "Y", "status": "SOMETHING_ELSE", "checkpoints": []}
+        )
         assert len(caplog.records) == 1
 
 
@@ -278,10 +280,16 @@ _REAL_CHECKPOINTS = [
     # Newest-first, as the backend sends them.
     ("Shipment is out with courier for delivery", ParcelStatus.OUT_FOR_DELIVERY),
     ("Arrived at DHL Sort Facility  VALENCIA - SPAIN", ParcelStatus.IN_TRANSIT),
-    ("Shipment has departed from a DHL facility VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
+    (
+        "Shipment has departed from a DHL facility VITORIA - SPAIN",
+        ParcelStatus.IN_TRANSIT,
+    ),
     ("Processed at VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
     ("Arrived at DHL Sort Facility  VITORIA - SPAIN", ParcelStatus.IN_TRANSIT),
-    ("Shipment has departed from a DHL facility MILAN - MALPENSA - ITALY", ParcelStatus.IN_TRANSIT),
+    (
+        "Shipment has departed from a DHL facility MILAN - MALPENSA - ITALY",
+        ParcelStatus.IN_TRANSIT,
+    ),
     ("Processed at MILAN - MALPENSA - ITALY", ParcelStatus.IN_TRANSIT),
     ("Shipment picked up", ParcelStatus.IN_TRANSIT),
     ("Shipment Accepted", ParcelStatus.IN_TRANSIT),
@@ -309,7 +317,9 @@ def test_real_checkpoints_map_whatever_facility_they_name(caplog):
 
 
 def test_parcel_status_follows_the_newest_checkpoint():
-    parcel = normalize_parcel_express(_with_checkpoints([d for d, _ in _REAL_CHECKPOINTS]))
+    parcel = normalize_parcel_express(
+        _with_checkpoints([d for d, _ in _REAL_CHECKPOINTS])
+    )
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
     assert parcel["delivered"] is False
 
@@ -322,7 +332,9 @@ def test_an_unfetched_placeholder_is_unknown_without_a_warning(caplog):
 
 def test_an_unknown_checkpoint_warns_once_whatever_facility_it_names(caplog):
     normalize_parcel_express(
-        _with_checkpoints(["Clearance delay VITORIA - SPAIN", "Clearance delay MILAN - ITALY"]),
+        _with_checkpoints(
+            ["Clearance delay VITORIA - SPAIN", "Clearance delay MILAN - ITALY"]
+        ),
         include_history=True,
     )
     assert caplog.text.count("unrecognised checkpoint") == 1
@@ -339,7 +351,11 @@ def test_an_unknown_checkpoint_warns_once_whatever_facility_it_names(caplog):
     ],
 )
 def test_checkpoint_time_is_local_to_the_country_it_names(location, expected):
-    checkpoint = {"date": "Wednesday, July 08, 2026", "time": "11:10", "location": location}
+    checkpoint = {
+        "date": "Wednesday, July 08, 2026",
+        "time": "11:10",
+        "location": location,
+    }
     assert _checkpoint_timestamp(checkpoint) == expected
 
 

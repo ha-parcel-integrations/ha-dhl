@@ -1,15 +1,21 @@
 """Tests for the DHL coordinator: fetching, tracked-code merging, events."""
-from datetime import timedelta
+
+import base64
+from datetime import UTC, datetime, timedelta
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dhl.account.client import DHLApiClient
 from custom_components.dhl.account.coordinator import (
     DHLCoordinator,
     compute_poll_interval,
 )
+from custom_components.dhl.account.countries.de.session import DHLDeSession
 from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
@@ -20,8 +26,7 @@ from custom_components.dhl.const import (
     DHLAuthError,
     ParcelStatus,
 )
-
-from ..payloads import (
+from tests.payloads import (
     ACTIVE_CODE,
     active_sample,
     delivered_sample,
@@ -93,7 +98,11 @@ async def test_update_splits_outgoing_from_incoming(hass):
     entry = _entry()
     entry.add_to_hass(hass)
     client = _client(
-        [active_sample(), outgoing_sample("OUT1", delivered=False), outgoing_sample("OUT2", delivered=True)]
+        [
+            active_sample(),
+            outgoing_sample("OUT1", delivered=False),
+            outgoing_sample("OUT2", delivered=True),
+        ]
     )
     coordinator = _coordinator(hass, entry, client)
 
@@ -285,9 +294,8 @@ _UTCNOW = "custom_components.dhl.account.coordinator.dt_util.utcnow"
 
 
 def _at(hour: int, minute: int = 0):
-    from datetime import datetime, timezone
 
-    return datetime(2026, 1, 15, hour, minute, tzinfo=timezone.utc)
+    return datetime(2026, 1, 15, hour, minute, tzinfo=UTC)
 
 
 def test_poll_interval_quiet_window_targets_the_end_anchor():
@@ -384,9 +392,7 @@ async def test_fires_status_changed_event(hass):
     coordinator = _coordinator(hass, entry, client)
 
     events = []
-    hass.bus.async_listen(
-        f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e)
-    )
+    hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
     await coordinator._async_update_data()  # first refresh: suppressed
     client.async_get_incoming.return_value = ([active_sample()], False)
@@ -540,7 +546,6 @@ async def test_outgoing_status_change_fires_status_changed(hass):
 
 
 async def test_event_carries_device_id(hass):
-    from homeassistant.helpers import device_registry as dr
 
     entry = _entry()
     entry.add_to_hass(hass)
@@ -552,9 +557,7 @@ async def test_event_carries_device_id(hass):
     coordinator = _coordinator(hass, entry, client)
 
     events = []
-    hass.bus.async_listen(
-        f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e)
-    )
+    hass.bus.async_listen(f"{DOMAIN}_parcel_status_changed", lambda e: events.append(e))
 
     await coordinator._async_update_data()
     client.async_get_incoming.return_value = ([active_sample()], False)
@@ -597,11 +600,6 @@ async def test_a_claimless_refresh_reaches_the_user_as_a_reauth_request(hass):
     without `post_number`, the DE transport converting that, and the
     coordinator turning it into the request Home Assistant shows the user.
     """
-    import base64
-    import json
-
-    from custom_components.dhl.account.client import DHLApiClient
-    from custom_components.dhl.account.countries.de.session import DHLDeSession
 
     def _ctx(response):
         ctx = MagicMock()

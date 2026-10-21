@@ -6,6 +6,7 @@ element has ever been observed on the wire** by anyone in this suite
 suite's convention, so the eventual tester capture only needs to
 change values here rather than scattered test bodies.
 """
+
 from __future__ import annotations
 
 ACTIVE_CODE = "00340434161094681228"
@@ -84,7 +85,10 @@ def delivered_sample(code: str = DELIVERED_CODE) -> dict:
         ist_zugestellt=True,
         events=[
             event("Die Sendung wurde eingeliefert.", "2026-04-27T23:03:58+02:00"),
-            event("Die Sendung befindet sich im Zustellfahrzeug.", "2026-04-29T06:00:00+02:00"),
+            event(
+                "Die Sendung befindet sich im Zustellfahrzeug.",
+                "2026-04-29T06:00:00+02:00",
+            ),
             event("Die Sendung wurde ausgeliefert.", "2026-04-29T08:46:00+02:00"),
             event("Die Sendung wurde zugestellt.", "2026-04-29T13:12:42+02:00"),
         ],
@@ -100,7 +104,10 @@ def active_sample(code: str = ACTIVE_CODE) -> dict:
         ist_zugestellt=False,
         events=[
             event("Die Sendung wurde eingeliefert.", "2026-04-27T23:03:58+02:00"),
-            event("Die Sendung befindet sich im Zustellfahrzeug.", "2026-04-29T06:00:00+02:00"),
+            event(
+                "Die Sendung befindet sich im Zustellfahrzeug.",
+                "2026-04-29T06:00:00+02:00",
+            ),
         ],
         zustellung={
             "zustellzeitfensterVon": "2026-04-29T13:00:00+02:00",
@@ -121,9 +128,7 @@ def in_transit_sample(code: str = ACTIVE_CODE) -> dict:
 
 def archived_sample(code: str = "ARCHIVED0001") -> dict:
     """An archived element — must be filtered out of the inbox by default."""
-    return element(
-        code, fortschritt=5, ist_zugestellt=True, sendungsliste="ARCHIVIERT"
-    )
+    return element(code, fortschritt=5, ist_zugestellt=True, sendungsliste="ARCHIVIERT")
 
 
 def not_found_sample(code: str = "UNKNOWN00001") -> dict:

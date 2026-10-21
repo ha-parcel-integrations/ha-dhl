@@ -1,8 +1,9 @@
 """Tests for the DHL Germany OIDC session (countries/de/session.py)."""
+
 import base64
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlparse
 
@@ -56,9 +57,9 @@ def _session(
 
 def _token_body(
     *,
-    access_token: str = "access",
-    id_token: str | None = "id",
-    refresh_token: str | None = "refresh",
+    access_token: str = "access",  # noqa: S107 - fake test value
+    id_token: str | None = "id",  # noqa: S107 - fake test value
+    refresh_token: str | None = "refresh",  # noqa: S107 - fake test value
     expires_in: int = 1800,
 ) -> dict:
     body = {"access_token": access_token, "expires_in": expires_in}
@@ -264,7 +265,7 @@ async def test_get_id_token_refreshes_inside_margin():
     session.post = MagicMock(return_value=_ctx(_response(200, _token_body())))
     de_session = DHLDeSession(session, refresh_token="stored-refresh")
     await de_session.async_get_id_token()
-    de_session._expires_at = datetime.now(timezone.utc) + timedelta(seconds=10)
+    de_session._expires_at = datetime.now(UTC) + timedelta(seconds=10)
 
     await de_session.async_get_id_token()
 
@@ -332,9 +333,7 @@ async def test_refresh_missing_expires_in_falls_back_to_default():
 
 async def test_refresh_records_claim_names_and_the_id_tokens_own_expiry():
     """`expires_in` is the access token's; the `dhli` cookie is the ID token."""
-    expiry = int(
-        (datetime.now(timezone.utc) + timedelta(hours=8)).timestamp()
-    )
+    expiry = int((datetime.now(UTC) + timedelta(hours=8)).timestamp())
     token = _jwt("abc", post_number="12345", email="a@b.c", exp=expiry)
     session = _session()
     session.post = MagicMock(
@@ -345,9 +344,7 @@ async def test_refresh_records_claim_names_and_the_id_tokens_own_expiry():
     await de_session.async_get_id_token()
 
     assert de_session.id_token_claim_names == ["email", "exp", "post_number", "sub"]
-    assert de_session.id_token_expires_at == datetime.fromtimestamp(
-        expiry, timezone.utc
-    )
+    assert de_session.id_token_expires_at == datetime.fromtimestamp(expiry, UTC)
     assert de_session.last_refresh_at is not None
 
 
@@ -368,7 +365,9 @@ async def test_refresh_with_an_unparseable_exp_claim_reports_no_expiry():
     session = _session()
     session.post = MagicMock(
         return_value=_ctx(
-            _response(200, _token_body(id_token=_jwt("abc", exp="soon", post_number="1")))
+            _response(
+                200, _token_body(id_token=_jwt("abc", exp="soon", post_number="1"))
+            )
         )
     )
     de_session = DHLDeSession(session, refresh_token="stored-refresh")
@@ -417,9 +416,7 @@ async def test_a_rotated_refresh_token_survives_the_reauth_demand():
     session = _session()
     session.post = MagicMock(
         return_value=_ctx(
-            _response(
-                200, _token_body(id_token=_jwt("abc"), refresh_token="rotated")
-            )
+            _response(200, _token_body(id_token=_jwt("abc"), refresh_token="rotated"))
         )
     )
     de_session = DHLDeSession(session, refresh_token="stored-refresh")

@@ -1,4 +1,5 @@
 """Tests for the DHL refresh button."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 from custom_components.dhl.button import DHLRefreshButton

@@ -1,9 +1,10 @@
 """Tests for the API source's setup, reauth and options steps."""
+
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.const import CONF_API_KEY
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dhl.api.client import (
@@ -57,7 +58,9 @@ async def test_api_step_shows_the_key_form(hass):
 
 async def test_a_404_for_the_dummy_code_proves_the_key(hass):
     result = await _start(hass)
-    with patch(VALIDATE, AsyncMock(side_effect=DHLUnifiedNotFound("HTTP 404"))) as validate:
+    with patch(
+        VALIDATE, AsyncMock(side_effect=DHLUnifiedNotFound("HTTP 404"))
+    ) as validate:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {CONF_API_KEY: "  new-key  "}
         )
@@ -191,7 +194,11 @@ async def test_options_menu_matches_the_tracking_source(hass):
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
     assert result["type"] == "menu"
-    assert result["menu_options"] == ["incoming_parcels", "outgoing_parcels", "settings"]
+    assert result["menu_options"] == [
+        "incoming_parcels",
+        "outgoing_parcels",
+        "settings",
+    ]
 
 
 async def test_options_settings_keep_the_parcel_list(hass):
@@ -205,7 +212,10 @@ async def test_options_settings_keep_the_parcel_list(hass):
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {
-            "delivered": {CONF_DELIVERED_FILTER_TYPE: "days", CONF_DELIVERED_FILTER_AMOUNT: 14},
+            "delivered": {
+                CONF_DELIVERED_FILTER_TYPE: "days",
+                CONF_DELIVERED_FILTER_AMOUNT: 14,
+            },
             "history": {CONF_INCLUDE_HISTORY: True},
         },
     )

@@ -1,8 +1,9 @@
 """Mój DHL's public by-number lookup (mojdhl.pl): fetch + normalize."""
+
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
@@ -66,11 +67,11 @@ def _rejected(codes: list[str], body: Any) -> set[str]:
     if not isinstance(errors, dict):
         return set()
     return {
-        codes[int(key[len("number"):]) - 1]
+        codes[int(key[len("number") :]) - 1]
         for key in errors
         if key.startswith("number")
-        and key[len("number"):].isdigit()
-        and 0 < int(key[len("number"):]) <= len(codes)
+        and key[len("number") :].isdigit()
+        and 0 < int(key[len("number") :]) <= len(codes)
     }
 
 
@@ -112,11 +113,11 @@ def _utc(value: Any) -> str | None:
     if not isinstance(value, str) or not value:
         return None
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed.isoformat()
 
 

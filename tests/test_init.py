@@ -1,9 +1,10 @@
 """Tests for DHL setup and unload."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers import entity_registry as er
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dhl.const import (
@@ -178,7 +179,9 @@ async def test_tracking_setup_and_unload(hass):
 
     with patch(
         "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}),
+        AsyncMock(
+            return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -200,7 +203,9 @@ async def test_removing_a_tracking_entry_deletes_its_cache(hass, hass_storage):
 
     with patch(
         "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}),
+        AsyncMock(
+            return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}
+        ),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
@@ -214,7 +219,9 @@ async def test_tracking_options_update_refreshes_without_reload(hass):
     entry = _tracking_entry(["3SXYZ0000000001"])
     entry.add_to_hass(hass)
 
-    fetch = AsyncMock(return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")})
+    fetch = AsyncMock(
+        return_value={"3SXYZ0000000001": gateway_element(barcode="3SXYZ0000000001")}
+    )
     with patch("custom_components.dhl.tracking.coordinator.async_fetch_gateway", fetch):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()

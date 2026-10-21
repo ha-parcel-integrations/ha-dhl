@@ -7,10 +7,11 @@ empty until then. Timestamps are passed through exactly as DHL sends them:
 per the spec, one without an offset is local to the event's place, so it is
 never relabelled as UTC.
 """
+
 from __future__ import annotations
 
-import logging
 from datetime import datetime
+import logging
 
 from ..const import HISTORY_MAX_EVENTS, NEW_ISSUE_URL, ParcelStatus
 from ..tracking.parcels import parse_iso
@@ -134,8 +135,12 @@ def normalize_parcel_unified(
 ) -> dict:
     """Map one Unified API shipment (or a not-yet-found placeholder) to a parcel."""
     service = shipment.get("service")
-    status_obj = shipment.get("status") if isinstance(shipment.get("status"), dict) else {}
-    details = shipment.get("details") if isinstance(shipment.get("details"), dict) else {}
+    status_obj = (
+        shipment.get("status") if isinstance(shipment.get("status"), dict) else {}
+    )
+    details = (
+        shipment.get("details") if isinstance(shipment.get("details"), dict) else {}
+    )
     events = _events_newest_first(shipment.get("events") or [])
 
     status = _map_status(service, status_obj) if status_obj else ParcelStatus.UNKNOWN

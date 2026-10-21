@@ -11,6 +11,7 @@ file — re-exported here so ``from .client import DHLApiClient, DHLApiError,
 DHLAuthError`` keeps working. The top-level ``api.py`` is a compatibility
 shim onto this module for anything patching the pre-restructure import path.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -53,8 +54,8 @@ class DHLApiClient:
         session: aiohttp.ClientSession,
         *,
         country: str = DEFAULT_COUNTRY,
-        de_session: "DHLDeSession | None" = None,
-        pl_session: "DHLPlSession | None" = None,
+        de_session: DHLDeSession | None = None,
+        pl_session: DHLPlSession | None = None,
         pl_device_id: str | None = None,
     ) -> None:
         """Initialise the client for one hub's country."""
@@ -69,7 +70,7 @@ class DHLApiClient:
         """The Mój DHL session, for the coordinator to persist its rotated cookie jar."""
         return self._pl_session
 
-    def _require_de_session(self) -> "DHLDeSession":
+    def _require_de_session(self) -> DHLDeSession:
         if self._de_session is None:
             raise RuntimeError(
                 f"DHLApiClient built with country={self._country!r} but no de_session"
@@ -91,7 +92,9 @@ class DHLApiClient:
         """
         if self._country != "DE":
             if self._country == "PL" and self._pl_session and self._pl_device_id:
-                return await async_get_pl_incoming(self._session, self._pl_session, self._pl_device_id), False
+                return await async_get_pl_incoming(
+                    self._session, self._pl_session, self._pl_device_id
+                ), False
             raise RuntimeError(f"unsupported country {self._country!r}")
         de_session = self._require_de_session()
         envelope = await async_get_inbox_envelope(self._session, de_session)
@@ -165,7 +168,7 @@ class DHLApiClient:
         )
         enriched = list(elements)
         failed = 0
-        for (index, _original), result in zip(stubs, results):
+        for (index, _original), result in zip(stubs, results, strict=True):
             if isinstance(result, dict):
                 enriched[index] = result
             else:
@@ -189,7 +192,9 @@ class DHLApiClient:
             self._session, de_session, piece_code
         )
         sendungen = envelope.get("sendungen")
-        elements = select_active_elements(sendungen if isinstance(sendungen, list) else [])
+        elements = select_active_elements(
+            sendungen if isinstance(sendungen, list) else []
+        )
         element = find_element_by_id(elements, piece_code)
         if element is None or is_not_found(element):
             return None

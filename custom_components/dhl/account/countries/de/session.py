@@ -26,14 +26,15 @@ token lifecycle:
 Never hand the ID token out for any host other than ``www.dhl.de`` — that is
 the caller's responsibility (countries/de/__init__.py), not enforced here.
 """
+
 from __future__ import annotations
 
 import base64
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -89,7 +90,7 @@ def _warn_client_retirement_once(detail: str) -> None:
     worth a distinct, loud log line rather than blending into "reauth
     required".
     """
-    global _client_retirement_warned
+    global _client_retirement_warned  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _client_retirement_warned:
         return
     _client_retirement_warned = True
@@ -105,7 +106,7 @@ def _warn_client_retirement_once(detail: str) -> None:
 def _as_timestamp(value: Any) -> str | None:
     """Render a numeric claim as an ISO timestamp, or ``None`` if it is not one."""
     try:
-        return datetime.fromtimestamp(float(value), timezone.utc).isoformat()
+        return datetime.fromtimestamp(float(value), UTC).isoformat()
     except (TypeError, ValueError, OSError, OverflowError):
         return None
 
@@ -214,7 +215,7 @@ class DHLDeSession:
         """Whether the cached ID token is missing, or inside the refresh margin."""
         if self._id_token is None or self._expires_at is None:
             return True
-        return datetime.now(timezone.utc) >= self._expires_at - TOKEN_REFRESH_MARGIN
+        return datetime.now(UTC) >= self._expires_at - TOKEN_REFRESH_MARGIN
 
     def pop_refresh_token_changed(self) -> bool:
         """Return whether the refresh token rotated, and clear the flag."""
@@ -282,7 +283,9 @@ class DHLDeSession:
             "nonce": nonce,
             "prompt": "login",
         }
-        query = "&".join(f"{key}={quote(value, safe='')}" for key, value in params.items())
+        query = "&".join(
+            f"{key}={quote(value, safe='')}" for key, value in params.items()
+        )
         url = f"{endpoints['authorization_endpoint']}?{query}"
         return url, code_verifier, state
 
@@ -307,8 +310,7 @@ class DHLDeSession:
         refresh_token = payload.get("refresh_token")
         if not refresh_token:
             raise DHLDeSessionError(
-                "token response had no refresh_token — offline_access was "
-                "not granted"
+                "token response had no refresh_token — offline_access was not granted"
             )
         self.refresh_token = refresh_token
         return payload
@@ -369,9 +371,7 @@ class DHLDeSession:
                 f"refreshed ID token has no {DHL_DE_ACCOUNT_CLAIM} claim"
             )
 
-    async def _async_post_token(
-        self, url: str, body: dict[str, str]
-    ) -> dict[str, Any]:
+    async def _async_post_token(self, url: str, body: dict[str, str]) -> dict[str, Any]:
         """POST to the token endpoint; raises :class:`DHLDeAuthError` on rejection."""
         headers = {
             **DHL_DE_TOKEN_HEADERS,
@@ -385,8 +385,10 @@ class DHLDeSession:
                 payload = json.loads(text) if text else {}
             except ValueError:
                 payload = {}
-            if response.status == 200 and isinstance(payload, dict) and payload.get(
-                "access_token"
+            if (
+                response.status == 200
+                and isinstance(payload, dict)
+                and payload.get("access_token")
             ):
                 return payload
             error = payload.get("error") if isinstance(payload, dict) else None
@@ -417,8 +419,8 @@ class DHLDeSession:
             lifetime = timedelta(seconds=float(expires_in))
         except (TypeError, ValueError):
             lifetime = _EXPECTED_TOKEN_LIFETIME
-        self._expires_at = datetime.now(timezone.utc) + lifetime
-        self.last_refresh_at = datetime.now(timezone.utc)
+        self._expires_at = datetime.now(UTC) + lifetime
+        self.last_refresh_at = datetime.now(UTC)
         self._record_claims(id_token)
 
     def _record_claims(self, id_token: str) -> None:
@@ -439,9 +441,7 @@ class DHLDeSession:
             return
         self.id_token_claim_names = sorted(str(name) for name in claims)
         try:
-            self.id_token_expires_at = datetime.fromtimestamp(
-                float(claims["exp"]), timezone.utc
-            )
+            self.id_token_expires_at = datetime.fromtimestamp(float(claims["exp"]), UTC)
         except (KeyError, TypeError, ValueError, OSError, OverflowError):
             self.id_token_expires_at = None
         _LOGGER.debug(

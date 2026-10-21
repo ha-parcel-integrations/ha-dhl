@@ -1,4 +1,5 @@
 """Regression tests for DHL Parcel Polska's local mapping and inbox transport."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -17,42 +18,60 @@ def test_raw_code_is_the_primary_status_source():
     """`status` (the TT_*/SP_* code) wins even when a coarse-ladder value for
     a *different* state is also present — tracking.md's status-vocabulary
     section says the ladder is only a fallback for an unrecognised code."""
-    parcel = normalize_parcel_pl({
-        "shipmentNumber": "30413196282", "status": "TT_LK",
-        "menuTimelineLabel": {"status": "Route", "dateUtc": "2026-09-04T10:00:00Z"},
-    })
+    parcel = normalize_parcel_pl(
+        {
+            "shipmentNumber": "30413196282",
+            "status": "TT_LK",
+            "menuTimelineLabel": {"status": "Route", "dateUtc": "2026-09-04T10:00:00Z"},
+        }
+    )
     assert parcel["status"] is ParcelStatus.AT_PICKUP_POINT
     assert parcel["delivered"] is False
 
 
 def test_coarse_ladder_is_the_fallback_for_an_unrecognised_raw_code():
-    parcel = normalize_parcel_pl({
-        "shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
-        "menuTimelineLabel": {"status": "Delivery", "dateUtc": "2026-09-04T10:00:00Z"},
-    })
+    parcel = normalize_parcel_pl(
+        {
+            "shipmentNumber": "30413196282",
+            "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+            "menuTimelineLabel": {
+                "status": "Delivery",
+                "dateUtc": "2026-09-04T10:00:00Z",
+            },
+        }
+    )
     assert parcel["status"] is ParcelStatus.OUT_FOR_DELIVERY
     assert parcel["delivered"] is False
 
 
-@pytest.mark.parametrize(("timeline", "expected"), [
-    ("DeliveredToLocker", ParcelStatus.AT_PICKUP_POINT),
-    ("RetrievedFromPoint", ParcelStatus.DELIVERED),
-    ("Refusal", ParcelStatus.RETURNING),
-    ("WaitingForShipperDecision", ParcelStatus.PROBLEM),
-])
+@pytest.mark.parametrize(
+    ("timeline", "expected"),
+    [
+        ("DeliveredToLocker", ParcelStatus.AT_PICKUP_POINT),
+        ("RetrievedFromPoint", ParcelStatus.DELIVERED),
+        ("Refusal", ParcelStatus.RETURNING),
+        ("WaitingForShipperDecision", ParcelStatus.PROBLEM),
+    ],
+)
 def test_timeline_name_is_also_accepted_as_the_fallback(timeline, expected):
-    parcel = normalize_parcel_pl({
-        "shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
-        "menuTimelineLabel": {"status": timeline},
-    })
+    parcel = normalize_parcel_pl(
+        {
+            "shipmentNumber": "30413196282",
+            "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+            "menuTimelineLabel": {"status": timeline},
+        }
+    )
     assert parcel["status"] is expected
 
 
 def test_unrecognised_raw_code_and_ladder_value_fall_back_to_unknown():
-    parcel = normalize_parcel_pl({
-        "shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
-        "menuTimelineLabel": {"status": "SomeFutureLadderValue"},
-    })
+    parcel = normalize_parcel_pl(
+        {
+            "shipmentNumber": "30413196282",
+            "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+            "menuTimelineLabel": {"status": "SomeFutureLadderValue"},
+        }
+    )
     assert parcel["status"] is ParcelStatus.UNKNOWN
 
 
@@ -63,11 +82,15 @@ def test_raw_status_is_a_safe_fallback_with_no_timeline_at_all():
 
 
 def test_locker_wait_is_ready_for_pickup_not_delivered():
-    parcel = normalize_parcel_pl({
-        "shipmentNumber": "30413196282", "status": "TT_LK", "sender": "Sender",
-        "packageType": "Locker", "menuTimelineLabel": {
-            "status": "Route", "dateUtc": "2026-09-04T10:00:00Z"},
-    })
+    parcel = normalize_parcel_pl(
+        {
+            "shipmentNumber": "30413196282",
+            "status": "TT_LK",
+            "sender": "Sender",
+            "packageType": "Locker",
+            "menuTimelineLabel": {"status": "Route", "dateUtc": "2026-09-04T10:00:00Z"},
+        }
+    )
     assert parcel["status"] is ParcelStatus.AT_PICKUP_POINT
     assert parcel["delivered"] is False
     assert parcel["delivered_at"] is None
@@ -85,10 +108,12 @@ def _pl_session(*, incoming, observed=None, incoming_status=200, observed_status
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    session.post = MagicMock(side_effect=[
-        _ctx(incoming_status, incoming),
-        _ctx(observed_status, observed if observed is not None else []),
-    ])
+    session.post = MagicMock(
+        side_effect=[
+            _ctx(incoming_status, incoming),
+            _ctx(observed_status, observed if observed is not None else []),
+        ]
+    )
     pl_session = MagicMock(spec=DHLPlSession)
     pl_session.async_refresh = AsyncMock(return_value="a.b.c")
     return session, pl_session
@@ -97,7 +122,10 @@ def _pl_session(*, incoming, observed=None, incoming_status=200, observed_status
 async def test_async_get_incoming_merges_own_and_observed_deduplicating_by_number():
     session, pl_session = _pl_session(
         incoming={"shipments": [{"shipmentNumber": "1", "status": "TT_DOR"}]},
-        observed=[{"shipmentNumber": "1", "status": "TT_LK"}, {"shipmentNumber": "2", "status": "TT_LK"}],
+        observed=[
+            {"shipmentNumber": "1", "status": "TT_LK"},
+            {"shipmentNumber": "2", "status": "TT_LK"},
+        ],
     )
 
     elements = await async_get_incoming(session, pl_session, "device-1")
@@ -117,7 +145,9 @@ async def test_async_get_incoming_raises_dhl_auth_error_on_expired_list_session(
 
 async def test_async_get_incoming_raises_dhl_auth_error_on_expired_observed_session():
     session, pl_session = _pl_session(
-        incoming={"shipments": []}, observed=[], observed_status=403,
+        incoming={"shipments": []},
+        observed=[],
+        observed_status=403,
     )
 
     with pytest.raises(DHLAuthError):
@@ -133,19 +163,30 @@ async def test_async_get_incoming_raises_dhl_api_error_on_other_list_failure():
 
 def test_raw_carries_the_full_list_item():
     item = {
-        "shipmentNumber": "30413196282", "status": "TT_LK", "sender": "Sender",
-        "packageType": "Locker", "shipmentPin": "123456",
-        "menuTimelineLabel": {"status": "DeliveredToLocker", "dateUtc": "2026-09-04T10:00:00Z"},
+        "shipmentNumber": "30413196282",
+        "status": "TT_LK",
+        "sender": "Sender",
+        "packageType": "Locker",
+        "shipmentPin": "123456",
+        "menuTimelineLabel": {
+            "status": "DeliveredToLocker",
+            "dateUtc": "2026-09-04T10:00:00Z",
+        },
     }
     assert normalize_parcel_pl(item)["raw"] == item
 
 
 def test_unrecognised_raw_code_warns_once(caplog):
-    item = {"shipmentNumber": "30413196282", "status": "TT_NEW_CODE_NOT_YET_MAPPED",
-            "menuTimelineLabel": {"status": "Delivery"}}
+    item = {
+        "shipmentNumber": "30413196282",
+        "status": "TT_NEW_CODE_NOT_YET_MAPPED",
+        "menuTimelineLabel": {"status": "Delivery"},
+    }
     normalize_parcel_pl(item)
     normalize_parcel_pl(item)
-    warnings = [r for r in caplog.records if "TT_NEW_CODE_NOT_YET_MAPPED" in r.getMessage()]
+    warnings = [
+        r for r in caplog.records if "TT_NEW_CODE_NOT_YET_MAPPED" in r.getMessage()
+    ]
     assert len(warnings) == 1
     assert "out_for_delivery" in warnings[0].getMessage()
 

@@ -6,7 +6,8 @@ across a future second country: ``parse_iso``, ``sort_parcels_by_ts``,
 ``apply_delivered_filter``, and that ``normalize_parcel`` dispatches to the
 right country and publishes exactly the canonical key set.
 """
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -26,8 +27,7 @@ from custom_components.dhl.const import (
     KNOWN_CAPABILITIES,
     ParcelStatus,
 )
-
-from ..payloads import active_sample, delivered_sample, element
+from tests.payloads import active_sample, delivered_sample, element
 
 # ---------------------------------------------------------------------------
 # timestamp helper
@@ -37,7 +37,7 @@ from ..payloads import active_sample, delivered_sample, element
 def test_parse_iso_handles_z_naive_and_garbage():
     assert parse_iso("2026-04-29T13:12:42Z").tzinfo is not None
     # A naive value is assumed UTC so mixed lists still sort.
-    assert parse_iso("2026-04-29T13:12:42").tzinfo == timezone.utc
+    assert parse_iso("2026-04-29T13:12:42").tzinfo == UTC
     assert parse_iso("not-a-date") is None
     assert parse_iso(None) is None
 
@@ -73,7 +73,9 @@ def test_normalize_publishes_exactly_the_canonical_keys():
 
 
 def test_normalize_publishes_exactly_the_canonical_keys_for_pl():
-    parcel = normalize_parcel({"shipmentNumber": "30413196282", "status": "TT_LK"}, country="PL")
+    parcel = normalize_parcel(
+        {"shipmentNumber": "30413196282", "status": "TT_LK"}, country="PL"
+    )
     assert list(parcel) == CANONICAL_KEYS
     assert parcel["pickup"] is True
 
@@ -94,7 +96,10 @@ def test_is_outgoing_dispatches_to_de():
 
 def test_sender_and_receiver_names_are_html_unescaped():
     incoming = element(
-        "X", fortschritt=3, sendungsname="S &amp; T Logistik", sendungsrichtung="ANKOMMEND"
+        "X",
+        fortschritt=3,
+        sendungsname="S &amp; T Logistik",
+        sendungsrichtung="ANKOMMEND",
     )
     outgoing = element(
         "X", fortschritt=3, sendungsname="Jane &amp; Co", sendungsrichtung="AUSGEHEND"
@@ -121,7 +126,10 @@ def _at_packstation(**overrides):
         "ist_zugestellt": False,
         "zustellung": PACKSTATION_ZUSTELLUNG,
         "events": [
-            {"datum": "2026-09-16T10:26:44+02:00", "status": "Die Sendung befindet sich auf dem Weg zur Packstation."},
+            {
+                "datum": "2026-09-16T10:26:44+02:00",
+                "status": "Die Sendung befindet sich auf dem Weg zur Packstation.",
+            },
             {"datum": "2026-09-16T15:05:08+02:00", "status": PACKSTATION_EVENT},
         ],
     }
@@ -138,7 +146,10 @@ def test_packstation_arrival_is_at_pickup_point_with_the_station_named():
 
 def test_a_smart_packstation_is_also_ready_for_pickup():
     """Screen-less stations report PACKAGE_STATION_SMART (issue #7)."""
-    zustellung = {"packageStationType": "PACKAGE_STATION_SMART", "abholcodeAvailable": True}
+    zustellung = {
+        "packageStationType": "PACKAGE_STATION_SMART",
+        "abholcodeAvailable": True,
+    }
     parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["pickup"] is True
@@ -194,7 +205,9 @@ def test_capabilities_match_what_normalize_parcel_actually_returns():
     """Every declared account capability must come true somewhere in a sample."""
     delivered = normalize_parcel(delivered_sample(), country="DE")
     active = normalize_parcel(active_sample(), country="DE")
-    with_history = normalize_parcel(delivered_sample(), country="DE", include_history=True)
+    with_history = normalize_parcel(
+        delivered_sample(), country="DE", include_history=True
+    )
     CAPABILITIES = CAPABILITIES_BY_VARIANT["Account"]  # noqa: N806
 
     if "weight" in CAPABILITIES:
@@ -257,7 +270,7 @@ def _entry(filter_type: str, amount: int) -> MockConfigEntry:
 
 
 def _delivered_pair() -> list[dict]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [
         {"barcode": "RECENT", "delivered_at": (now - timedelta(days=1)).isoformat()},
         {"barcode": "OLD", "delivered_at": (now - timedelta(days=30)).isoformat()},

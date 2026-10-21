@@ -9,12 +9,13 @@ Needs its own nested package (rather than a flat ``countries/de.py``) because
 it also needs an OIDC token-lifecycle module with no simpler-country
 equivalent — see :mod:`.session`.
 """
+
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import html
 import logging
 import re
-from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -51,7 +52,9 @@ _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=DHL_DE_REQUEST_TIMEOUT_SECONDS)
 _unexpected_body_logged = False
 
 
-def _warn_unexpected_body_once(status: int, content_type: str | None, text: str) -> None:
+def _warn_unexpected_body_once(
+    status: int, content_type: str | None, text: str
+) -> None:
     """One-shot: a 200 whose body isn't a JSON object at all.
 
     Distinct from the payload-shape WARNINGs in this module (those fire on a
@@ -60,7 +63,7 @@ def _warn_unexpected_body_once(status: int, content_type: str | None, text: str)
     page rather than a shape change. Logs enough of the raw response to tell
     the two apart without needing a second round trip.
     """
-    global _unexpected_body_logged
+    global _unexpected_body_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _unexpected_body_logged:
         return
     _unexpected_body_logged = True
@@ -99,7 +102,7 @@ async def _async_do_request(
             try:
                 text = await response.text()
                 content_type = response.content_type
-            except Exception:
+            except Exception:  # noqa: BLE001 - diagnostics must never break the request
                 text, content_type = repr(body), None
             _warn_unexpected_body_once(response.status, content_type, text)
         return body, response.status
@@ -206,7 +209,7 @@ def select_active_elements(sendungen: list[Any]) -> list[dict]:
         if isinstance(value, str) and value.upper() == DHL_DE_ARCHIVED_MARKER:
             continue
         survivors.append(element)
-    return survivors if survivors else elements
+    return survivors or elements
 
 
 def find_element_by_id(elements: list[dict], piece_code: str) -> dict | None:
@@ -293,7 +296,7 @@ def _warn_unmapped_fortschritt(value: int, maximal: int) -> None:
 
 
 def _warn_unexpected_maximal_fortschritt(value: int) -> None:
-    global _maximal_fortschritt_logged
+    global _maximal_fortschritt_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _maximal_fortschritt_logged:
         return
     _maximal_fortschritt_logged = True
@@ -314,10 +317,11 @@ def map_parcel_status_de(fortschritt: Any, maximal_fortschritt: Any) -> ParcelSt
     """
     try:
         maximal = int(maximal_fortschritt)
-        if maximal <= 0:
-            raise ValueError
     except (TypeError, ValueError):
         maximal = 5
+    else:
+        if maximal <= 0:
+            maximal = 5
     if maximal != 5:
         _warn_unexpected_maximal_fortschritt(maximal)
 
@@ -385,7 +389,10 @@ _sendungsrichtung_values_logged: set[str] = set()
 
 def _warn_sendungsrichtung_value(value: str) -> None:
     """Log a `sendungsrichtung` value outside the confirmed vocabulary, once each."""
-    if value in _KNOWN_SENDUNGSRICHTUNG_VALUES or value in _sendungsrichtung_values_logged:
+    if (
+        value in _KNOWN_SENDUNGSRICHTUNG_VALUES
+        or value in _sendungsrichtung_values_logged
+    ):
         return
     _sendungsrichtung_values_logged.add(value)
     _LOGGER.warning(
@@ -518,7 +525,7 @@ def _warn_outgoing_status_unconfirmed_once() -> None:
     shipments — reporting it for an outgoing one would be a guess, so
     `status` stays UNKNOWN instead.
     """
-    global _outgoing_status_unconfirmed_logged
+    global _outgoing_status_unconfirmed_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _outgoing_status_unconfirmed_logged:
         return
     _outgoing_status_unconfirmed_logged = True
@@ -562,7 +569,7 @@ def _warn_delivered_conflict(barcode: str | None) -> None:
 
 
 def _warn_raw_status_kurz_status_once(has_status: bool) -> None:
-    global _raw_status_kurz_status_logged
+    global _raw_status_kurz_status_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _raw_status_kurz_status_logged:
         return
     _raw_status_kurz_status_logged = True
@@ -576,7 +583,7 @@ def _warn_raw_status_kurz_status_once(has_status: bool) -> None:
 
 
 def _warn_delivery_window_shape_once(keys_present: list[str]) -> None:
-    global _delivery_window_shape_logged
+    global _delivery_window_shape_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _delivery_window_shape_logged:
         return
     _delivery_window_shape_logged = True
@@ -589,7 +596,7 @@ def _warn_delivery_window_shape_once(keys_present: list[str]) -> None:
 
 
 def _warn_timestamp_parse_failed_once(value: Any) -> None:
-    global _timestamp_parse_failed_logged
+    global _timestamp_parse_failed_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
     if _timestamp_parse_failed_logged:
         return
     _timestamp_parse_failed_logged = True
@@ -619,7 +626,7 @@ def _parse_de_timestamp(value: Any) -> str | None:
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=_BERLIN)
-    return parsed.astimezone(timezone.utc).isoformat()
+    return parsed.astimezone(UTC).isoformat()
 
 
 def _build_history_de(
@@ -758,7 +765,9 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
 
     zustellung = details.get("zustellung")
     zustellung = zustellung if isinstance(zustellung, dict) else {}
-    planned_from, planned_to = (None, None) if delivered else _delivery_window(zustellung)
+    planned_from, planned_to = (
+        (None, None) if delivered else _delivery_window(zustellung)
+    )
 
     pickup_point = None
     if (
@@ -815,8 +824,8 @@ __all__ = [
     "find_element_by_id",
     "is_not_found",
     "is_outgoing_element",
-    "needs_enrichment",
     "map_parcel_status_de",
+    "needs_enrichment",
     "normalize_parcel_de",
     "select_active_elements",
 ]

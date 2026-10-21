@@ -1,4 +1,5 @@
 """Tests for api/parcels.py: the statusCode baseline and field mapping."""
+
 import logging
 
 import pytest
@@ -90,12 +91,16 @@ def test_delivered_at_is_the_newest_delivered_event():
         event("2026-09-28T12:00:00+02:00", "delivered", "DELIVERED"),
         event("2026-09-28T08:00:00+02:00", "transit", "OUT FOR DELIVERY"),
     ]
-    parcel = _normalize(shipment(status_code="delivered", status="DELIVERED", events=events))
+    parcel = _normalize(
+        shipment(status_code="delivered", status="DELIVERED", events=events)
+    )
     assert parcel["delivered_at"] == "2026-09-28T12:00:00+02:00"
 
 
 def test_delivered_at_falls_back_to_the_status_timestamp():
-    parcel = _normalize(shipment(status_code="delivered", status="DELIVERED", events=[]))
+    parcel = _normalize(
+        shipment(status_code="delivered", status="DELIVERED", events=[])
+    )
     assert parcel["delivered_at"] == "2026-09-28T10:00:00"
 
 
@@ -161,7 +166,10 @@ def test_weight_in_an_unknown_unit_is_left_empty_and_warns_once(caplog):
     assert len([r for r in caplog.records if "stone" in r.getMessage()]) == 1
 
 
-@pytest.mark.parametrize("weight", [None, "2 kg", {"value": "2", "unitText": "kg"}, {"value": True, "unitText": "kg"}])
+@pytest.mark.parametrize(
+    "weight",
+    [None, "2 kg", {"value": "2", "unitText": "kg"}, {"value": True, "unitText": "kg"}],
+)
 def test_malformed_weight_is_none(weight):
     raw = shipment()
     raw["details"]["weight"] = weight
@@ -173,9 +181,13 @@ def test_history_is_newest_first_and_capped():
         event(f"2026-09-{day:02d}T10:00:00+02:00", "transit", f"STEP {day}")
         for day in range(1, 26)
     ]
-    events.append({"timestamp": "garbage", "statusCode": "transit", "status": "UNDATED"})
+    events.append(
+        {"timestamp": "garbage", "statusCode": "transit", "status": "UNDATED"}
+    )
     events.append("not an event")
-    parcel = _normalize(shipment(events=list(reversed(events[:25])) + events[25:]), include_history=True)
+    parcel = _normalize(
+        shipment(events=list(reversed(events[:25])) + events[25:]), include_history=True
+    )
 
     history = parcel["history"]
     assert len(history) == HISTORY_MAX_EVENTS
@@ -213,7 +225,9 @@ def test_fields_the_api_does_not_confirm_stay_none():
 
 def test_api_capabilities_match_what_the_normalizer_returns():
     capabilities = CAPABILITIES_BY_VARIANT["API Tracking"]
-    parcel = _normalize(shipment(estimatedTimeOfDelivery="2026-09-29T12:00:00"), include_history=True)
+    parcel = _normalize(
+        shipment(estimatedTimeOfDelivery="2026-09-29T12:00:00"), include_history=True
+    )
     assert ("weight" in capabilities) == (parcel["weight"] is not None)
     assert ("delivery_window" in capabilities) == (parcel["planned_from"] is not None)
     assert ("history" in capabilities) == (parcel["history"] is not None)
@@ -231,7 +245,9 @@ def test_pick_shipment_falls_back_to_the_first_and_warns_once(caplog):
         picked = pick_shipment(body(shipment("ONE"), shipment("TWO")), "THREE")
         pick_shipment(body(shipment("ONE"), shipment("TWO")), "THREE")
     assert picked["id"] == "ONE"
-    assert len([r for r in caplog.records if "shipments for one" in r.getMessage()]) == 1
+    assert (
+        len([r for r in caplog.records if "shipments for one" in r.getMessage()]) == 1
+    )
 
 
 def test_pick_shipment_empty():
