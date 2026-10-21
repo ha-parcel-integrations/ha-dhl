@@ -18,11 +18,10 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DHLConfigEntry
+from . import DHLAnyCoordinator, DHLConfigEntry
+from .account.parcels import parse_iso
 from .const import DOMAIN, ParcelStatus
-from .coordinator import DHLCoordinator
 from .device import attribution, build_device_info
-from .parcels import parse_iso
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,7 +87,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class DHLIncomingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLIncomingParcelsSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Summary sensor: count of active (not-yet-delivered) tracked parcels.
 
     Spawns a per-parcel sensor for each new barcode and removes stale ones
@@ -103,7 +102,7 @@ class DHLIncomingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
 
     def __init__(
         self,
-        coordinator: DHLCoordinator,
+        coordinator: DHLAnyCoordinator,
         entry: ConfigEntry,
         async_add_entities: AddEntitiesCallback,
         known_barcodes: set[str] | None = None,
@@ -153,7 +152,7 @@ class DHLIncomingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         super()._handle_coordinator_update()
 
 
-class DHLParcelSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLParcelSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Per-parcel sensor reporting the status of one tracked DHL parcel."""
 
     _attr_has_entity_name = True
@@ -161,7 +160,7 @@ class DHLParcelSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
     _unrecorded_attributes = frozenset({"raw", "history"})
 
     def __init__(
-        self, coordinator: DHLCoordinator, entry: ConfigEntry, barcode: str
+        self, coordinator: DHLAnyCoordinator, entry: ConfigEntry, barcode: str
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -191,14 +190,14 @@ class DHLParcelSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         return dict(parcel) if parcel else {}
 
 
-class DHLNextDeliverySensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLNextDeliverySensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Earliest expected delivery datetime across all active parcels."""
 
     _attr_has_entity_name = True
     _attr_translation_key = "next_delivery"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_next_delivery"
@@ -238,7 +237,7 @@ class DHLNextDeliverySensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         }
 
 
-class DHLDeliveredParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLDeliveredParcelsSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Recently delivered tracked DHL parcels."""
 
     _attr_has_entity_name = True
@@ -246,7 +245,7 @@ class DHLDeliveredParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity)
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unrecorded_attributes = frozenset({"parcels"})
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_delivered_parcels"
@@ -264,7 +263,7 @@ class DHLDeliveredParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity)
         return {"parcels": self.coordinator.delivered}
 
 
-class DHLAwaitingPickupSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLAwaitingPickupSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Summary sensor: count of parcels ready to collect at a Packstation."""
 
     _attr_has_entity_name = True
@@ -272,7 +271,7 @@ class DHLAwaitingPickupSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unrecorded_attributes = frozenset({"parcels"})
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_awaiting_pickup"
@@ -297,7 +296,7 @@ class DHLAwaitingPickupSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         return {"parcels": self._parcels()}
 
 
-class DHLOutgoingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLOutgoingParcelsSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Summary sensor: count of active outgoing DHL parcels.
 
     No per-parcel sensors — same single-entity-with-a-list shape as
@@ -309,7 +308,7 @@ class DHLOutgoingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unrecorded_attributes = frozenset({"parcels"})
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_outgoing_parcels"
@@ -327,7 +326,7 @@ class DHLOutgoingParcelsSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
         return {"parcels": self.coordinator.outgoing or []}
 
 
-class DHLOutgoingDeliveredSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLOutgoingDeliveredSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Summary sensor: count of delivered outgoing DHL parcels."""
 
     _attr_has_entity_name = True
@@ -335,7 +334,7 @@ class DHLOutgoingDeliveredSensor(CoordinatorEntity[DHLCoordinator], SensorEntity
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unrecorded_attributes = frozenset({"parcels"})
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_outgoing_delivered_parcels"
@@ -353,7 +352,7 @@ class DHLOutgoingDeliveredSensor(CoordinatorEntity[DHLCoordinator], SensorEntity
         return {"parcels": self.coordinator.delivered_outgoing or []}
 
 
-class DHLLastUpdateSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
+class DHLLastUpdateSensor(CoordinatorEntity[DHLAnyCoordinator], SensorEntity):
     """Diagnostic sensor reporting when DHL was last polled successfully."""
 
     _attr_has_entity_name = True
@@ -361,7 +360,7 @@ class DHLLastUpdateSensor(CoordinatorEntity[DHLCoordinator], SensorEntity):
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_last_update"

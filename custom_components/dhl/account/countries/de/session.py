@@ -342,6 +342,10 @@ class DHLDeSession:
 
     async def _async_refresh(self) -> None:
         """``grant_type=refresh_token`` with an empty Basic-auth secret."""
+        if self.refresh_token is None:
+            raise DHLDeSessionError(
+                "no refresh_token to refresh with — the config entry is not set up"
+            )
         endpoints = await self._async_discover()
         body = {
             "redirect_uri": DHL_DE_REDIRECT_URI,
@@ -416,7 +420,7 @@ class DHLDeSession:
         self._id_token = id_token
         expires_in = payload.get("expires_in")
         try:
-            lifetime = timedelta(seconds=float(expires_in))
+            lifetime = timedelta(seconds=float(expires_in))  # type: ignore[arg-type]  # None raises TypeError, handled below
         except (TypeError, ValueError):
             lifetime = _EXPECTED_TOKEN_LIFETIME
         self._expires_at = datetime.now(UTC) + lifetime

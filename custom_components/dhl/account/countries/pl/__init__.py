@@ -160,11 +160,8 @@ def map_pl_status(raw_status: str | None, ladder_status: str | None) -> ParcelSt
 
 def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
     """Map one Mój DHL list item to the suite's canonical parcel shape."""
-    timeline = (
-        raw.get("menuTimelineLabel")
-        if isinstance(raw.get("menuTimelineLabel"), dict)
-        else {}
-    )
+    timeline_raw = raw.get("menuTimelineLabel")
+    timeline: dict = timeline_raw if isinstance(timeline_raw, dict) else {}
     raw_status = raw.get("status") if isinstance(raw.get("status"), str) else None
     ladder_status = (
         timeline.get("status") if isinstance(timeline.get("status"), str) else None

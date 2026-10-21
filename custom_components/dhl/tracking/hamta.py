@@ -24,7 +24,7 @@ _HOME_DELIVERY_METHODS = frozenset(
     {"HOME_DELIVERY", "RETURN_HOME_DELIVERY", "RETURN_SERVICEPOINT"}
 )
 
-_warned_events: set[tuple[int, int]] = set()
+_warned_events: set[tuple[int | None, int | None]] = set()
 
 
 def hamta_shaped(code: str) -> bool:

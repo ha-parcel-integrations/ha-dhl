@@ -245,7 +245,7 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
         exchanged tokens; the caller reads them straight back off it.
         """
         code, state = _parse_redirect_url(redirect_url)
-        if not code or state != self._state:
+        if not code or state != self._state or self._code_verifier is None:
             return "invalid_redirect"
         try:
             await self._get_oidc_session().async_exchange_code(
@@ -500,13 +500,16 @@ class DHLConfigFlow(ConfigFlow, domain=DOMAIN):
             if error is not None:
                 errors["base"] = error
             else:
+                country = self._country
+                if country is None:
+                    return self.async_abort(reason="unsupported_country")
                 session = self._get_oidc_session()
                 subject = decode_id_token_subject(session.id_token or "") or "unknown"
-                unique_id = f"{self._country}:{subject}"
+                unique_id = f"{country}:{subject}"
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=_entry_title(self._country, subject),
+                    title=_entry_title(country, subject),
                     data={
                         CONF_COUNTRY: self._country,
                         CONF_REFRESH_TOKEN: session.refresh_token,

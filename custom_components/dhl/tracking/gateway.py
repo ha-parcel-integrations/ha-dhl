@@ -192,11 +192,12 @@ def _warn_unmapped_category(category: str) -> None:
 
 
 def _map_event(event: dict) -> ParcelStatus:
-    status = _STATUS_MAP.get(event.get("status"))
+    raw_status = event.get("status")
+    status = _STATUS_MAP.get(raw_status) if isinstance(raw_status, str) else None
     if status is not None:
         return status
     category = event.get("category")
-    status = _CATEGORY_MAP.get(category)
+    status = _CATEGORY_MAP.get(category) if isinstance(category, str) else None
     if status is None:
         _warn_unmapped_category(str(category))
         return ParcelStatus.UNKNOWN

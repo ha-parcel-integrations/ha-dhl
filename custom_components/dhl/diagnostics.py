@@ -23,6 +23,7 @@ from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
 
 from . import DHLConfigEntry
+from .api.coordinator import DHLUnifiedCoordinator
 from .const import (
     CONF_PARCELS,
     CONF_SOURCE,
@@ -31,6 +32,7 @@ from .const import (
     SOURCE_API,
     SOURCE_TRACKING,
 )
+from .tracking.coordinator import DHLTrackingCoordinator
 
 # Redact values, keep every key — a missing key would be indistinguishable
 # from a key the API never sent, which is exactly the ambiguity this export
@@ -131,7 +133,7 @@ async def async_get_config_entry_diagnostics(
     de_session = coordinator.de_session
     is_tracking = entry.data.get(CONF_SOURCE) == SOURCE_TRACKING
     tracking_info = None
-    if is_tracking:
+    if is_tracking and isinstance(coordinator, DHLTrackingCoordinator):
         tracking_info = {
             "express_budget_available": coordinator.express_budget_available,
             "express_consecutive_failures": coordinator.express_consecutive_failures,
@@ -140,7 +142,9 @@ async def async_get_config_entry_diagnostics(
         }
     api_info = None
     to_redact = TO_REDACT
-    if entry.data.get(CONF_SOURCE) == SOURCE_API:
+    if entry.data.get(CONF_SOURCE) == SOURCE_API and isinstance(
+        coordinator, DHLUnifiedCoordinator
+    ):
         to_redact = TO_REDACT_API
         api_info = {
             "delivered_codes": len(coordinator.delivered_codes),

@@ -135,12 +135,10 @@ def normalize_parcel_unified(
 ) -> dict:
     """Map one Unified API shipment (or a not-yet-found placeholder) to a parcel."""
     service = shipment.get("service")
-    status_obj = (
-        shipment.get("status") if isinstance(shipment.get("status"), dict) else {}
-    )
-    details = (
-        shipment.get("details") if isinstance(shipment.get("details"), dict) else {}
-    )
+    status_raw = shipment.get("status")
+    status_obj: dict = status_raw if isinstance(status_raw, dict) else {}
+    details_raw = shipment.get("details")
+    details: dict = details_raw if isinstance(details_raw, dict) else {}
     events = _events_newest_first(shipment.get("events") or [])
 
     status = _map_status(service, status_obj) if status_obj else ParcelStatus.UNKNOWN

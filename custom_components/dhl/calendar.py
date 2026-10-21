@@ -11,10 +11,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from . import DHLConfigEntry
-from .coordinator import DHLCoordinator
+from . import DHLAnyCoordinator, DHLConfigEntry
+from .account.parcels import parse_iso
 from .device import attribution, build_device_info
-from .parcels import parse_iso
 
 PARALLEL_UPDATES = 0
 
@@ -30,7 +29,7 @@ async def async_setup_entry(
     async_add_entities([DHLDeliveriesCalendar(entry.runtime_data.coordinator, entry)])
 
 
-class DHLDeliveriesCalendar(CoordinatorEntity[DHLCoordinator], CalendarEntity):
+class DHLDeliveriesCalendar(CoordinatorEntity[DHLAnyCoordinator], CalendarEntity):
     """A read-only calendar of expected DHL deliveries.
 
     Each active tracked parcel with a known delivery moment becomes an event.
@@ -41,7 +40,7 @@ class DHLDeliveriesCalendar(CoordinatorEntity[DHLCoordinator], CalendarEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "deliveries"
 
-    def __init__(self, coordinator: DHLCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: DHLAnyCoordinator, entry: ConfigEntry) -> None:
         """Initialize the calendar."""
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_deliveries"

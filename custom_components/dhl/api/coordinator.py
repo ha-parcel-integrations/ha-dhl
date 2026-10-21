@@ -66,6 +66,8 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
     platforms and diagnostics need no source-specific branch.
     """
 
+    config_entry: ConfigEntry
+
     def __init__(
         self, hass: HomeAssistant, client: DHLUnifiedClient, entry: ConfigEntry
     ) -> None:

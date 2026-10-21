@@ -194,6 +194,7 @@ def normalize_parcel_iberia(raw: dict, *, include_history: bool = False) -> dict
     events = [e for e in raw.get("Tracking") or [] if isinstance(e, dict)]
     mapped = [(event, _map_event(event)) for event in events]
 
+    status: ParcelStatus
     newest = next(((e, s) for e, s in mapped if s is not ParcelStatus.UNKNOWN), None)
     if newest is not None:
         last_event, status = newest

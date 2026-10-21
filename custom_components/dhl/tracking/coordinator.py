@@ -176,6 +176,8 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
     coordinators interchangeably without a source-specific branch.
     """
 
+    config_entry: ConfigEntry
+
     def __init__(self, hass: HomeAssistant, client, entry: ConfigEntry) -> None:
         """Initialise the coordinator."""
         super().__init__(
@@ -428,7 +430,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             return (
                 0 if never_attempted else 1,
                 -overdue,
-                ranking.get(status, unknown_rank),
+                ranking.get(status, unknown_rank)
+                if status is not None
+                else unknown_rank,
                 last_fetch,
             )
 

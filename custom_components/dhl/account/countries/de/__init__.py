@@ -745,7 +745,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     # if they ever disagree.
     delivered_flag = details.get("istZugestellt")
     try:
-        derived_delivered = int(fortschritt) >= int(maximal_fortschritt or 5)
+        derived_delivered = int(fortschritt) >= int(maximal_fortschritt or 5)  # type: ignore[arg-type]  # None raises TypeError, handled below
     except (TypeError, ValueError):
         derived_delivered = status is ParcelStatus.DELIVERED
     if isinstance(delivered_flag, bool):

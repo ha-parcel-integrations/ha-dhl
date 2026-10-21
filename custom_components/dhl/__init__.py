@@ -38,12 +38,15 @@ from .tracking.coordinator import DHLTrackingCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+type DHLAnyCoordinator = DHLCoordinator | DHLTrackingCoordinator | DHLUnifiedCoordinator
+
+
 @dataclass
 class DHLData:
     """Runtime data attached to a DHL config entry."""
 
     client: object
-    coordinator: DHLCoordinator | DHLTrackingCoordinator | DHLUnifiedCoordinator
+    coordinator: DHLAnyCoordinator
     de_session: DHLDeSession | None
     pl_session: DHLPlSession | None
     session: aiohttp.ClientSession
@@ -62,12 +65,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     source = entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT)
     if source == SOURCE_API:
         session = async_get_clientsession(hass)
-        client = DHLUnifiedClient(session, entry.data[CONF_API_KEY])
-        coordinator = DHLUnifiedCoordinator(hass, client, entry)
-        await coordinator.async_config_entry_first_refresh()
+        unified_client = DHLUnifiedClient(session, entry.data[CONF_API_KEY])
+        unified_coordinator = DHLUnifiedCoordinator(hass, unified_client, entry)
+        await unified_coordinator.async_config_entry_first_refresh()
         entry.runtime_data = DHLData(
-            client=client,
-            coordinator=coordinator,
+            client=unified_client,
+            coordinator=unified_coordinator,
             de_session=None,
             pl_session=None,
             session=session,
@@ -84,17 +87,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         # The tracking source needs no dedicated cookie jar — HA's shared
         # session is fine.
         session = async_get_clientsession(hass)
-        client = session
-        coordinator = DHLTrackingCoordinator(hass, client, entry)
+        tracking_coordinator = DHLTrackingCoordinator(hass, session, entry)
         de_session = None
         pl_session = None
 
-        await coordinator.async_load_cache()
-        await coordinator.async_config_entry_first_refresh()
+        await tracking_coordinator.async_load_cache()
+        await tracking_coordinator.async_config_entry_first_refresh()
 
         entry.runtime_data = DHLData(
-            client=client,
-            coordinator=coordinator,
+            client=session,
+            coordinator=tracking_coordinator,
             de_session=de_session,
             pl_session=pl_session,
             session=session,
