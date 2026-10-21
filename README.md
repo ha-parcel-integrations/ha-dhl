@@ -105,13 +105,21 @@ account, no login, no postcode.
 
 1. In HACS, choose the three-dot menu → **Custom repositories**.
 2. Add `https://github.com/ha-parcel-integrations/ha-dhl` as an **Integration**.
-3. Install **DHL** and restart Home Assistant.
+3. Install **DHL** and restart Home Assistant if HACS asks you to.
+
+Or click the button below to open it directly in HACS:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ha-parcel-integrations&repository=ha-dhl&category=integration)
 
 ### Manual
 
 Copy `custom_components/dhl` into your `config/custom_components/` folder and restart Home Assistant.
 
 ## Configuration
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=dhl)
+
+Or set it up by hand:
 
 1. Go to **Settings → Devices & Services → Add Integration → DHL**.
 2. Choose **Account**, **Tracking codes** or **API Tracking**.
