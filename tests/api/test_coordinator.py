@@ -1,7 +1,7 @@
 """Tests for api/coordinator.py: spacing, reauth, 429 backoff, retention."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -289,6 +289,27 @@ async def test_something_in_flight_keeps_polling(hass):
     await coordinator._async_update_data()
 
     assert coordinator.update_interval is not None
+
+
+async def test_failed_poll_drops_the_overnight_interval(hass):
+    entry = _entry([CODE_A])
+    coordinator, _ = _coordinator(
+        hass, entry, {CODE_A: [body(shipment(CODE_A)), DHLUnifiedError("down")]}
+    )
+    await coordinator._async_update_data()
+    coordinator.update_interval = timedelta(hours=5, minutes=40)
+
+    noon = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    with (
+        patch(
+            "custom_components.dhl.account.coordinator.dt_util.now",
+            return_value=noon,
+        ),
+        pytest.raises(UpdateFailed),
+    ):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval <= timedelta(minutes=36)
 
 
 async def test_no_codes_means_no_requests(hass):

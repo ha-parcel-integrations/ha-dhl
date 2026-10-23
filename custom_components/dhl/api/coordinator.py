@@ -163,6 +163,17 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         return delivered_at < cutoff
 
     async def _async_update_data(self) -> list[dict]:
+        try:
+            return await self._async_poll()
+        except Exception:
+            # The base class keeps the last interval after a failure, which
+            # after an overnight poll is the whole quiet window.
+            self.update_interval = compute_poll_interval(
+                self.config_entry.entry_id, (self.data or []) + self.outgoing
+            )
+            raise
+
+    async def _async_poll(self) -> list[dict]:
         codes = self._tracked_codes()
         tracked = set(codes)
         self._raw_cache = {c: r for c, r in self._raw_cache.items() if c in tracked}

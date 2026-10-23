@@ -298,6 +298,24 @@ def _at(hour: int, minute: int = 0):
     return datetime(2026, 1, 15, hour, minute, tzinfo=UTC)
 
 
+async def test_failed_poll_after_the_quiet_window_drops_the_overnight_interval(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client([])
+    client.async_get_incoming.side_effect = DHLApiError("network unreachable")
+    coordinator = _coordinator(hass, entry, client)
+    coordinator.update_interval = timedelta(hours=5, minutes=40)
+
+    with (
+        patch(_NOW, return_value=_at(6, 3)),
+        patch(_UTCNOW, return_value=_at(6, 3)),
+        pytest.raises(DHLApiError),
+    ):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval <= timedelta(minutes=36)
+
+
 def test_poll_interval_quiet_window_targets_the_end_anchor():
     with patch(_NOW, return_value=_at(2, 30)):
         interval = compute_poll_interval("entry-1", [])

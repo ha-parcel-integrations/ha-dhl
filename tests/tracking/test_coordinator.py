@@ -1,5 +1,6 @@
 """Tests for the tracking coordinator: routing, fallback, queue, throttle."""
 
+from datetime import UTC, datetime, timedelta
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -357,6 +358,26 @@ async def test_schedule_never_shorter_than_an_active_standdown(hass):
     coordinator._schedule([])
 
     assert coordinator.update_interval.total_seconds() >= 7100
+
+
+async def test_failed_poll_drops_the_overnight_interval(hass):
+    entry = _entry([])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    coordinator.update_interval = timedelta(hours=5, minutes=40)
+
+    noon = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    with (
+        patch.object(coordinator, "_async_poll", side_effect=TimeoutError),
+        patch(
+            "custom_components.dhl.account.coordinator.dt_util.now",
+            return_value=noon,
+        ),
+        pytest.raises(TimeoutError),
+    ):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval <= timedelta(minutes=36)
 
 
 async def test_credential_error_disables_express_and_never_retries(hass):
