@@ -374,6 +374,11 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     # `panEmpfaenger` is the recipient block below.
     "isHeavyPackage",
     "panEmpfaenger",
+    # Reported live on a smart-Packstation parcel (issue #7). Neither has a
+    # canonical home; `liveTracking` is redacted in diagnostics since a live
+    # van position sits near the recipient's address.
+    "isNoPackstation",
+    "liveTracking",
 }
 
 _INCOMING_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND"}

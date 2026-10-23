@@ -387,6 +387,13 @@ def test_normalize_pan_empfaenger_and_heavy_package_are_recognised_keys(caplog):
     assert "unrecognised field" not in caplog.text.lower()
 
 
+def test_normalize_is_no_packstation_and_live_tracking_are_recognised_keys(caplog):
+    """Both were reported as unrecognised fields in issue #7."""
+    raw = element(ACTIVE_CODE, fortschritt=4, is_no_packstation=False, live_tracking={})
+    normalize_parcel_de(raw)
+    assert "unrecognised field" not in caplog.text.lower()
+
+
 def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
     raw = element(
         ACTIVE_CODE,

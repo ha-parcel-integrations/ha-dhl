@@ -36,6 +36,8 @@ def element(
     ruecksendung: bool | None = None,
     pan_empfaenger: dict | None = None,
     is_heavy_package: bool | None = None,
+    is_no_packstation: bool | None = None,
+    live_tracking: dict | None = None,
 ) -> dict:
     """Build one ``sendungen[i]`` element from the reconstructed field inventory."""
     sendungsverlauf: dict = {
@@ -62,6 +64,10 @@ def element(
         sendungsdetails["panEmpfaenger"] = pan_empfaenger
     if is_heavy_package is not None:
         sendungsdetails["isHeavyPackage"] = is_heavy_package
+    if is_no_packstation is not None:
+        sendungsdetails["isNoPackstation"] = is_no_packstation
+    if live_tracking is not None:
+        sendungsdetails["liveTracking"] = live_tracking
 
     built: dict = {"id": code, "sendungsdetails": sendungsdetails}
     sendungsinfo: dict = {}
