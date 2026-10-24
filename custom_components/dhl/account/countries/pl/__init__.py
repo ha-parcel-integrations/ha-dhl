@@ -159,7 +159,11 @@ def map_pl_status(raw_status: str | None, ladder_status: str | None) -> ParcelSt
 
 
 def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
-    """Map one Mój DHL list item to the suite's canonical parcel shape."""
+    """Map one Mój DHL list item to the suite's canonical parcel shape.
+
+    ``shipmentPin`` opens the locker, and ``raw`` ends up in sensor attributes
+    and recorder-stored events, so it never leaves this function.
+    """
     timeline_raw = raw.get("menuTimelineLabel")
     timeline: dict = timeline_raw if isinstance(timeline_raw, dict) else {}
     raw_status = raw.get("status") if isinstance(raw.get("status"), str) else None
@@ -187,7 +191,7 @@ def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
         "weight": None,
         "dimensions": None,
         "history": None,
-        "raw": raw,
+        "raw": {key: value for key, value in raw.items() if key != "shipmentPin"},
     }
 
 

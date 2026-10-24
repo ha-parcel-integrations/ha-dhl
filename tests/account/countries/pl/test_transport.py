@@ -161,7 +161,7 @@ async def test_async_get_incoming_raises_dhl_api_error_on_other_list_failure():
         await async_get_incoming(session, pl_session, "device-1")
 
 
-def test_raw_carries_the_full_list_item():
+def test_raw_carries_the_list_item_without_the_locker_pin():
     item = {
         "shipmentNumber": "30413196282",
         "status": "TT_LK",
@@ -173,7 +173,10 @@ def test_raw_carries_the_full_list_item():
             "dateUtc": "2026-09-04T10:00:00Z",
         },
     }
-    assert normalize_parcel_pl(item)["raw"] == item
+    assert normalize_parcel_pl(item)["raw"] == {
+        key: value for key, value in item.items() if key != "shipmentPin"
+    }
+    assert item["shipmentPin"] == "123456"
 
 
 def test_unrecognised_raw_code_warns_once(caplog):
