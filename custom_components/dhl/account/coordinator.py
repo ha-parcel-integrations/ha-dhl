@@ -354,15 +354,15 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         active = [parcel for parcel in normalized if not parcel["delivered"]]
         delivered = [parcel for parcel in normalized if parcel["delivered"]]
 
-        self.delivered = apply_delivered_filter(
-            sort_parcels_by_ts(delivered, "delivered_at", descending=True),
-            self.config_entry,
+        delivered_sorted = sort_parcels_by_ts(
+            delivered, "delivered_at", descending=True
         )
+        self.delivered = apply_delivered_filter(delivered_sorted, self.config_entry)
         normalized_active = sort_parcels_by_ts(active, "planned_from")
 
-        # Incoming = active + delivered, combined so the transition to
-        # delivered is visible in one set.
-        incoming = normalized_active + self.delivered
+        # Events and remembered state cover every parcel; the retention option
+        # only limits what the delivered sensor shows.
+        incoming = normalized_active + delivered_sorted
         self._track_out_for_delivery_stall(incoming)
         self._fire_change_events(incoming)
         self._known_state = {
@@ -383,13 +383,15 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         active_outgoing = [p for p in normalized_outgoing if not p["delivered"]]
         delivered_outgoing = [p for p in normalized_outgoing if p["delivered"]]
 
+        delivered_outgoing_sorted = sort_parcels_by_ts(
+            delivered_outgoing, "delivered_at", descending=True
+        )
         self.delivered_outgoing = apply_delivered_filter(
-            sort_parcels_by_ts(delivered_outgoing, "delivered_at", descending=True),
-            self.config_entry,
+            delivered_outgoing_sorted, self.config_entry
         )
         self.outgoing = sort_parcels_by_ts(active_outgoing, "planned_from")
 
-        outgoing = self.outgoing + self.delivered_outgoing
+        outgoing = self.outgoing + delivered_outgoing_sorted
         self._fire_outgoing_change_events(outgoing)
         self._known_outgoing_state = {
             parcel["barcode"]: (parcel["status"], parcel["delivered"])

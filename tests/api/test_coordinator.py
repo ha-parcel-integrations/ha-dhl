@@ -437,3 +437,34 @@ async def test_sensor_and_link_follow_the_entered_code_when_dhl_answers_another_
 
     assert parcel["barcode"] == "00340434292135100186"
     assert parcel["url"].endswith("tracking-id=00340434292135100186")
+
+
+async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(
+    hass, api_sleep
+):
+    """The retention option limits the delivered sensor, never the events."""
+    entry = _entry([CODE_A, CODE_B], **{CONF_DELIVERED_FILTER_AMOUNT: 1})
+    now = datetime.now(UTC)
+    coordinator, _ = _coordinator(
+        hass,
+        entry,
+        {
+            CODE_A: [
+                body(shipment(CODE_A)),
+                _delivered(CODE_A, now - timedelta(days=2)),
+            ],
+            CODE_B: [
+                body(shipment(CODE_B)),
+                _delivered(CODE_B, now - timedelta(days=1)),
+            ],
+        },
+    )
+    delivered = []
+    hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
+
+    await coordinator._async_update_data()  # first refresh: suppressed
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert sorted(e.data["barcode"] for e in delivered) == [CODE_A, CODE_B]
+    assert [p["barcode"] for p in coordinator.delivered] == [CODE_B]

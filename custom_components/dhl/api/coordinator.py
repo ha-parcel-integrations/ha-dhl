@@ -253,16 +253,16 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
         received = [p for code, p in entries if code not in outgoing_codes]
         sent = [p for code, p in entries if code in outgoing_codes]
 
-        self.delivered = apply_delivered_filter(
-            sort_parcels_by_ts(
-                [p for p in received if p["delivered"]], "delivered_at", descending=True
-            ),
-            self.config_entry,
+        delivered_sorted = sort_parcels_by_ts(
+            [p for p in received if p["delivered"]], "delivered_at", descending=True
         )
+        self.delivered = apply_delivered_filter(delivered_sorted, self.config_entry)
         normalized_active = sort_parcels_by_ts(
             [p for p in received if not p["delivered"]], "planned_from"
         )
-        incoming = normalized_active + self.delivered
+        # Events and remembered state cover every parcel; the retention option
+        # only limits what the delivered sensor shows.
+        incoming = normalized_active + delivered_sorted
         self._fire_change_events(incoming)
         self._known_state = {
             p["barcode"]: p["status"] for p in incoming if p.get("barcode")
@@ -273,16 +273,16 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
             if p.get("barcode")
         }
 
+        delivered_outgoing_sorted = sort_parcels_by_ts(
+            [p for p in sent if p["delivered"]], "delivered_at", descending=True
+        )
         self.delivered_outgoing = apply_delivered_filter(
-            sort_parcels_by_ts(
-                [p for p in sent if p["delivered"]], "delivered_at", descending=True
-            ),
-            self.config_entry,
+            delivered_outgoing_sorted, self.config_entry
         )
         self.outgoing = sort_parcels_by_ts(
             [p for p in sent if not p["delivered"]], "planned_from"
         )
-        outgoing = self.outgoing + self.delivered_outgoing
+        outgoing = self.outgoing + delivered_outgoing_sorted
         self._fire_outgoing_change_events(outgoing)
         self._known_outgoing_state = {
             p["barcode"]: (p["status"], p["delivered"])

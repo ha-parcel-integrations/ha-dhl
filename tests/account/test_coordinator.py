@@ -445,6 +445,32 @@ async def test_delivery_fires_delivered_event_and_not_status_changed(hass):
     assert delivered[0].data["status"] == ParcelStatus.DELIVERED
 
 
+async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(hass):
+    """The retention option limits the delivered sensor, never the events."""
+    entry = _entry(**{CONF_DELIVERED_FILTER_AMOUNT: 1})
+    entry.add_to_hass(hass)
+    client = _client([active_sample(), active_sample("SECOND000001")])
+    coordinator = _coordinator(hass, entry, client)
+
+    delivered = []
+    hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
+
+    await coordinator._async_update_data()  # first refresh: suppressed
+    older = delivered_sample(ACTIVE_CODE)
+    newer = delivered_sample("SECOND000001")
+    newer["sendungsdetails"]["sendungsverlauf"]["datumAktuellerStatus"] = (
+        "2026-04-30T13:12:42+02:00"
+    )
+    client.async_get_incoming.return_value = ([older, newer], False)
+    await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert sorted(e.data["barcode"] for e in delivered) == sorted(
+        [ACTIVE_CODE, "SECOND000001"]
+    )
+    assert [p["barcode"] for p in coordinator.delivered] == ["SECOND000001"]
+
+
 async def test_fires_registered_event_for_new_parcel(hass):
     entry = _entry()
     entry.add_to_hass(hass)

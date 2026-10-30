@@ -1196,3 +1196,43 @@ async def test_a_store_from_before_combining_seeds_one_answer_per_code(hass):
 
     assert set(coordinator._sources) == {GATEWAY_CODE}
     assert "_dhl_backend" not in coordinator._sources[GATEWAY_CODE]["gateway"]
+
+
+async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(hass):
+    """The retention option limits the delivered sensor, never the events."""
+    entry = _entry([GATEWAY_CODE, GATEWAY_CODE_2], **{CONF_DELIVERED_FILTER_AMOUNT: 1})
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    delivered = []
+    hass.bus.async_listen(f"{DOMAIN}_parcel_delivered", lambda e: delivered.append(e))
+
+    def answer(*codes):
+        return AsyncMock(return_value={c: gateway_element(barcode=c) for c in codes})
+
+    path = "custom_components.dhl.tracking.coordinator.async_fetch_gateway"
+    with patch(path, answer(GATEWAY_CODE, GATEWAY_CODE_2)):
+        await coordinator._async_update_data()  # first refresh: suppressed
+
+    done = {
+        GATEWAY_CODE: gateway_element(
+            barcode=GATEWAY_CODE,
+            category="DELIVERED",
+            status="DELIVERED",
+            delivered_at="2026-02-13T15:02:22Z",
+        ),
+        GATEWAY_CODE_2: gateway_element(
+            barcode=GATEWAY_CODE_2,
+            category="DELIVERED",
+            status="DELIVERED",
+            delivered_at="2026-02-14T15:02:22Z",
+        ),
+    }
+    with patch(path, AsyncMock(return_value=done)):
+        await coordinator._async_update_data()
+    await hass.async_block_till_done()
+
+    assert sorted(e.data["barcode"] for e in delivered) == [
+        GATEWAY_CODE,
+        GATEWAY_CODE_2,
+    ]
+    assert [p["barcode"] for p in coordinator.delivered] == [GATEWAY_CODE_2]
