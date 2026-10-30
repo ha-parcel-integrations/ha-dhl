@@ -208,8 +208,9 @@ one-off if it resurfaces.
 
 Everything not listed here follows the scaffold exactly.
 
-*Options and reloads* — DHL is account-based (`async_schedule_reload`, no
-update listener) but is also the suite's **first account-based carrier with a
+*Options and reloads* — DHL is account-based (an `OptionsFlowWithReload`, no
+update listener; code-based entries keep their listener and set
+`automatic_reload = False`) but is also the suite's **first account-based carrier with a
 `track_parcel` service**, for its by-number half. On an account entry
 `services.py` nudges the coordinator directly with `async_request_refresh()`
 after an add/remove rather than using either stock mechanism; on a tracking or

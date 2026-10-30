@@ -104,8 +104,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         async_setup_services(hass)
 
-        # Unlike the account source's options flow (which calls
-        # async_schedule_reload itself), tracking-mode options are applied
+        # Unlike the account source's options flow (an
+        # OptionsFlowWithReload), tracking-mode options are applied
         # live via a coordinator refresh — adding/removing a code, from the
         # options flow or `dhl.track_parcel`, shows up immediately, matching
         # ha-bpost's tracking source.
@@ -173,9 +173,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
 
     async_setup_services(hass)
 
-    # No entry.add_update_listener: the options flow calls
-    # async_schedule_reload itself. Combining an update listener with a
-    # reload-on-update flow is deprecated and becomes an error in HA 2026.12+.
+    # No entry.add_update_listener: the options flow is an
+    # OptionsFlowWithReload, which may not be combined with one.
     return True
 
 

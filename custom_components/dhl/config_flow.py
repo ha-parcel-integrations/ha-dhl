@@ -30,7 +30,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    OptionsFlow,
+    OptionsFlowWithReload,
 )
 from homeassistant.const import CONF_API_KEY
 from homeassistant.core import callback
@@ -599,7 +599,7 @@ def _clean_tracking_codes(values: list[str] | None) -> list[str]:
     return codes
 
 
-class DHLOptionsFlowHandler(OptionsFlow):
+class DHLOptionsFlowHandler(OptionsFlowWithReload):
     """Manage delivered retention and history — plus tracked parcels for a tracking hub."""
 
     async def async_step_init(
@@ -613,6 +613,12 @@ class DHLOptionsFlowHandler(OptionsFlow):
         manage here — the DE by-number list is `dhl.track_parcel`'s job —
         so it goes straight to the single sectioned form it always has.
         """
+        # Code-based entries apply options through their update listener, which
+        # may not be combined with the automatic reload; an account entry has
+        # none and reloads once the new options are saved.
+        self.automatic_reload = (
+            self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_ACCOUNT
+        )
         if self.config_entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) in (
             SOURCE_TRACKING,
             SOURCE_API,
@@ -718,12 +724,6 @@ class DHLOptionsFlowHandler(OptionsFlow):
                     CONF_PARCELS: list(self.config_entry.options.get(CONF_PARCELS, []))
                 }
             else:
-                # No update listener is registered on an account entry —
-                # combining one with a reload-on-update flow is deprecated —
-                # so settings changes reload it explicitly instead.
-                self.hass.config_entries.async_schedule_reload(
-                    self.config_entry.entry_id
-                )
                 carried = {
                     # Not part of the form — carried through untouched so the
                     # options flow never wipes the tracked-code list

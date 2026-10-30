@@ -348,7 +348,12 @@ async def test_options_flow_saves_and_reloads(hass):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["step_id"] == "init"
 
-    with patch.object(hass.config_entries, "async_schedule_reload") as schedule_reload:
+    seen = []
+    with patch.object(
+        hass.config_entries,
+        "async_schedule_reload",
+        side_effect=lambda entry_id: seen.append(dict(entry.options)),
+    ):
         result = await hass.config_entries.options.async_configure(
             result["flow_id"],
             {
@@ -368,7 +373,8 @@ async def test_options_flow_saves_and_reloads(hass):
         # Not part of the form — carried through untouched.
         CONF_TRACKED_CODES: ["EXISTING000001"],
     }
-    schedule_reload.assert_called_once_with(entry.entry_id)
+    # The reload must see the saved options, not the ones from before the form.
+    assert seen == [result["data"]]
 
 
 # ---------------------------------------------------------------------------
