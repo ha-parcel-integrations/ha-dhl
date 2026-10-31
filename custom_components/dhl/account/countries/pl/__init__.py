@@ -82,6 +82,9 @@ _TIMELINE = {
 }
 
 
+_MAX_INBOX_PAGES = 50
+
+
 async def async_get_incoming(
     session: aiohttp.ClientSession, pl_session: DHLPlSession, device_id: str
 ) -> list[dict]:
@@ -94,17 +97,26 @@ async def async_get_incoming(
     """
     token = await pl_session.async_refresh(device_id)
     headers = {"authorization": f"Bearer {token}", "content-type": "application/json"}
-    async with session.post(
-        "https://mojdhl.pl/api/dhl/public/user/shipment/v2.1/list/incoming/active/1",
-        json={"shipmentFilterTypes": [], "shipmentFilterStatuses": [], "page": 1},
-        headers=headers,
-    ) as response:
-        if response.status in (401, 403):
-            raise DHLAuthError("Mój DHL inbox session expired")
-        if response.status != 200:
-            raise DHLApiError(f"Mój DHL inbox failed: HTTP {response.status}")
-        body = await response.json(content_type=None)
-    own = body.get("shipments", []) if isinstance(body, dict) else []
+    own: list = []
+    # The list pages after as little as one shipment; the cap stops a server
+    # that never clears hasNextPage.
+    for page in range(1, _MAX_INBOX_PAGES + 1):
+        async with session.post(
+            f"https://mojdhl.pl/api/dhl/public/user/shipment/v2.1/list/incoming/active/{page}",
+            json={"shipmentFilterTypes": [], "shipmentFilterStatuses": [], "page": page},
+            headers=headers,
+        ) as response:
+            if response.status in (401, 403):
+                raise DHLAuthError("Mój DHL inbox session expired")
+            if response.status != 200:
+                raise DHLApiError(f"Mój DHL inbox failed: HTTP {response.status}")
+            body = await response.json(content_type=None)
+        if not isinstance(body, dict):
+            break
+        shipments = body.get("shipments") or []
+        own.extend(shipments)
+        if not shipments or not body.get("hasNextPage"):
+            break
     async with session.post(
         "https://mojdhl.pl/api/dhl/public/user/shipment/observed/v1.0/list/incoming/active",
         json={},

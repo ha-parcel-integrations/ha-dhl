@@ -96,7 +96,9 @@ def test_locker_wait_is_ready_for_pickup_not_delivered():
     assert parcel["delivered_at"] is None
 
 
-def _pl_session(*, incoming, observed=None, incoming_status=200, observed_status=200):
+def _pl_session(
+    *, incoming, observed=None, incoming_status=200, observed_status=200, more_pages=()
+):
     session = MagicMock()
 
     def _ctx(status, body):
@@ -111,6 +113,7 @@ def _pl_session(*, incoming, observed=None, incoming_status=200, observed_status
     session.post = MagicMock(
         side_effect=[
             _ctx(incoming_status, incoming),
+            *(_ctx(200, page) for page in more_pages),
             _ctx(observed_status, observed if observed is not None else []),
         ]
     )
@@ -134,6 +137,35 @@ async def test_async_get_incoming_merges_own_and_observed_deduplicating_by_numbe
     assert set(by_number) == {"1", "2"}
     # the own-inbox version of a duplicate number wins over the observed one
     assert by_number["1"]["status"] == "TT_DOR"
+
+
+async def test_async_get_incoming_follows_has_next_page():
+    session, pl_session = _pl_session(
+        incoming={"shipments": [{"shipmentNumber": "1"}], "hasNextPage": True},
+        more_pages=[
+            {"shipments": [{"shipmentNumber": "2"}], "hasNextPage": True},
+            {"shipments": [{"shipmentNumber": "3"}], "hasNextPage": False},
+        ],
+    )
+
+    elements = await async_get_incoming(session, pl_session, "device-1")
+
+    assert {e["shipmentNumber"] for e in elements} == {"1", "2", "3"}
+    urls = [call.args[0] for call in session.post.call_args_list]
+    assert urls[2].endswith("/list/incoming/active/3")
+    assert session.post.call_args_list[2].kwargs["json"]["page"] == 3
+
+
+async def test_async_get_incoming_stops_on_an_empty_page():
+    session, pl_session = _pl_session(
+        incoming={"shipments": [{"shipmentNumber": "1"}], "hasNextPage": True},
+        more_pages=[{"shipments": [], "hasNextPage": True}],
+    )
+
+    elements = await async_get_incoming(session, pl_session, "device-1")
+
+    assert [e["shipmentNumber"] for e in elements] == ["1"]
+    assert session.post.call_count == 3
 
 
 async def test_async_get_incoming_raises_dhl_auth_error_on_expired_list_session():
