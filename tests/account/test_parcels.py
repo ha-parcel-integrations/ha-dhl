@@ -173,6 +173,11 @@ def test_packstation_arrival_without_a_parsable_link_keeps_status_but_no_point()
     assert parcel["pickup_point"] is None
 
 
+ON_THE_VAN = [
+    {"datum": "d", "status": "Die Sendung wurde in das Zustellfahrzeug geladen."}
+]
+
+
 def test_out_for_delivery_needs_both_packstation_signals():
     for zustellung in (
         {"packageStationType": "PACKAGE_STATION", "abholcodeAvailable": False},
@@ -180,10 +185,44 @@ def test_out_for_delivery_needs_both_packstation_signals():
         {"directlyAddressed": True},
         {"packageStationType": "RETAIL_OUTLET", "abholcodeAvailable": True},
     ):
-        parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
+        parcel = normalize_parcel(
+            _at_packstation(zustellung=zustellung, events=ON_THE_VAN), country="DE"
+        )
         assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
         assert parcel["pickup"] is False
         assert parcel["pickup_point"] is None
+
+
+FILIALE_EVENT = (
+    "Die Sendung liegt in der <a href='x'>Filiale 512, Bahnhofstr. 2, "
+    "12345 Berlin</a> zur Abholung bereit."
+)
+
+
+def test_filiale_arrival_is_read_from_the_ready_for_pickup_text():
+    parcel = normalize_parcel(
+        _at_packstation(
+            zustellung={}, events=[*ON_THE_VAN, {"datum": "d", "status": FILIALE_EVENT}]
+        ),
+        country="DE",
+    )
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+    assert parcel["pickup_point"] == "Filiale 512, Bahnhofstr. 2, 12345 Berlin"
+
+
+def test_ready_for_pickup_text_in_kurz_status_is_enough():
+    raw = _at_packstation(zustellung={}, events=ON_THE_VAN)
+    raw["sendungsdetails"]["sendungsverlauf"]["kurzStatus"] = (
+        "Die Sendung liegt in der Filiale zur Abholung bereit."
+    )
+    parcel = normalize_parcel(raw, country="DE")
+    assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
+
+
+def test_announced_pickup_is_not_yet_ready():
+    events = [{"datum": "d", "status": "Die Sendung wird zur Abholung bereitgestellt."}]
+    parcel = normalize_parcel(_at_packstation(zustellung={}, events=events), country="DE")
+    assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
 
 
 def test_collected_packstation_parcel_is_delivered_not_at_pickup_point():

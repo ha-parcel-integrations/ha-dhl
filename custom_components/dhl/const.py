@@ -41,8 +41,8 @@ KNOWN_CAPABILITIES = frozenset(
 # data/carriers.yml uses for this repo, in display order.
 #
 # Account: DHL DE never exposes weight or dimensions (no source names either
-# field). ``pickup_point`` counts for Packstations only — it is read from the
-# latest event's link text, so a Filiale arrival still comes back ``None``. The
+# field). ``pickup_point`` is read from the latest event's link text, which a
+# Packstation arrival carries; a Filiale arrival may still come back ``None``. The
 # delivery window is contested between two shapes but both are implemented, so
 # it counts.
 #

@@ -419,10 +419,12 @@ both appeared together while it waited and both cleared once it was collected;
 matched on its prefix because the screen-less smart stations report
 `PACKAGE_STATION_SMART`, which an exact match on `PACKAGE_STATION` missed. Unverified: whether either field is already
 set while the parcel is still on the vehicle, which would report pickup too
-early. **Filiale is not mapped** — only its event text was captured, no
-structured field. The coordinator warns when a parcel stays at
-`out_for_delivery` across more than one poll, the best available proxy for a
-silently-misreported pickup arrival.
+early. **A Filiale or Paketshop has no structured field**, so it is read from
+the text: a parcel still on rung 4 whose `status`, `kurzStatus` or newest event
+says "zur Abholung bereit" is `at_pickup_point` too. That wording comes from a
+third-party integration's fix, not from a parcel of ours. The coordinator
+still warns when a parcel stays at `out_for_delivery` across more than one
+poll, the best available proxy for a pickup arrival worded differently.
 
 `pickup_point` is read from the anchor text of the latest event's status
 (`<a …>Packstation 216, …</a>`) — the link text is language-independent, the
@@ -575,7 +577,7 @@ includes.
 `weight` is filled only on the API source, from `details.weight` converted to
 kg; an unknown unit leaves it `None` with one WARNING. `dimensions` is always
 `None`. `pickup_point` is
-populated for account/DE Packstation arrivals and for DHL Freight Sweden
+populated for account/DE pickup arrivals whose event links the location and for DHL Freight Sweden
 service-point and locker shipments — never on the gateway or Express.
 `history` is populated on every tracking backend.
 `url` on the tracking source is always the dhl.com tracking page, localised

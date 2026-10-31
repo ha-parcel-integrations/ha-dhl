@@ -97,8 +97,10 @@ every poll) or a restart resumes with a dead token.
 is `fortschritt` 4 with a `zustellung.packageStationType` starting with
 `PACKAGE_STATION` and `abholcodeAvailable` true (issue #7). The prefix match is
 load-bearing: a smart Packstation reports `PACKAGE_STATION_SMART`, and an exact
-match left those parcels on `out_for_delivery`. Filiale is **not**
-mapped — no structured field was captured for it. Whether those two fields
+match left those parcels on `out_for_delivery`. A Filiale/Paketshop has no
+structured field, so it falls back to the text "zur Abholung bereit" in
+`status`, `kurzStatus` or the newest event — third-party evidence, keep the
+structured check first. Whether the two Packstation fields
 already appear while the parcel is still on the vehicle is unverified.
 
 **Contested fields code both branches and warn — don't collapse them to one.**
@@ -137,8 +139,8 @@ needs. `CONF_TRACKED_CODES` is redacted by hand (a bare string list has no key
 to match).
 
 **On the account source `weight`/`dimensions` are always `None`; `pickup_point`
-is set for Packstation arrivals only** (parsed from the latest event's link
-text). Keep `const.py`'s `CAPABILITIES_BY_VARIANT["Account"]` in sync if that
+is set only when a pickup arrival's latest event links its location** (parsed
+from the link text). Keep `const.py`'s `CAPABILITIES_BY_VARIANT["Account"]` in sync if that
 changes.
 
 **Do not design toward folding in `ha-dhl-nl`.** It is a separate released repo

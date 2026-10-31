@@ -496,6 +496,23 @@ def _is_ready_at_packstation(zustellung: dict) -> bool:
     )
 
 
+_READY_FOR_PICKUP_RE = re.compile(r"zur\s+abholung\s+bereit\b", re.IGNORECASE)
+
+
+def _reads_ready_for_pickup(verlauf: dict, events: list) -> bool:
+    """A Filiale/Paketshop arrival stays on rung 4; only the text says so.
+
+    No structured field marks it, unlike a Packstation. Read from a
+    third-party integration's fix, not yet seen on a parcel of ours.
+    """
+    newest = events[-1] if events and isinstance(events[-1], dict) else {}
+    texts = (verlauf.get("status"), verlauf.get("kurzStatus"), newest.get("status"))
+    return any(
+        isinstance(text, str) and _READY_FOR_PICKUP_RE.search(_TAG_RE.sub("", text))
+        for text in texts
+    )
+
+
 def _pickup_point_from_events(events: list) -> str | None:
     """Return the location named by the link in the latest event's status text.
 
@@ -778,7 +795,10 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     if (
         status is ParcelStatus.OUT_FOR_DELIVERY
         and not delivered
-        and _is_ready_at_packstation(zustellung)
+        and (
+            _is_ready_at_packstation(zustellung)
+            or _reads_ready_for_pickup(verlauf, events)
+        )
     ):
         status = ParcelStatus.AT_PICKUP_POINT
         pickup_point = _pickup_point_from_events(events)
