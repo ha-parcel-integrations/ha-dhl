@@ -103,7 +103,11 @@ async def async_get_incoming(
     for page in range(1, _MAX_INBOX_PAGES + 1):
         async with session.post(
             f"https://mojdhl.pl/api/dhl/public/user/shipment/v2.1/list/incoming/active/{page}",
-            json={"shipmentFilterTypes": [], "shipmentFilterStatuses": [], "page": page},
+            json={
+                "shipmentFilterTypes": [],
+                "shipmentFilterStatuses": [],
+                "page": page,
+            },
             headers=headers,
         ) as response:
             if response.status in (401, 403):

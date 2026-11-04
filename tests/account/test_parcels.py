@@ -221,7 +221,9 @@ def test_ready_for_pickup_text_in_kurz_status_is_enough():
 
 def test_announced_pickup_is_not_yet_ready():
     events = [{"datum": "d", "status": "Die Sendung wird zur Abholung bereitgestellt."}]
-    parcel = normalize_parcel(_at_packstation(zustellung={}, events=events), country="DE")
+    parcel = normalize_parcel(
+        _at_packstation(zustellung={}, events=events), country="DE"
+    )
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
 
 
