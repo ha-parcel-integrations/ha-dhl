@@ -1,6 +1,7 @@
 {
   "domain": "dhl",
   "name": "DHL",
+  "categories": ["productivity_information"],
   "codeowners": [
     "@peter-mdf"
   ],
