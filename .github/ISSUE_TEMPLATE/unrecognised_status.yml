@@ -25,6 +25,20 @@ body:
       render: text
     validations:
       required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Which DHL setup logged it?
+      description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL. Pick "Not sure" if you can't tell — the log line above usually names the backend itself.
+      options:
+        - Account — Germany (DHL Kundenkonto / dhl.de)
+        - Account — Poland (Mój DHL)
+        - Tracking codes (no account)
+        - API Tracking (your own developer.dhl.com key)
+        - Not sure
+    validations:
+      required: true
+
   - type: input
     id: version
     attributes:

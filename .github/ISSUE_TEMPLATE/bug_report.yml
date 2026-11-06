@@ -28,6 +28,20 @@ body:
     validations:
       required: true
 
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Which DHL setup are you using?
+      description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL. Add a second entry's answer in the description below if the bug covers both.
+      options:
+        - Account — Germany (DHL Kundenkonto / dhl.de)
+        - Account — Poland (Mój DHL)
+        - Tracking codes (no account)
+        - API Tracking (your own developer.dhl.com key)
+        - Not sure
+    validations:
+      required: true
+
   - type: textarea
     id: what-happened
     attributes:

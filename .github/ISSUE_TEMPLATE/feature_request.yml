@@ -5,6 +5,20 @@ labels: ["enhancement"]
 assignees:
   - peter-mdf
 body:
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Which DHL setup is this about?
+      description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL.
+      options:
+        - Account — Germany (DHL Kundenkonto / dhl.de)
+        - Account — Poland (Mój DHL)
+        - Tracking codes (no account)
+        - API Tracking (your own developer.dhl.com key)
+        - All of them / not setup-specific
+    validations:
+      required: true
+
   - type: textarea
     id: feature
     attributes:
