@@ -6,7 +6,7 @@ assignees:
   - peter-mdf
 body:
   - type: dropdown
-    id: setup
+    id: source
     attributes:
       label: Which DHL setup is this about?
       description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL.

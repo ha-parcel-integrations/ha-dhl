@@ -26,7 +26,7 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: setup
+    id: source
     attributes:
       label: Which DHL setup logged it?
       description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL. Pick "Not sure" if you can't tell — the log line above usually names the backend itself.

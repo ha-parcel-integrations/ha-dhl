@@ -29,7 +29,7 @@ body:
       required: true
 
   - type: dropdown
-    id: setup
+    id: source
     attributes:
       label: Which DHL setup are you using?
       description: The source you picked during setup, shown on the integration's entry under Settings → Devices & services → DHL. Add a second entry's answer in the description below if the bug covers both.
