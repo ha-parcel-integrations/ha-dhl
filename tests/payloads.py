@@ -38,6 +38,8 @@ def element(
     is_heavy_package: bool | None = None,
     is_no_packstation: bool | None = None,
     live_tracking: dict | None = None,
+    versender: dict | None = None,
+    one_time_code: bool | None = None,
 ) -> dict:
     """Build one ``sendungen[i]`` element from the reconstructed field inventory."""
     sendungsverlauf: dict = {
@@ -68,6 +70,10 @@ def element(
         sendungsdetails["isNoPackstation"] = is_no_packstation
     if live_tracking is not None:
         sendungsdetails["liveTracking"] = live_tracking
+    if versender is not None:
+        sendungsdetails["versender"] = versender
+    if one_time_code is not None:
+        sendungsdetails["oneTimeCode"] = one_time_code
 
     built: dict = {"id": code, "sendungsdetails": sendungsdetails}
     sendungsinfo: dict = {}

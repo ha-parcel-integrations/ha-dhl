@@ -439,14 +439,16 @@ and warns on disagreement:
 |---|---|---|
 | delivered flag | `istZugestellt` when present | derive from the ladder; warn on disagreement |
 | `raw_status` | `.status` | log `.kurzStatus` |
-| delivery window | the `Von`/`Bis` pair | singular `zustellzeitfenster` / `zustelldatum` |
+| delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26 | singular `zustellzeitfenster` / `zustelldatum` |
 
 **`payload: confirmed`, 1.0.0.** A real account's populated `sendungen` elements
 have been observed on the wire, via both the account inbox and the by-number
 search. Every mapping decision still carries a one-shot `WARNING` with an
 `issues/new?template=unrecognised_status.yml` link, because the free-text status
-vocabulary and the delivery-window shape remain open — but the payload itself is
-no longer a reconstruction.
+vocabulary remains open — but the payload itself is no longer a
+reconstruction. The delivery-window shape is settled: issue #26 showed the
+`Von`/`Bis` pair on a real account, so only the singular keys still warn, one
+WARNING per key.
 
 ## `sender` / `receiver`, and an open risk
 

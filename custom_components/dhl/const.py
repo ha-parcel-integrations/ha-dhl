@@ -43,8 +43,8 @@ KNOWN_CAPABILITIES = frozenset(
 # Account: DHL DE never exposes weight or dimensions (no source names either
 # field). ``pickup_point`` is read from the latest event's link text, which a
 # Packstation arrival carries; a Filiale arrival may still come back ``None``. The
-# delivery window is contested between two shapes but both are implemented, so
-# it counts.
+# delivery window arrives as the ``Von``/``Bis`` pair (confirmed live, issue
+# #26); the singular shape stays implemented as a fallback.
 #
 # Tracking: ``weight`` comes from DHL Iberia, the only keyless backend that
 # sends one.

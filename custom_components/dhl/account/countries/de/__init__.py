@@ -379,6 +379,13 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     # van position sits near the recipient's address.
     "isNoPackstation",
     "liveTracking",
+    # Reported live on a reporter's account (issue #26). `versender` is the
+    # shipper block — its contents were never shown, and `sendungsname` is
+    # the confirmed `sender` source, so it stays raw-only; a `name`/`ort`
+    # inside it is redacted in diagnostics by leaf name already.
+    # `oneTimeCode` is a bare flag with no canonical home.
+    "versender",
+    "oneTimeCode",
 }
 
 _INCOMING_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND"}
@@ -535,7 +542,7 @@ def _pickup_point_from_events(events: list) -> str | None:
 _unexpected_keys_logged: set[str] = set()
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
-_delivery_window_shape_logged = False
+_delivery_window_keys_logged: set[str] = set()
 _timestamp_parse_failed_logged = False
 _outgoing_status_unconfirmed_logged = False
 
@@ -604,17 +611,30 @@ def _warn_raw_status_kurz_status_once(has_status: bool) -> None:
     )
 
 
-def _warn_delivery_window_shape_once(keys_present: list[str]) -> None:
-    global _delivery_window_shape_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
-    if _delivery_window_shape_logged:
-        return
-    _delivery_window_shape_logged = True
-    _LOGGER.warning(
-        "DHL Germany response carried a delivery-window field for the first "
-        "time. Open an issue and paste this line: %s\n  keys=%s",
-        NEW_ISSUE_URL,
-        keys_present,
-    )
+# The `Von`/`Bis` pair arrived on a real account (issue #26), which settles
+# the contested window shape in its favour; the singular keys stay
+# reconstruction-grade, so only those still warn.
+_CONFIRMED_DELIVERY_WINDOW_KEYS = frozenset(
+    {"zustellzeitfensterVon", "zustellzeitfensterBis"}
+)
+
+
+def _warn_delivery_window_shape(keys_present: list[str]) -> None:
+    """One-shot-per-key: a delivery-window key no real parcel has shown yet."""
+    for key in keys_present:
+        if (
+            key in _CONFIRMED_DELIVERY_WINDOW_KEYS
+            or key in _delivery_window_keys_logged
+        ):
+            continue
+        _delivery_window_keys_logged.add(key)
+        _LOGGER.warning(
+            "DHL Germany response carried the unconfirmed delivery-window "
+            "field %s. Open an issue and paste this line: %s\n  keys=%s",
+            key,
+            NEW_ISSUE_URL,
+            keys_present,
+        )
 
 
 def _warn_timestamp_parse_failed_once(value: Any) -> None:
@@ -706,7 +726,7 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
         if value
     ]
     if present:
-        _warn_delivery_window_shape_once(present)
+        _warn_delivery_window_shape(present)
 
     if von or bis:
         planned_from, planned_to = _parse_de_timestamp(von), _parse_de_timestamp(bis)

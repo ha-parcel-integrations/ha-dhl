@@ -107,6 +107,8 @@ already appear while the parcel is still on the vehicle is unverified.
 The delivered flag (`istZugestellt` else derive from the ladder, warn on
 disagreement), `raw_status` (`.status`, log `.kurzStatus`), and the delivery
 window (`Von`/`Bis` pair, else singular `zustellzeitfenster`/`zustelldatum`).
+The window's pair branch is **confirmed live** (issue #26) and no longer
+warns; the singular keys still warn, one WARNING per key.
 
 **Outgoing keys delivery detection differently from incoming — on purpose.**
 `status` is force-`UNKNOWN` for every outgoing parcel (the ladder was calibrated

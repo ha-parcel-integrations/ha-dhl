@@ -49,7 +49,7 @@ def _reset_one_shot_state():
     de_module._unexpected_keys_logged.clear()
     de_module._delivered_conflict_logged.clear()
     de_module._raw_status_kurz_status_logged = False
-    de_module._delivery_window_shape_logged = False
+    de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
     yield
@@ -60,7 +60,7 @@ def _reset_one_shot_state():
     de_module._unexpected_keys_logged.clear()
     de_module._delivered_conflict_logged.clear()
     de_module._raw_status_kurz_status_logged = False
-    de_module._delivery_window_shape_logged = False
+    de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
 
@@ -394,6 +394,18 @@ def test_normalize_is_no_packstation_and_live_tracking_are_recognised_keys(caplo
     assert "unrecognised field" not in caplog.text.lower()
 
 
+def test_normalize_versender_and_one_time_code_are_recognised_keys(caplog):
+    """Both were reported as unrecognised fields in issue #26."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        versender={"name": "Muster GmbH"},
+        one_time_code=True,
+    )
+    normalize_parcel_de(raw)
+    assert "unrecognised field" not in caplog.text.lower()
+
+
 def test_normalize_unrecognised_sendungsrichtung_leaves_both_none(caplog):
     raw = element(
         ACTIVE_CODE,
@@ -560,6 +572,20 @@ def test_delivery_window_absent_is_none():
     parcel = normalize_parcel_de(raw)
     assert parcel["planned_from"] is None
     assert parcel["planned_to"] is None
+
+
+def test_delivery_window_von_bis_pair_does_not_warn(caplog):
+    """The pair arrived on a real account (issue #26) — confirmed, so silent."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        zustellung={
+            "zustellzeitfensterVon": "2026-04-29T13:00:00+02:00",
+            "zustellzeitfensterBis": "2026-04-29T15:00:00+02:00",
+        },
+    )
+    normalize_parcel_de(raw)
+    assert "delivery-window" not in caplog.text.lower()
 
 
 def test_delivery_window_shape_warns_once(caplog):
