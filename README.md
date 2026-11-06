@@ -352,7 +352,9 @@ finished, since nobody building it has a DHL parcel of their own.
 - **A parcel seems stuck on "out for delivery"** — DHL's progress ladder has
   no value for "waiting at a Filiale", so that arrival is recognised from DHL's
   own wording ("zur Abholung bereit") and may be missed if DHL words it
-  differently. (Packstation arrivals are recognised.) If this happens to you, please
+  differently. (Packstation arrivals are recognised.) The log warns about a
+  parcel that has been out for delivery for more than two days, which is the
+  closest proxy there is. If this happens to you, please
   [open an issue](https://github.com/ha-parcel-integrations/ha-dhl/issues/new)
   or attach a diagnostics export — this is the single most useful thing a
   tester can confirm right now.

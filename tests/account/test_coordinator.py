@@ -21,6 +21,7 @@ from custom_components.dhl.const import (
     CONF_DELIVERED_FILTER_TYPE,
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
+    DHL_OUT_FOR_DELIVERY_STALL_HOURS,
     DOMAIN,
     DHLApiError,
     DHLAuthError,
@@ -218,20 +219,39 @@ async def test_rate_limited_false_to_true_warns(hass, caplog):
 # ---------------------------------------------------------------------------
 
 
-async def test_stalled_out_for_delivery_warns_on_second_poll(hass, caplog):
+async def test_out_for_delivery_across_polls_does_not_warn(hass, caplog):
+    """Several polls on the van is normal, not a stall (issue #27)."""
     entry = _entry()
     entry.add_to_hass(hass)
     client = _client([active_sample()])  # fortschritt=4 -> OUT_FOR_DELIVERY
     coordinator = _coordinator(hass, entry, client)
 
     await coordinator._async_update_data()
-    assert "stayed" not in caplog.text.lower()
+    await coordinator._async_update_data()
     await coordinator._async_update_data()
 
-    assert "stayed" in caplog.text.lower()
+    assert "stayed" not in caplog.text.lower()
 
 
-async def test_out_for_delivery_streak_resets_on_status_change(hass):
+async def test_stalled_out_for_delivery_warns_once_past_the_threshold(hass, caplog):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    client = _client([active_sample()])
+    coordinator = _coordinator(hass, entry, client)
+
+    await coordinator._async_update_data()
+    assert "stayed" not in caplog.text.lower()
+
+    coordinator._out_for_delivery_since[ACTIVE_CODE] -= timedelta(
+        hours=DHL_OUT_FOR_DELIVERY_STALL_HOURS + 1
+    )
+    await coordinator._async_update_data()
+    await coordinator._async_update_data()
+
+    assert caplog.text.lower().count("stayed 'out for delivery'") == 1
+
+
+async def test_out_for_delivery_clock_resets_on_status_change(hass):
     entry = _entry()
     entry.add_to_hass(hass)
     client = _client([active_sample()])
@@ -241,7 +261,7 @@ async def test_out_for_delivery_streak_resets_on_status_change(hass):
     client.async_get_incoming.return_value = ([delivered_sample(ACTIVE_CODE)], False)
     await coordinator._async_update_data()
 
-    assert ACTIVE_CODE not in coordinator._out_for_delivery_streak
+    assert ACTIVE_CODE not in coordinator._out_for_delivery_since
 
 
 # ---------------------------------------------------------------------------

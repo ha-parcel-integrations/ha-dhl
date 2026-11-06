@@ -423,8 +423,13 @@ early. **A Filiale or Paketshop has no structured field**, so it is read from
 the text: a parcel still on rung 4 whose `status`, `kurzStatus` or newest event
 says "zur Abholung bereit" is `at_pickup_point` too. That wording comes from a
 third-party integration's fix, not from a parcel of ours. The coordinator
-still warns when a parcel stays at `out_for_delivery` across more than one
-poll, the best available proxy for a pickup arrival worded differently.
+still warns when a parcel stays at `out_for_delivery` for longer than
+`DHL_OUT_FOR_DELIVERY_STALL_HOURS`, the best available proxy for a pickup
+arrival worded differently. That threshold is wall clock, and deliberately
+generous: the first version counted polls instead, and at a 15-minute hot
+interval every ordinary parcel on the van tripped it (issue #27 — four at
+once). The clock starts when the entry first sees the parcel out for
+delivery, so a restart gives it the benefit of the doubt.
 
 `pickup_point` is read from the anchor text of the latest event's status
 (`<a …>Packstation 216, …</a>`) — the link text is language-independent, the

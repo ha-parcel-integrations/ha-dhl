@@ -110,6 +110,13 @@ window (`Von`/`Bis` pair, else singular `zustellzeitfenster`/`zustelldatum`).
 The window's pair branch is **confirmed live** (issue #26) and no longer
 warns; the singular keys still warn, one WARNING per key.
 
+**The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
+`DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival
+the ladder cannot express from a parcel that is simply still on the van. The
+first version warned after two polls, which at the 15-minute hot interval
+meant every ordinary parcel out for delivery (issue #27). Don't tighten it
+back toward a poll count or a same-day threshold.
+
 **Outgoing keys delivery detection differently from incoming — on purpose.**
 `status` is force-`UNKNOWN` for every outgoing parcel (the ladder was calibrated
 against incoming sources only), so `_fire_outgoing_change_events` detects the

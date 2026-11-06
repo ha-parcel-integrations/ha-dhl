@@ -28,6 +28,7 @@ from ..const import (
     CONF_REFRESH_TOKEN,
     CONF_TRACKED_CODES,
     DEFAULT_INCLUDE_HISTORY,
+    DHL_OUT_FOR_DELIVERY_STALL_HOURS,
     DHL_POLL_HOT_INTERVAL_MINUTES,
     DHL_POLL_HOT_LEAD_HOURS,
     DHL_POLL_MID_INTERVAL_MINUTES,
@@ -52,6 +53,7 @@ _LOGGER = logging.getLogger(__name__)
 _HOT_INTERVAL = timedelta(minutes=DHL_POLL_HOT_INTERVAL_MINUTES)
 _MID_INTERVAL = timedelta(minutes=DHL_POLL_MID_INTERVAL_MINUTES)
 _HOT_LEAD_TIME = timedelta(hours=DHL_POLL_HOT_LEAD_HOURS)
+_STALL_THRESHOLD = timedelta(hours=DHL_OUT_FOR_DELIVERY_STALL_HOURS)
 
 
 def _stagger(entry_id: str) -> timedelta:
@@ -153,10 +155,10 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         # rateLimited is in-band on every response — warn
         # only on the false->true flip, not on every poll it stays true.
         self._rate_limited_last = False
-        # Consecutive-poll streak at OUT_FOR_DELIVERY per barcode, and which
+        # When each barcode was first seen at OUT_FOR_DELIVERY, and which
         # barcodes have already been warned about — the suspected
         # Filiale-arrival case nothing maps yet.
-        self._out_for_delivery_streak: dict[str, int] = {}
+        self._out_for_delivery_since: dict[str, datetime] = {}
         self._stall_warned: set[str] = set()
         # Element count of the last poll's inbox, reported by diagnostics.
         # ``None`` before the first poll.
@@ -239,12 +241,18 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         self._rate_limited_last = rate_limited
 
     def _track_out_for_delivery_stall(self, parcels: list[dict]) -> None:
-        """Warn once per barcode stuck at OUT_FOR_DELIVERY across polls.
+        """Warn once per barcode stuck at OUT_FOR_DELIVERY for days.
 
         A Packstation arrival is recognised from `zustellung`, but a Filiale
         arrival is not — it is the most likely thing hiding behind a status
-        that never advances past "out for delivery".
+        that never advances past "out for delivery". The clock is wall time,
+        never a poll count: at the hot interval an ordinary parcel on the van
+        spans several polls, which is what made the counter version warn
+        about four perfectly normal parcels (issue #27). The clock starts when
+        this entry first sees the parcel out for delivery, so a restart gives
+        it the benefit of the doubt rather than warning early.
         """
+        now = dt_util.utcnow()
         seen = set()
         for parcel in parcels:
             barcode = parcel.get("barcode")
@@ -253,21 +261,21 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             if parcel["status"] != ParcelStatus.OUT_FOR_DELIVERY:
                 continue
             seen.add(barcode)
-            streak = self._out_for_delivery_streak.get(barcode, 0) + 1
-            self._out_for_delivery_streak[barcode] = streak
-            if streak > 1 and barcode not in self._stall_warned:
-                self._stall_warned.add(barcode)
-                _LOGGER.warning(
-                    "DHL parcel %s has stayed 'out for delivery' across "
-                    "more than one poll — this may be a Filiale "
-                    "arrival the status ladder cannot express. Open an "
-                    "issue: %s",
-                    barcode,
-                    NEW_ISSUE_URL,
-                )
-        for barcode in list(self._out_for_delivery_streak):
+            since = self._out_for_delivery_since.setdefault(barcode, now)
+            if now - since < _STALL_THRESHOLD or barcode in self._stall_warned:
+                continue
+            self._stall_warned.add(barcode)
+            _LOGGER.warning(
+                "DHL parcel %s has stayed 'out for delivery' for more than "
+                "%s hours — this may be a Filiale arrival the status ladder "
+                "cannot express. Open an issue: %s",
+                barcode,
+                DHL_OUT_FOR_DELIVERY_STALL_HOURS,
+                NEW_ISSUE_URL,
+            )
+        for barcode in list(self._out_for_delivery_since):
             if barcode not in seen:
-                self._out_for_delivery_streak.pop(barcode, None)
+                self._out_for_delivery_since.pop(barcode, None)
                 self._stall_warned.discard(barcode)
 
     def _persist_refresh_token_if_rotated(self) -> None:

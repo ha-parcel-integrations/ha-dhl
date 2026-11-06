@@ -268,6 +268,12 @@ DHL_POLL_HOT_LEAD_HOURS = 1
 # the same second.
 DHL_POLL_STAGGER_MINUTES = 7
 
+# How long a parcel must sit at OUT_FOR_DELIVERY before the account
+# coordinator warns about it. Wall clock, not poll count: at the hot interval
+# every parcel on the van spans several polls (issue #27), while a Filiale
+# arrival — the case the ladder cannot express — sits there for days.
+DHL_OUT_FOR_DELIVERY_STALL_HOURS = 48
+
 # Per-parcel status history is opt-in and off by default, identical across the
 # suite.
 CONF_INCLUDE_HISTORY = "include_history"
