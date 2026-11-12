@@ -380,10 +380,8 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     "isNoPackstation",
     "liveTracking",
     # Reported live on a reporter's account (issue #26). `versender` is the
-    # shipper block — its contents were never shown, and `sendungsname` is
-    # the confirmed `sender` source, so it stays raw-only; a `name`/`ort`
-    # inside it is redacted in diagnostics by leaf name already.
-    # `oneTimeCode` is a bare flag with no canonical home.
+    # shipper block, read as the `sender` fallback below. `oneTimeCode` is a
+    # bare flag with no canonical home.
     "versender",
     "oneTimeCode",
 }
@@ -463,6 +461,23 @@ def _sender_receiver(sendungsinfo: dict) -> tuple[str | None, str | None]:
         return None, name
     _warn_sendungsrichtung_value(richtung)
     return None, None
+
+
+def _sender_from_versender(details: dict) -> str | None:
+    """Return `sendungsdetails.versender.name`, the shipper.
+
+    A fallback only: `sendungsname` is the confirmed source, and that one
+    names the recipient on an outgoing shipment, where this block still names
+    the sender. The block itself was seen live carrying a single `name`
+    (issue #26), which is what DHL calls the party a parcel was sent by.
+    """
+    versender = details.get("versender")
+    if not isinstance(versender, dict):
+        return None
+    name = versender.get("name")
+    if not isinstance(name, str) or not name:
+        return None
+    return html.unescape(name)
 
 
 def _receiver_from_pan_empfaenger(details: dict) -> str | None:
@@ -767,6 +782,8 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
     _warn_unexpected_sendungsdetails_keys(details)
+    if sender is None:
+        sender = _sender_from_versender(details)
     if receiver is None:
         receiver = _receiver_from_pan_empfaenger(details)
 

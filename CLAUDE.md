@@ -140,6 +140,9 @@ treat it as a hypothesis — the unrecognised-value warning is what catches it.
 `sendungsdetails.panEmpfaenger.name` **is** mapped, but only as a fallback for
 an element that carried no `sendungsname` (issue #18) — reconstruction-grade,
 so drop it if a real export shows it naming anyone but the addressee.
+`sendungsdetails.versender.name` is the same kind of fallback for `sender`
+(issue #26); it means the sending party whatever the direction, so it fills
+`sender` on an outgoing parcel too, where `sendungsname` is the recipient.
 There is an open risk that the authenticated by-number path returns `ANKOMMEND`
 unconditionally; see [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

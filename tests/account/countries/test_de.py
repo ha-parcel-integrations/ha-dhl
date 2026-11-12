@@ -359,6 +359,52 @@ def test_normalize_outgoing_falls_back_to_pan_empfaenger_for_receiver():
     assert parcel["receiver"] == "Erika M & Co"
 
 
+def test_normalize_falls_back_to_versender_for_sender():
+    """An element can carry versender and no sendungsname (issue #26)."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        sendungsrichtung="ANKOMMEND",
+        versender={"name": "Muster G &amp; Co"},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] == "Muster G & Co"
+    assert parcel["receiver"] is None
+
+
+def test_normalize_versender_names_the_sender_of_an_outgoing_parcel():
+    """sendungsname names the recipient there, so versender still fills sender."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        sendungsname="Jane Doe",
+        sendungsrichtung="ABGEHEND",
+        versender={"name": "Muster GmbH"},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["sender"] == "Muster GmbH"
+    assert parcel["receiver"] == "Jane Doe"
+
+
+def test_normalize_prefers_sendungsname_over_versender():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        sendungsname="Muster GmbH",
+        sendungsrichtung="ANKOMMEND",
+        versender={"name": "Someone Else"},
+    )
+    assert normalize_parcel_de(raw)["sender"] == "Muster GmbH"
+
+
+@pytest.mark.parametrize("versender", ["Muster GmbH", {}, {"name": ""}, {"ort": "X"}])
+def test_normalize_unusable_versender_leaves_sender_none(versender):
+    raw = element(
+        ACTIVE_CODE, fortschritt=3, sendungsrichtung="ANKOMMEND", versender=versender
+    )
+    assert normalize_parcel_de(raw)["sender"] is None
+
+
 def test_normalize_prefers_sendungsname_over_pan_empfaenger():
     raw = element(
         ACTIVE_CODE,

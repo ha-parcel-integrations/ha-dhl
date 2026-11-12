@@ -53,8 +53,9 @@ TO_REDACT = {
     "receiver",
     "url",
     # the DE payload's own field names — "id" is the tracking number,
-    # "name" is sendungsdetails.zustellung.empfaenger.name and
-    # sendungsdetails.panEmpfaenger.name, "ort" the latter's city
+    # "name" is sendungsdetails.zustellung.empfaenger.name,
+    # sendungsdetails.panEmpfaenger.name and sendungsdetails.versender.name,
+    # "ort" the second one's city
     "id",
     "name",
     "ort",

@@ -487,6 +487,14 @@ single-source and means "who physically took the parcel"
 to `receiver` until a tester export confirms the semantics, and remains present
 but redacted in `raw`.
 
+**`sendungsdetails.versender.name` is a fallback for `sender`**, used only
+when `sendungsname` gave nothing. The block was reported live on a reporter's
+account (issue #26) carrying a single `name`, and `versender` is what DHL
+calls the party a parcel was sent by — so unlike `sendungsname` it does not
+change meaning with the direction, and it still names the sender on an
+outgoing parcel, where `sendungsname` names the recipient. `name` is a
+redacted leaf in diagnostics.
+
 **`sendungsdetails.panEmpfaenger.name` is a fallback for `receiver`**, used
 only when `sendungsname` gave nothing. The key was reported live on a
 reporter's account (issue #18) — as a key, not a value — and an OSS client
