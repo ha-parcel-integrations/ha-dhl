@@ -108,7 +108,9 @@ The delivered flag (`istZugestellt` else derive from the ladder, warn on
 disagreement), `raw_status` (`.status`, log `.kurzStatus`), and the delivery
 window (`Von`/`Bis` pair, else singular `zustellzeitfenster`/`zustelldatum`).
 The window's pair branch is **confirmed live** (issue #26) and no longer
-warns; the singular keys still warn, one WARNING per key.
+warns; the singular keys still warn, one WARNING per key. **The pair arrives
+as bare dates** — a date-only `Bis` is stretched to the end of that day, and
+the day is resolved in `Europe/Berlin`, never in Home Assistant's own zone.
 
 **The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
 `DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival

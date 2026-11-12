@@ -703,6 +703,11 @@ def _build_history_de(
     return [entry for _, entry in parseable][-max_events:]
 
 
+def _is_date_only(value: Any) -> bool:
+    """Whether a DHL DE date/time value carries no time of day at all."""
+    return isinstance(value, str) and "T" not in value and ":" not in value
+
+
 def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
     """Probe all four contested delivery-window keys.
 
@@ -730,6 +735,10 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
 
     if von or bis:
         planned_from, planned_to = _parse_de_timestamp(von), _parse_de_timestamp(bis)
+        if planned_to and _is_date_only(bis):
+            # A real account sends the pair as bare dates (issue #26), which
+            # put both ends of the window on the day's first instant.
+            planned_to = end_of_day(planned_to, _BERLIN)
     elif fenster:
         planned_from, planned_to = _parse_de_timestamp(fenster) or fenster, None
     elif datum:
@@ -738,7 +747,7 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
         return None, None
     if planned_from and not planned_to:
         # A single moment means "that day", not "that second".
-        planned_to = end_of_day(planned_from)
+        planned_to = end_of_day(planned_from, _BERLIN)
     return planned_from, planned_to
 
 

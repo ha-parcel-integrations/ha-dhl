@@ -444,7 +444,7 @@ and warns on disagreement:
 |---|---|---|
 | delivered flag | `istZugestellt` when present | derive from the ladder; warn on disagreement |
 | `raw_status` | `.status` | log `.kurzStatus` |
-| delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26 | singular `zustellzeitfenster` / `zustelldatum` |
+| delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26, as bare dates | singular `zustellzeitfenster` / `zustelldatum` |
 
 **`payload: confirmed`, 1.0.0.** A real account's populated `sendungen` elements
 have been observed on the wire, via both the account inbox and the by-number
@@ -453,7 +453,8 @@ search. Every mapping decision still carries a one-shot `WARNING` with an
 vocabulary remains open — but the payload itself is no longer a
 reconstruction. The delivery-window shape is settled: issue #26 showed the
 `Von`/`Bis` pair on a real account, so only the singular keys still warn, one
-WARNING per key.
+WARNING per key. The same issue showed *how* it arrives — both ends as bare
+dates (`"2026-11-11"`), which is a whole day, not an interval.
 
 ## `sender` / `receiver`, and an open risk
 
@@ -598,7 +599,13 @@ moment, which becomes `planned_from`; `planned_to` is then 23:59:59 on that
 day in Home Assistant's time zone (`delivery_window.py::end_of_day`) — the
 recipient's day, since a moment DHL sends in UTC can fall on another date
 there. The DE account source does the same when it only has a single
-`zustellzeitfenster`/`zustelldatum`; a real `Von`/`Bis` pair is kept as is.
+`zustellzeitfenster`/`zustelldatum`, and for a `Von`/`Bis` pair whose `Bis`
+is a bare date, since both ends then land on the day's first instant and the
+window collapses to nothing (issue #26). It resolves that day in
+**Europe/Berlin**, not in Home Assistant's own zone: the value is a naive
+German calendar date, which is the assumption `_parse_de_timestamp` already
+makes, and anyone running Home Assistant on another zone was otherwise given
+the day before. A `Von`/`Bis` pair that carries real times is kept as is.
 A delivered parcel has neither — only `delivered_at`, as in ha-dhl-nl. The API
 source keeps DHL's `estimatedDeliveryTimeFrame` pair, or makes a single
 `estimatedTimeOfDelivery` a point (`planned_from == planned_to`), with the

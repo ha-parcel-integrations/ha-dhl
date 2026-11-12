@@ -7,6 +7,7 @@ Fixtures come from ``tests/payloads.py``. Every still-contested field
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -37,6 +38,8 @@ from tests.payloads import (
     event,
     not_found_sample,
 )
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 
 @pytest.fixture(autouse=True)
@@ -552,9 +555,9 @@ def test_delivery_window_falls_back_to_singular_fenster():
     )
     parcel = normalize_parcel_de(raw)
     assert parcel["planned_from"] == "2026-04-29T11:00:00+00:00"
-    # End of that day for the recipient, in Home Assistant's time zone.
-    assert parcel["planned_to"] == end_of_day(parcel["planned_from"])
-    assert parcel["planned_to"].startswith("2026-04-29T23:59:59")
+    # End of that day in Germany, wherever Home Assistant itself is set.
+    assert parcel["planned_to"] == end_of_day(parcel["planned_from"], BERLIN)
+    assert parcel["planned_to"] == "2026-04-29T23:59:59+02:00"
 
 
 def test_delivery_window_falls_back_to_zustelldatum():
@@ -747,3 +750,31 @@ def test_derived_delivered_defaults_to_status_when_fortschritt_unparseable():
     parcel = normalize_parcel_de(raw)
     assert parcel["status"] == ParcelStatus.UNKNOWN
     assert parcel["delivered"] is False
+
+
+def test_delivery_window_pair_of_bare_dates_spans_the_whole_day():
+    """A real account sends the pair date-only (issue #26), not as timestamps."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        zustellung={
+            "zustellzeitfensterVon": "2026-11-11",
+            "zustellzeitfensterBis": "2026-11-11",
+        },
+    )
+    parcel = normalize_parcel_de(raw)
+    # Midnight in Germany, through to the last second of the same German day.
+    assert parcel["planned_from"] == "2026-11-10T23:00:00+00:00"
+    assert parcel["planned_to"] == "2026-11-11T23:59:59+01:00"
+
+
+async def test_delivery_window_bare_date_day_is_germanys_not_home_assistants(hass):
+    """Home Assistant's own zone must not move a naive German date's day."""
+    await hass.config.async_set_time_zone("America/Los_Angeles")
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=3,
+        zustellung={"zustelldatum": "2026-11-11"},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["planned_to"] == "2026-11-11T23:59:59+01:00"
