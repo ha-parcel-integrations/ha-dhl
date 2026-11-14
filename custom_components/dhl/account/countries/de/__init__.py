@@ -384,6 +384,12 @@ _KNOWN_SENDUNGSDETAILS_KEYS = {
     # bare flag with no canonical home.
     "versender",
     "oneTimeCode",
+    # Reported live on a reporter's account (issue #33). A flag on the
+    # shipment, not a pickup state: DHL's own wording pairs a Packstation
+    # used as the delivery address with the Kleinpaket product, and it names
+    # no pickup point, so the structured `zustellung` checks stay the only
+    # source for one.
+    "psDirectAddressSmallParcel",
 }
 
 _INCOMING_SENDUNGSRICHTUNG_VALUES = {"ANKOMMEND", "EINGEHEND"}

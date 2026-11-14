@@ -40,6 +40,7 @@ def element(
     live_tracking: dict | None = None,
     versender: dict | None = None,
     one_time_code: bool | None = None,
+    ps_direct_address_small_parcel: bool | None = None,
 ) -> dict:
     """Build one ``sendungen[i]`` element from the reconstructed field inventory."""
     sendungsverlauf: dict = {
@@ -74,6 +75,8 @@ def element(
         sendungsdetails["versender"] = versender
     if one_time_code is not None:
         sendungsdetails["oneTimeCode"] = one_time_code
+    if ps_direct_address_small_parcel is not None:
+        sendungsdetails["psDirectAddressSmallParcel"] = ps_direct_address_small_parcel
 
     built: dict = {"id": code, "sendungsdetails": sendungsdetails}
     sendungsinfo: dict = {}

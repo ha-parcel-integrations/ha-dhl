@@ -443,6 +443,13 @@ def test_normalize_is_no_packstation_and_live_tracking_are_recognised_keys(caplo
     assert "unrecognised field" not in caplog.text.lower()
 
 
+def test_normalize_ps_direct_address_small_parcel_is_a_recognised_key(caplog):
+    """Reported as an unrecognised field in issue #33."""
+    raw = element(ACTIVE_CODE, fortschritt=4, ps_direct_address_small_parcel=False)
+    normalize_parcel_de(raw)
+    assert "unrecognised field" not in caplog.text.lower()
+
+
 def test_normalize_versender_and_one_time_code_are_recognised_keys(caplog):
     """Both were reported as unrecognised fields in issue #26."""
     raw = element(
