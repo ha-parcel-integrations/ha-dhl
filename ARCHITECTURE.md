@@ -444,7 +444,7 @@ and warns on disagreement:
 |---|---|---|
 | delivered flag | `istZugestellt` when present | derive from the ladder; warn on disagreement |
 | `raw_status` | `.status` | log `.kurzStatus` |
-| delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26, as bare dates | singular `zustellzeitfenster` / `zustelldatum` |
+| delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26, as bare dates; a pair with a time of day is unseen and warns once (issue #35) | singular `zustellzeitfenster` / `zustelldatum` |
 
 **`payload: confirmed`, 1.0.0.** A real account's populated `sendungen` elements
 have been observed on the wire, via both the account inbox and the by-number

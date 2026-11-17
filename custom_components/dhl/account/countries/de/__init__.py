@@ -564,6 +564,8 @@ _unexpected_keys_logged: set[str] = set()
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
 _delivery_window_keys_logged: set[str] = set()
+_timed_delivery_window_logged = False
+_live_tracking_shape_logged = False
 _timestamp_parse_failed_logged = False
 _outgoing_status_unconfirmed_logged = False
 
@@ -656,6 +658,47 @@ def _warn_delivery_window_shape(keys_present: list[str]) -> None:
             NEW_ISSUE_URL,
             keys_present,
         )
+
+
+def _warn_timed_delivery_window_once(von: Any, bis: Any) -> None:
+    """One-shot: the pair has only been seen as bare dates, never with a time."""
+    global _timed_delivery_window_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
+    if _timed_delivery_window_logged:
+        return
+    _timed_delivery_window_logged = True
+    _LOGGER.warning(
+        "DHL Germany sent a delivery window with a time of day for the first "
+        "time. Open an issue and paste this line: %s\n  "
+        "zustellzeitfensterVon=%s zustellzeitfensterBis=%s",
+        NEW_ISSUE_URL,
+        von,
+        bis,
+    )
+
+
+def _shape(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _shape(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_shape(value[0])] if value else []
+    return type(value).__name__
+
+
+def _warn_live_tracking_shape_once(value: Any) -> None:
+    """One-shot: log liveTracking's field names and types, never its values.
+
+    Its values can place the van near the recipient's address.
+    """
+    global _live_tracking_shape_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
+    if _live_tracking_shape_logged:
+        return
+    _live_tracking_shape_logged = True
+    _LOGGER.warning(
+        "DHL Germany sent live tracking for a parcel; its delivery window may "
+        "be in there. Open an issue and paste this line: %s\n  liveTracking: %s",
+        NEW_ISSUE_URL,
+        _shape(value),
+    )
 
 
 def _warn_timestamp_parse_failed_once(value: Any) -> None:
@@ -755,6 +798,8 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
         _warn_delivery_window_shape(present)
 
     if von or bis:
+        if (von and not _is_date_only(von)) or (bis and not _is_date_only(bis)):
+            _warn_timed_delivery_window_once(von, bis)
         planned_from, planned_to = _parse_de_timestamp(von), _parse_de_timestamp(bis)
         if planned_to and _is_date_only(bis):
             # A real account sends the pair as bare dates (issue #26), which
@@ -788,6 +833,8 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     details = raw.get("sendungsdetails")
     details = details if isinstance(details, dict) else {}
     _warn_unexpected_sendungsdetails_keys(details)
+    if details.get("liveTracking") is not None:
+        _warn_live_tracking_shape_once(details["liveTracking"])
     if sender is None:
         sender = _sender_from_versender(details)
     if receiver is None:
