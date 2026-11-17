@@ -73,6 +73,26 @@ def test_redaction_preserves_the_full_key_set():
     assert isinstance(redacted["delivered"], bool)
 
 
+def test_redaction_covers_the_searched_number_name_and_shipment_token():
+    raw = active_sample()
+    raw["sendungsinfo"] = {
+        "gesuchteSendungsnummer": "00340434000000000044",
+        "sendungsname": "Example GmbH",
+    }
+    raw["sendungsdetails"]["services"] = {
+        "verfuegen": {"zsmShipmentToken": "eyJraWQiOiJ4In0..abc"}
+    }
+
+    redacted = async_redact_data(raw, TO_REDACT)
+
+    assert redacted["sendungsinfo"]["gesuchteSendungsnummer"] == "**REDACTED**"
+    assert redacted["sendungsinfo"]["sendungsname"] == "**REDACTED**"
+    assert (
+        redacted["sendungsdetails"]["services"]["verfuegen"]["zsmShipmentToken"]
+        == "**REDACTED**"
+    )
+
+
 async def test_diagnostics_redacts_and_counts(hass):
     """Diagnostics get pasted into public issues — nothing identifying may survive."""
     raw = active_sample()

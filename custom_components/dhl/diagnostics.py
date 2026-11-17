@@ -60,7 +60,10 @@ TO_REDACT = {
     "name",
     "ort",
     "sendungsnummer",
+    "gesuchteSendungsnummer",
+    "sendungsname",
     "liveTracking",
+    "zsmShipmentToken",
     # DHL Freight Sweden's shipment: its numbers, the parties' towns and the
     # service point near the recipient
     "trackingNumber",
