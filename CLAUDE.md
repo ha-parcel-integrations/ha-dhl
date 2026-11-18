@@ -317,9 +317,13 @@ answer is not bound to the code asked.** `tracking/paket.py` sends the
 account endpoint's by-number query without the `dhli` cookie. The answer can
 carry other shipments the same visitor looked up before, so only the
 element whose `id` is the code counts, and `is_not_found` decides a miss. A
-non-German IP fails every poll, so the coordinator warns about a Paket
-failure once per run and logs the rest at debug level; every other backend
-still warns on every failure. A parcel Paket decides keeps
+non-German IP fails every request alike, possibly only after the 15 s
+timeout, so a redirect, a non-JSON answer or a transport failure is
+`DHLPaketUnreachableError`: it cancels the rest of the batch, and the
+coordinator skips Paket for the rest of the run with one WARNING
+(`paket_unreachable` in diagnostics). Any other Paket error, and every other
+backend's, still warns on every poll. The user-facing texts (log, README)
+deliberately do not mention the German-IP condition. A parcel Paket decides keeps
 `normalize_parcel_de`'s dhl.de link instead of the dhl.com page.
 
 **A code no backend knows warns once per run.** `_warn_not_found` waits

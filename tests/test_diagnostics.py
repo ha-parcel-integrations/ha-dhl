@@ -202,6 +202,7 @@ async def test_diagnostics_tracking_source_reports_express_state_and_redacts_par
     coordinator.express_consecutive_failures = 0
     coordinator.express_standing_down = False
     coordinator.express_disabled = False
+    coordinator.paket_unreachable = False
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
@@ -210,6 +211,7 @@ async def test_diagnostics_tracking_source_reports_express_state_and_redacts_par
         "express_consecutive_failures": 0,
         "express_standing_down": False,
         "express_disabled": False,
+        "paket_unreachable": False,
     }
     assert result["entry_options"][CONF_PARCELS] == [{"tracking_code": "**REDACTED**"}]
 

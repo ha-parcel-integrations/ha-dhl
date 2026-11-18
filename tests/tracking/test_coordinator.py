@@ -25,6 +25,7 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.tracking.coordinator import DHLTrackingCoordinator
 from custom_components.dhl.tracking.gateway import DHLGatewayError
+from custom_components.dhl.tracking.paket import DHLPaketUnreachableError
 from tests.payloads import (
     DELIVERED_CODE as DE_DELIVERED_CODE,
     delivered_sample as de_delivered_sample,
@@ -1284,24 +1285,45 @@ async def test_express_and_ten_digit_codes_never_go_to_dhl_paket(hass, fetch_pak
     fetch_paket.assert_not_called()
 
 
-async def test_a_failing_dhl_paket_warns_once_about_the_german_ip(
+async def test_an_unreachable_dhl_paket_is_skipped_for_the_rest_of_the_run(
     hass, fetch_paket, caplog
 ):
     entry = _entry([GATEWAY_CODE])
     entry.add_to_hass(hass)
     coordinator = _coordinator(hass, entry)
-    fetch_paket.side_effect = DHLApiError("HTTP 303")
+    fetch_paket.side_effect = DHLPaketUnreachableError("timed out")
 
     with patch(
         "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
-        AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+        AsyncMock(return_value={}),
     ):
         await coordinator._async_update_data()
         await coordinator._async_update_data()
 
-    warnings = [r for r in caplog.records if "German IP" in r.getMessage()]
+    fetch_paket.assert_awaited_once()
+    assert coordinator.paket_unreachable is True
+    warnings = [r for r in caplog.records if "could not be reached" in r.getMessage()]
     assert len(warnings) == 1
-    assert "DHL Paket (Germany) request failed" in warnings[0].getMessage()
+    assert "skipped until Home Assistant restarts" in warnings[0].getMessage()
+
+
+async def test_an_ordinary_dhl_paket_failure_keeps_asking(hass, fetch_paket, caplog):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_paket.side_effect = DHLApiError("rate limited")
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={}),
+    ):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    assert fetch_paket.await_count == 2
+    assert coordinator.paket_unreachable is False
+    failures = [r for r in caplog.records if "DHL Paket request failed" in r.message]
+    assert len(failures) == 2
 
 
 async def test_other_backend_failures_still_warn_every_poll(hass, caplog):

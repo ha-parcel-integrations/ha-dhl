@@ -144,6 +144,7 @@ async def async_get_config_entry_diagnostics(
             "express_consecutive_failures": coordinator.express_consecutive_failures,
             "express_standing_down": coordinator.express_standing_down,
             "express_disabled": coordinator.express_disabled,
+            "paket_unreachable": coordinator.paket_unreachable,
         }
     api_info = None
     to_redact = TO_REDACT

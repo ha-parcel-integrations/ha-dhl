@@ -82,7 +82,9 @@ by the code's *shape* (`tracking/__init__.py::classify_shape`):
 backends that are keyless and unrationed: the gateway, Mój DHL's public
 lookup, DHL eCommerce Iberia, DHL Freight Sweden and DHL Paket Germany's
 by-number search (`tracking/paket.py` — the account source's endpoint without
-the `dhli` cookie, normalized by `normalize_parcel_de`). Every poll they run at
+the `dhli` cookie, normalized by `normalize_parcel_de`; it only answers a
+German IP, so its first unreachable answer cancels its batch and takes it out
+of the round until a restart). Every poll they run at
 the same time (`asyncio.gather`), one batch each. A backend's batch is the
 codes it has answered before, plus — while a code is not delivered and its
 answers so far show no more than an announcement (`registered`/`unknown`, or

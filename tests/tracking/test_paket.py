@@ -1,12 +1,17 @@
 """Tests for the DHL Paket Germany keyless backend: fetch only."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 import pytest
 
 from custom_components.dhl.const import DHLApiError
-from custom_components.dhl.tracking.paket import async_fetch_paket, paket_shaped
+from custom_components.dhl.tracking.paket import (
+    DHLPaketUnreachableError,
+    async_fetch_paket,
+    paket_shaped,
+)
 from tests.payloads import (
     ACTIVE_CODE,
     DELIVERED_CODE,
@@ -81,11 +86,10 @@ async def test_fetch_skips_codes_that_cannot_be_piece_codes():
     [
         (_resp(303), "HTTP 303"),
         (_resp(200, ValueError("html")), "not a JSON object"),
-        (_resp(200, _envelope(rate_limited=True)), "rate limited"),
     ],
 )
-async def test_fetch_non_answers_are_errors_not_misses(resp, match):
-    with pytest.raises(DHLApiError, match=match):
+async def test_fetch_a_foreign_answer_is_unreachable_not_a_miss(resp, match):
+    with pytest.raises(DHLPaketUnreachableError, match=match):
         await async_fetch_paket(_session(resp), [DELIVERED_CODE])
 
 
@@ -93,11 +97,36 @@ async def test_fetch_non_answers_are_errors_not_misses(resp, match):
     ("error", "match"),
     [(aiohttp.ClientError("boom"), "boom"), (TimeoutError(), "timed out")],
 )
-async def test_fetch_transport_failures_are_api_errors(error, match):
+async def test_fetch_transport_failures_are_unreachable(error, match):
     session = MagicMock()
     session.get = MagicMock(side_effect=error)
-    with pytest.raises(DHLApiError, match=match):
+    with pytest.raises(DHLPaketUnreachableError, match=match):
         await async_fetch_paket(session, [DELIVERED_CODE])
+
+
+async def test_fetch_rate_limited_is_an_ordinary_error():
+    session = _session(_resp(200, _envelope(rate_limited=True)))
+    with pytest.raises(DHLApiError, match="rate limited") as err:
+        await async_fetch_paket(session, [DELIVERED_CODE])
+    assert not isinstance(err.value, DHLPaketUnreachableError)
+
+
+async def test_fetch_unreachable_stops_the_rest_of_the_batch():
+    codes = [f"JJD00039000776000000{i}" for i in range(6)]
+
+    async def hang(*_):
+        await asyncio.Event().wait()
+
+    stalled = MagicMock()
+    stalled.__aenter__ = AsyncMock(side_effect=hang)
+    stalled.__aexit__ = AsyncMock(return_value=False)
+    session = MagicMock()
+    session.get = MagicMock(side_effect=[TimeoutError(), *[stalled] * 5])
+
+    with pytest.raises(DHLPaketUnreachableError):
+        await asyncio.wait_for(async_fetch_paket(session, codes), timeout=5)
+    # The request in flight is cancelled; the queued codes are never sent.
+    assert session.get.call_count < len(codes)
 
 
 async def test_fetch_one_failing_code_keeps_the_others():

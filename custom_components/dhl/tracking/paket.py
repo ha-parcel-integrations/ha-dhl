@@ -26,6 +26,14 @@ _LOGGER = logging.getLogger(__name__)
 _TIMEOUT = aiohttp.ClientTimeout(total=DHL_PAKET_REQUEST_TIMEOUT_SECONDS)
 
 
+class DHLPaketUnreachableError(DHLApiError):
+    """The endpoint did not answer like itself, most likely a non-German IP.
+
+    Outside Germany it redirects or stalls for every code alike, so the
+    first one ends the whole batch rather than each code waiting its turn.
+    """
+
+
 def paket_shaped(code: str) -> bool:
     """Whether ``code`` can be a DHL Paket piece code at all."""
     return len(code) >= DHL_PAKET_MIN_CODE_LENGTH and code.isalnum()
@@ -46,6 +54,8 @@ async def _fetch_one(session: aiohttp.ClientSession, code: str) -> dict | None:
             # Outside Germany the endpoint redirects to an error page.
             allow_redirects=False,
         ) as resp:
+            if 300 <= resp.status < 400:
+                raise DHLPaketUnreachableError(f"HTTP {resp.status}")
             if resp.status != 200:
                 raise DHLApiError(f"HTTP {resp.status}")
             try:
@@ -53,11 +63,11 @@ async def _fetch_one(session: aiohttp.ClientSession, code: str) -> dict | None:
             except ValueError:
                 data = None
     except aiohttp.ClientError as err:
-        raise DHLApiError(str(err)) from err
+        raise DHLPaketUnreachableError(str(err)) from err
     except TimeoutError as err:
-        raise DHLApiError("timed out") from err
+        raise DHLPaketUnreachableError("timed out") from err
     if not isinstance(data, dict):
-        raise DHLApiError("unexpected answer (not a JSON object)")
+        raise DHLPaketUnreachableError("unexpected answer (not a JSON object)")
     if data.get("rateLimited"):
         raise DHLApiError("rate limited")
     # The answer can carry other shipments the same visitor looked up before,
@@ -73,29 +83,37 @@ async def async_fetch_paket(
 ) -> dict[str, dict]:
     """Fetch codes in parallel; return ``{code: element}`` for the ones DHL Paket knows.
 
-    One failing code does not cost the others their answer; only when every
-    request failed is that raised.
+    One code failing on its own does not cost the others their answer; only
+    when every request failed is that raised. A
+    :class:`DHLPaketUnreachableError` cancels the rest of the batch.
     """
     codes = [c for c in codes if paket_shaped(c)]
     if not codes:
         return {}
     limit = asyncio.Semaphore(DHL_PAKET_MAX_PARALLEL_REQUESTS)
+    results: dict[str, dict] = {}
+    errors: list[DHLApiError] = []
 
-    async def fetch(code: str) -> dict | None:
+    async def fetch(code: str) -> None:
         async with limit:
-            return await _fetch_one(session, code)
+            try:
+                answer = await _fetch_one(session, code)
+            except DHLPaketUnreachableError:
+                raise
+            except DHLApiError as err:
+                errors.append(err)
+                return
+        if answer is not None:
+            results[code] = answer
 
-    answers = await asyncio.gather(*(fetch(c) for c in codes), return_exceptions=True)
-    errors = [a for a in answers if isinstance(a, BaseException)]
-    for error in errors:
-        if not isinstance(error, DHLApiError):
-            raise error
+    try:
+        async with asyncio.TaskGroup() as group:
+            for code in codes:
+                group.create_task(fetch(code))
+    except ExceptionGroup as failed:
+        raise failed.exceptions[0] from None
     if errors and len(errors) == len(codes):
         raise errors[0]
     for error in errors:
         _LOGGER.debug("DHL Paket request failed for one code: %s", error)
-    return {
-        code: answer
-        for code, answer in zip(codes, answers, strict=True)
-        if isinstance(answer, dict)
-    }
+    return results

@@ -72,7 +72,7 @@ from .gateway import async_fetch_gateway
 from .hamta import async_fetch_hamta, hamta_shaped
 from .iberia import async_fetch_iberia, iberia_shaped
 from .mojdhl import async_fetch_mojdhl, mojdhl_shaped
-from .paket import async_fetch_paket, paket_shaped
+from .paket import DHLPaketUnreachableError, async_fetch_paket, paket_shaped
 from .parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -235,8 +235,10 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         # Codes the Express fallbacks already answered not-found while Express
         # was out of action, so a stand-down does not re-ask them every cycle.
         self._fallback_misses: set[str] = set()
-        # DHL Paket only answers a German IP; elsewhere it fails every poll.
-        self._warned_paket_failure = False
+        # DHL Paket only answers a German IP. Elsewhere every request fails
+        # alike, possibly only after the timeout, so after the first such
+        # failure it is skipped for the rest of this running entry.
+        self._paket_unreachable = False
         self._warned_not_found: set[str] = set()
 
         self._known_state: dict[str, ParcelStatus] | None = None
@@ -266,6 +268,11 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
     def express_disabled(self) -> bool:
         """Whether Express polling was permanently aborted this run (diagnostics)."""
         return self._express_disabled
+
+    @property
+    def paket_unreachable(self) -> bool:
+        """Whether DHL Paket is skipped for the rest of this run (diagnostics)."""
+        return self._paket_unreachable
 
     async def async_load_cache(self) -> None:
         """Restore the payload cache, Express budget and stand-down from disk.
@@ -549,6 +556,8 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         """Ask every keyless backend at once; a failing one costs only its own answers."""
         jobs = []
         for backend, label, accepts, fetch in _KEYLESS_CHAIN:
+            if backend == BACKEND_PAKET and self._paket_unreachable:
+                continue
             batch = [c for c in codes if self._asks(c, backend, shapes[c], accepts)]
             if batch:
                 jobs.append((backend, label, batch, fetch(self._client, batch)))
@@ -566,18 +575,14 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                     self._store_answer(code, backend, raw)
 
     def _warn_round_failure(self, backend: str, label: str, err: DHLApiError) -> None:
-        if backend != BACKEND_PAKET:
+        if not isinstance(err, DHLPaketUnreachableError):
             _LOGGER.warning("%s request failed: %s", label, err)
             return
-        if self._warned_paket_failure:
-            _LOGGER.debug("%s request failed: %s", label, err)
-            return
-        self._warned_paket_failure = True
+        self._paket_unreachable = True
         _LOGGER.warning(
-            "DHL Paket (Germany) request failed: %s. DHL Germany only answers "
-            "requests from a German IP address; outside Germany its parcels "
-            "can be tracked with the API Tracking setup. Further failures are "
-            "logged at debug level.",
+            "DHL Paket (Germany) could not be reached (%s) and is skipped "
+            "until Home Assistant restarts. Its parcels can also be tracked "
+            "with the API Tracking setup.",
             err,
         )
 
@@ -599,8 +604,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             _LOGGER.warning(
                 "DHL tracking code %s was not found on any DHL tracking "
                 "backend. A new label can take a while to appear; if it stays "
-                "like this, check the code. DHL Paket Germany codes are only "
-                "answered from a German IP address.",
+                "like this, check the code.",
                 code,
             )
 

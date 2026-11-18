@@ -27,7 +27,7 @@ DHL's Netherlands business is a separate integration,
 
 **Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
 and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
-DHL Paket Germany parcel numbers (from a German IP address only), domestic
+DHL Paket Germany parcel numbers, domestic
 DHL Freight Sweden shipment numbers, DHL parcel numbers that only
 DHL's Polish tracking (Mój DHL) knows, such as a parcel sent from Poland to
 another country, and parcels DHL eCommerce Iberia delivers in Spain and
@@ -203,9 +203,9 @@ weight, comes from another.
 | Any other 10-digit number (it fails the Express check digit) | DHL Freight Sweden and DHL eCommerce Iberia — never the slow Express backend |
 | Anything else, such as a 20-digit DHL Paket number (`00340…`) | The DHL Parcel gateway, Mój DHL (codes of 11 characters or more), DHL eCommerce Iberia, DHL Freight Sweden (codes of 10 characters) and DHL Paket Germany (codes of 12 characters or more); only when none of them knows it, the DHL Express backend |
 
-**DHL Paket Germany only answers from a German IP address.** Elsewhere its
-lookup fails; the log says so once, and the other backends carry on. Outside
-Germany, track DHL Paket numbers with the [API Tracking](#api-tracking) setup.
+**If DHL Paket Germany cannot be reached,** the log says so once and it is
+skipped until Home Assistant restarts; the other backends carry on. DHL Paket
+numbers can also be tracked with the [API Tracking](#api-tracking) setup.
 A parcel DHL Paket Germany answers links to dhl.de's own tracking page.
 
 A code that none of the backends knows yet logs one warning. A new label can
