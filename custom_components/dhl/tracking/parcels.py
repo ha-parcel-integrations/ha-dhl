@@ -1,7 +1,8 @@
 """Per-backend ``normalize_parcel`` dispatcher, plus generic list helpers.
 
 Mirrors ``account/parcels.py``'s role: the mapping logic itself lives in
-``gateway.py``/``express.py``/``hamta.py``/``mojdhl.py``/``iberia.py``; this module dispatches on
+``gateway.py``/``express.py``/``hamta.py``/``mojdhl.py``/``iberia.py``
+(DHL Paket Germany reuses the account source's ``normalize_parcel_de``); this module dispatches on
 which backend answered a given raw payload, combines the answers of several
 keyless backends into one parcel, and carries the list helpers that are
 identical regardless of which one produced it. Every raw payload carries a private
@@ -17,6 +18,7 @@ from urllib.parse import quote
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from ..account.countries.de import normalize_parcel_de
 from ..const import (
     CONF_DELIVERED_FILTER_AMOUNT,
     CONF_DELIVERED_FILTER_TYPE,
@@ -41,6 +43,7 @@ _NORMALIZERS = {
     "hamta": normalize_parcel_hamta,
     "mojdhl": normalize_parcel_mojdhl,
     "iberia": normalize_parcel_iberia,
+    "paket": normalize_parcel_de,
 }
 
 # Fields one backend may lack and another one fill in. Status, dates and the

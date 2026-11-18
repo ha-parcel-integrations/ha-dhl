@@ -1,7 +1,7 @@
 """Tracking-code source: routes each code to the backends that can answer it.
 
 The keyless backends (the DHL Parcel gateway, Mój DHL's public lookup, DHL
-eCommerce Iberia and DHL Freight Sweden) are cheap and unrationed, so every
+eCommerce Iberia, DHL Freight Sweden and DHL Paket Germany) are cheap and unrationed, so every
 one that accepts a code's shape is asked, and their answers are combined. The
 Express app backend is not one of them. Its budget is scarce, and it has
 never resolved a DHL Parcel barcode, so it is reached by the code's *shape*:
@@ -29,6 +29,7 @@ BACKEND_EXPRESS = "express"
 BACKEND_MOJDHL = "mojdhl"
 BACKEND_IBERIA = "iberia"
 BACKEND_HAMTA = "hamta"
+BACKEND_PAKET = "paket"
 # Ten digits whose last is not the Express check digit: never an Express AWB,
 # so it never spends the Express budget.
 SHAPE_TEN_DIGIT = "ten_digit"

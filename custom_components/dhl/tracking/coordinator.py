@@ -60,6 +60,7 @@ from . import (
     BACKEND_HAMTA,
     BACKEND_IBERIA,
     BACKEND_MOJDHL,
+    BACKEND_PAKET,
     BACKEND_UNKNOWN,
     SHAPE_TEN_DIGIT,
     classify_shape,
@@ -71,6 +72,7 @@ from .gateway import async_fetch_gateway
 from .hamta import async_fetch_hamta, hamta_shaped
 from .iberia import async_fetch_iberia, iberia_shaped
 from .mojdhl import async_fetch_mojdhl, mojdhl_shaped
+from .paket import async_fetch_paket, paket_shaped
 from .parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -140,6 +142,14 @@ _KEYLESS_CHAIN = (
             shape in (SHAPE_TEN_DIGIT, BACKEND_UNKNOWN) and hamta_shaped(code)
         ),
         lambda session, codes: async_fetch_hamta(session, codes),
+    ),
+    (
+        BACKEND_PAKET,
+        "DHL Paket",
+        lambda code, shape: (
+            shape not in (BACKEND_EXPRESS, SHAPE_TEN_DIGIT) and paket_shaped(code)
+        ),
+        lambda session, codes: async_fetch_paket(session, codes),
     ),
 )
 _KEYLESS_BACKENDS = tuple(backend for backend, *_ in _KEYLESS_CHAIN)
@@ -225,6 +235,8 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         # Codes the Express fallbacks already answered not-found while Express
         # was out of action, so a stand-down does not re-ask them every cycle.
         self._fallback_misses: set[str] = set()
+        # DHL Paket only answers a German IP; elsewhere it fails every poll.
+        self._warned_paket_failure = False
 
         self._known_state: dict[str, ParcelStatus] | None = None
         self._known_delivery_times: dict[str, tuple[str | None, str | None]] | None = (
@@ -544,13 +556,29 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         )
         for (backend, label, batch, _), answer in zip(jobs, answers, strict=True):
             if isinstance(answer, DHLApiError):
-                _LOGGER.warning("%s request failed: %s", label, answer)
+                self._warn_round_failure(backend, label, answer)
                 continue
             if isinstance(answer, BaseException):
                 raise answer
             for code, raw in answer.items():
                 if code in batch:
                     self._store_answer(code, backend, raw)
+
+    def _warn_round_failure(self, backend: str, label: str, err: DHLApiError) -> None:
+        if backend != BACKEND_PAKET:
+            _LOGGER.warning("%s request failed: %s", label, err)
+            return
+        if self._warned_paket_failure:
+            _LOGGER.debug("%s request failed: %s", label, err)
+            return
+        self._warned_paket_failure = True
+        _LOGGER.warning(
+            "DHL Paket (Germany) request failed: %s. DHL Germany only answers "
+            "requests from a German IP address; outside Germany its parcels "
+            "can be tracked with the API Tracking setup. Further failures are "
+            "logged at debug level.",
+            err,
+        )
 
     def _publish_one(self, code: str, shape: str, include_history: bool) -> dict:
         sources = self._sources.get(code)
@@ -659,7 +687,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         for (code, _), parcel in zip(raws, normalized, strict=True):
             if not parcel.get("barcode"):
                 parcel["barcode"] = code
-            parcel["url"] = tracking_page_url(code, locale)
+            if self._backend_of(code) != BACKEND_PAKET:
+                # dhl.de's own page shows a German parcel without a click.
+                parcel["url"] = tracking_page_url(code, locale)
             if parcel["planned_from"] and not parcel["planned_to"]:
                 # A single moment from DHL means "that day", not "that second".
                 parcel["planned_to"] = end_of_day(parcel["planned_from"])

@@ -427,6 +427,18 @@ DHL_IBERIA_HEADERS = {"accept": "application/json", "accept-language": "en-US"}
 DHL_IBERIA_REQUEST_TIMEOUT_SECONDS = 30
 DHL_IBERIA_MAX_PARALLEL_REQUESTS = 4
 
+# ---------------------------------------------------------------------------
+# Tracking source, keyless: DHL Paket Germany's by-number lookup (dhl.de).
+# ---------------------------------------------------------------------------
+
+# The account source's endpoint and headers, without the dhli cookie. It only
+# answers a German IP; elsewhere the request fails, so the timeout is short:
+# no token is at stake, and the keyless round waits for its slowest backend.
+DHL_PAKET_REQUEST_TIMEOUT_SECONDS = 15
+DHL_PAKET_MAX_PARALLEL_REQUESTS = 2
+# Every DHL Paket piece code is at least this long (12-digit Paketnummer).
+DHL_PAKET_MIN_CODE_LENGTH = 12
+
 # Per-entry Store for the tracking source. Without it every restart starts the
 # Express budget full and forgets a running stand-down, so a reboot during a
 # cooldown polls straight back into it, and Express parcels fall back to

@@ -3,7 +3,7 @@
 Home Assistant custom integration for **DHL**: an `account` source (DHL Paket
 Germany, DHL Parcel Polska — a logged-in inbox) and a `tracking` source (keyless
 lookups asked together and combined — the DHL Parcel gateway, Mój DHL, DHL
-eCommerce Iberia, DHL Freight Sweden — plus DHL Express, all code-based, no
+eCommerce Iberia, DHL Freight Sweden, DHL Paket Germany — plus DHL Express, all code-based, no
 account), and
 an `api` source (DHL's official Unified tracking API on the user's own key,
 code-based). Distributed via HACS; not part of HA core. One carrier in the
@@ -272,6 +272,7 @@ implementing:
 | `tracking/hamta.py` (client + `normalize_parcel_hamta`) | **yes** |
 | `tracking/mojdhl.py` (client + `normalize_parcel_mojdhl`; reuses the PL Altcha solver and status map) | **yes** |
 | `tracking/iberia.py` (client + `normalize_parcel_iberia`) | **yes** |
+| `tracking/paket.py` (client only; normalized by the account's `normalize_parcel_de`) | **yes** |
 | `tracking/budget.py` (`RequestBudget` token bucket) | no — ported from `ha-ups`'s model |
 | `tracking/coordinator.py` (routing, Express queue/throttle, events) | partly (the queue/throttle mechanics mirror `ha-ups`, the routing and the normalizers don't) |
 | `tracking/parcels.py` (per-backend dispatch, `merge_parcels`, sort, filters) | no |
@@ -283,7 +284,7 @@ implementing:
 ## Load-bearing tracking decisions — do not refactor away
 
 **The keyless backends are asked together and combined; Express is never one
-of them.** `_KEYLESS_CHAIN` (gateway, Mój DHL, Iberia, Hamta) runs in parallel
+of them.** `_KEYLESS_CHAIN` (gateway, Mój DHL, Iberia, Hamta, Paket) runs in parallel
 every poll. **Do not go back to first-answer-wins**: one parcel crosses
 networks — a German Weltpaket shows only its announcement on the gateway and
 its delivery on Iberia — so while a code's answers show no more than
@@ -310,6 +311,16 @@ empty number — Iberia answers that with someone else's parcel.
 `/shipment/status` request into a `422` naming it. `async_fetch_mojdhl`
 skips short codes and retries once without the named numbers; drop either
 and one bad tracked code stops every Mój DHL parcel from updating.
+
+**DHL Paket Germany's keyless lookup only answers a German IP, and its
+answer is not bound to the code asked.** `tracking/paket.py` sends the
+account endpoint's by-number query without the `dhli` cookie. The answer can
+carry other shipments the same visitor looked up before, so only the
+element whose `id` is the code counts, and `is_not_found` decides a miss. A
+non-German IP fails every poll, so the coordinator warns about a Paket
+failure once per run and logs the rest at debug level; every other backend
+still warns on every failure. A parcel Paket decides keeps
+`normalize_parcel_de`'s dhl.de link instead of the dhl.com page.
 
 **DHL Freight Sweden is a fallback behind Express for a code with a valid
 Express check digit.** Only an Express request that leaves no Express record

@@ -25,6 +25,10 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.tracking.coordinator import DHLTrackingCoordinator
 from custom_components.dhl.tracking.gateway import DHLGatewayError
+from tests.payloads import (
+    DELIVERED_CODE as DE_DELIVERED_CODE,
+    delivered_sample as de_delivered_sample,
+)
 
 from .payloads import (
     express_delivered,
@@ -1236,3 +1240,83 @@ async def test_a_parcel_the_delivered_list_leaves_out_still_fires_delivered(hass
         GATEWAY_CODE_2,
     ]
     assert [p["barcode"] for p in coordinator.delivered] == [GATEWAY_CODE_2]
+
+
+# ---------------------------------------------------------------------------
+# DHL Paket Germany (keyless dhl.de lookup) and the not-found warning
+# ---------------------------------------------------------------------------
+
+PAKET_CODE = DE_DELIVERED_CODE
+
+
+async def test_a_german_piece_code_is_answered_by_dhl_paket(hass, fetch_paket):
+    entry = _entry([PAKET_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_paket.return_value = {PAKET_CODE: de_delivered_sample(PAKET_CODE)}
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={}),
+    ):
+        await coordinator._async_update_data()
+
+    parcel = coordinator.delivered[0]
+    assert parcel["barcode"] == PAKET_CODE
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert parcel["url"].startswith("https://www.dhl.de/")
+    assert PAKET_CODE in parcel["url"]
+    assert parcel["raw"]["id"] == PAKET_CODE
+    assert "_dhl_backend" not in parcel["raw"]
+
+
+async def test_express_and_ten_digit_codes_never_go_to_dhl_paket(hass, fetch_paket):
+    entry = _entry([EXPRESS_CODE, "1000000000"])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=express_delivered(EXPRESS_CODE)),
+    ):
+        await coordinator._async_update_data()
+
+    fetch_paket.assert_not_called()
+
+
+async def test_a_failing_dhl_paket_warns_once_about_the_german_ip(
+    hass, fetch_paket, caplog
+):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    fetch_paket.side_effect = DHLApiError("HTTP 303")
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+    ):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    warnings = [r for r in caplog.records if "German IP" in r.getMessage()]
+    assert len(warnings) == 1
+    assert "DHL Paket (Germany) request failed" in warnings[0].getMessage()
+
+
+async def test_other_backend_failures_still_warn_every_poll(hass, caplog):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(side_effect=DHLGatewayError("HTTP 500")),
+    ):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    failures = [
+        r for r in caplog.records if "DHL tracking gateway request failed" in r.message
+    ]
+    assert len(failures) == 2

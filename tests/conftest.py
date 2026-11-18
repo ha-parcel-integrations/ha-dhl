@@ -75,6 +75,16 @@ def fetch_iberia():
         yield mock
 
 
+@pytest.fixture(autouse=True)
+def fetch_paket():
+    """Keep DHL Paket Germany offline; a test sets ``return_value`` to use it."""
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_paket",
+        AsyncMock(return_value={}),
+    ) as mock:
+        yield mock
+
+
 if sys.platform == "win32":
     # pytest-homeassistant-custom-component blocks socket *creation*
     # (``disable_socket(allow_unix_socket=True)``) in its per-test setup hook.

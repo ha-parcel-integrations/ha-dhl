@@ -27,7 +27,8 @@ DHL's Netherlands business is a separate integration,
 
 **Tracking-code support:** any DHL Parcel barcode (`3S…`, `JJD…`, `CR…`/`LX…`)
 and any DHL Express air waybill (a bare 10-digit number), worldwide, plus
-domestic DHL Freight Sweden shipment numbers, DHL parcel numbers that only
+DHL Paket Germany parcel numbers (from a German IP address only), domestic
+DHL Freight Sweden shipment numbers, DHL parcel numbers that only
 DHL's Polish tracking (Mój DHL) knows, such as a parcel sent from Poland to
 another country, and parcels DHL eCommerce Iberia delivers in Spain and
 Portugal — no account or postcode needed. See [Tracking codes](#tracking-codes) below.
@@ -197,10 +198,15 @@ weight, comes from another.
 
 | Code shape | Looked up on |
 |---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands; Mój DHL's public tracking; DHL eCommerce Iberia |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcodes) | A keyless DHL Parcel gateway covering DHL's wider parcel network, not just Germany or the Netherlands; Mój DHL's public tracking; DHL eCommerce Iberia; DHL Paket Germany |
 | A 10-digit DHL Express air waybill | The DHL Express tracking backend; if Express does not know it, DHL Freight Sweden's public tracking (Mitt DHL) and DHL eCommerce Iberia |
 | Any other 10-digit number (it fails the Express check digit) | DHL Freight Sweden and DHL eCommerce Iberia — never the slow Express backend |
-| Anything else | The DHL Parcel gateway, Mój DHL (codes of 11 characters or more), DHL eCommerce Iberia and DHL Freight Sweden (codes of 10 characters); only when none of them knows it, the DHL Express backend |
+| Anything else, such as a 20-digit DHL Paket number (`00340…`) | The DHL Parcel gateway, Mój DHL (codes of 11 characters or more), DHL eCommerce Iberia, DHL Freight Sweden (codes of 10 characters) and DHL Paket Germany (codes of 12 characters or more); only when none of them knows it, the DHL Express backend |
+
+**DHL Paket Germany only answers from a German IP address.** Elsewhere its
+lookup fails; the log says so once, and the other backends carry on. Outside
+Germany, track DHL Paket numbers with the [API Tracking](#api-tracking) setup.
+A parcel DHL Paket Germany answers links to dhl.de's own tracking page.
 
 **The DHL Express backend is intentionally slow to refresh — roughly once
 every 40 minutes per tracked Express code, shared across however many you
@@ -274,6 +280,8 @@ The `status` field is the carrier-agnostic enum shared by the whole integration 
 **Tracking codes — DHL Freight Sweden.** Follows Mitt DHL's own status card: a collected shipment is `delivered`, one waiting too long at the service point is `returning`, a stopped one is `problem`, and one ready for collection is `at_pickup_point`. Otherwise the newest event decides: *OUT FOR DELIVERY* is `out_for_delivery`, a drop-off at the service point or locker is `at_pickup_point`, a return is `returning`, and terminal and transport events are `in_transit`. A shipment without events is `registered`. `pickup_point` is the service point's name.
 
 **Tracking codes — DHL eCommerce Iberia.** The newest scan decides: *Out for delivery* is `out_for_delivery`; *Delivered to DHL ServicePoint* is `at_pickup_point`; *Delivered*, *Delivered, POD pending* and *Parcel picked up by recipient* are `delivered`; *Shipment being returned to sender* is `returning`, and so is any movement after it; an absent consignee, a closed receiver, a postponed or delayed delivery, force majeure, special handling and an incident are `problem`; *Shipment data received* is `registered`; depot scans, drop-offs and agreed delivery dates are `in_transit`. A scan that is not mapped falls back to the one before it. `pickup_point` is the ServicePoint's name and `weight` is in kilograms; DHL Iberia does not always send either. Scan times are the local time in Spain or Portugal and carry no offset.
+
+**Tracking codes — DHL Paket Germany.** Mapped exactly like a German account parcel (above).
 
 **Tracking codes — Mój DHL.** Uses the same DHL Parcel Polska status codes as a Polish account: a delivered or collected parcel is `delivered`, one waiting in a locker or behind a notice is `at_pickup_point`, one handed to the courier is `out_for_delivery`, a return is `returning`, and delays and delivery problems are `problem`. This backend has no event log, so parcels found here have no `history`.
 

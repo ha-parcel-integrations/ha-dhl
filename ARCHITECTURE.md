@@ -73,14 +73,16 @@ by the code's *shape* (`tracking/__init__.py::classify_shape`):
 
 | Shape | Backends | Modules |
 |---|---|---|
-| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl` + `mojdhl.pl` + `clientesparcel.dhl.es` | `tracking/gateway.py`, `tracking/mojdhl.py`, `tracking/iberia.py` |
+| `3S…`, `JJD…`, `CR…`/`LX…` (DHL Parcel barcode families) | `api-gw.dhlparcel.nl` + `mojdhl.pl` + `clientesparcel.dhl.es` + `www.dhl.de` | `tracking/gateway.py`, `tracking/mojdhl.py`, `tracking/iberia.py`, `tracking/paket.py` |
 | 10 digits with the Express check digit (a DHL Express AWB) | `dhle.dhl.com`, then `hamta.dhl.com` + `clientesparcel.dhl.es` | `tracking/express.py`, `tracking/hamta.py`, `tracking/iberia.py` |
 | 10 digits without it | `hamta.dhl.com` + `clientesparcel.dhl.es` | `tracking/hamta.py`, `tracking/iberia.py` |
-| Anything else | all four keyless backends that accept it, then `dhle.dhl.com` | all five |
+| Anything else | all five keyless backends that accept it, then `dhle.dhl.com` | all six |
 
 **The keyless round.** `_KEYLESS_CHAIN` in `tracking/coordinator.py` lists the
 backends that are keyless and unrationed: the gateway, Mój DHL's public
-lookup, DHL eCommerce Iberia and DHL Freight Sweden. Every poll they run at
+lookup, DHL eCommerce Iberia, DHL Freight Sweden and DHL Paket Germany's
+by-number search (`tracking/paket.py` — the account source's endpoint without
+the `dhli` cookie, normalized by `normalize_parcel_de`). Every poll they run at
 the same time (`asyncio.gather`), one batch each. A backend's batch is the
 codes it has answered before, plus — while a code is not delivered and its
 answers so far show no more than an announcement (`registered`/`unknown`, or
@@ -596,10 +598,12 @@ kg; an unknown unit leaves it `None` with one WARNING. `dimensions` is always
 populated for account/DE pickup arrivals whose event links the location and for DHL Freight Sweden
 service-point and locker shipments — never on the gateway or Express.
 `history` is populated on every tracking backend.
-`url` on the tracking source is always the dhl.com tracking page, localised
+`url` on the tracking source is the dhl.com tracking page, localised
 from Home Assistant's country and language (`tracking/parcels.py::
-tracking_page_locale`) — set by the coordinator, not by any backend's
-normalizer. The Express ePOD link stays in `raw`. A code DHL has not answered
+tracking_page_locale`) — set by the coordinator, not by the backend's
+normalizer — except when DHL Paket Germany decides the parcel: dhl.com's
+page needs an extra click for a German parcel, so the dhl.de link from
+`normalize_parcel_de` stays. The Express ePOD link stays in `raw`. A code DHL has not answered
 for yet (not fetched, or not found) has `raw: {}` — the placeholder the
 coordinator normalizes from is never published as if DHL had sent it.
 `delivery_window` is populated on both tracking backends. DHL gives a single
