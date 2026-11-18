@@ -208,6 +208,9 @@ lookup fails; the log says so once, and the other backends carry on. Outside
 Germany, track DHL Paket numbers with the [API Tracking](#api-tracking) setup.
 A parcel DHL Paket Germany answers links to dhl.de's own tracking page.
 
+A code that none of the backends knows yet logs one warning. A new label can
+take a while to appear at DHL; if the parcel stays `unknown`, check the code.
+
 **The DHL Express backend is intentionally slow to refresh — roughly once
 every 40 minutes per tracked Express code, shared across however many you
 track.**

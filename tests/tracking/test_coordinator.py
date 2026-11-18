@@ -1320,3 +1320,57 @@ async def test_other_backend_failures_still_warn_every_poll(hass, caplog):
         r for r in caplog.records if "DHL tracking gateway request failed" in r.message
     ]
     assert len(failures) == 2
+
+
+async def test_a_code_no_backend_knows_warns_once(hass, caplog):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={}),
+    ):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    warnings = [r for r in caplog.records if "was not found on any" in r.message]
+    assert len(warnings) == 1
+    assert GATEWAY_CODE in warnings[0].message
+
+
+async def test_a_found_code_does_not_warn(hass, caplog):
+    entry = _entry([GATEWAY_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_gateway",
+        AsyncMock(return_value={GATEWAY_CODE: gateway_element(barcode=GATEWAY_CODE)}),
+    ):
+        await coordinator._async_update_data()
+
+    assert "was not found on any" not in caplog.text
+
+
+async def test_an_express_routed_code_waits_for_its_express_turn_before_warning(
+    hass, caplog
+):
+    entry = _entry([EXPRESS_CODE])
+    entry.add_to_hass(hass)
+    coordinator = _coordinator(hass, entry)
+    coordinator._budget.try_spend()
+
+    with patch(
+        "custom_components.dhl.tracking.coordinator.async_fetch_express",
+        AsyncMock(return_value=None),
+    ) as fetch_express:
+        await coordinator._async_update_data()
+        assert "was not found on any" not in caplog.text
+        coordinator._budget = type(coordinator._budget)(
+            capacity=1, refill_seconds=DHL_EXPRESS_REQUEST_BUDGET_REFILL_SECONDS
+        )
+        await coordinator._async_update_data()
+
+    fetch_express.assert_awaited_once()
+    assert "was not found on any" in caplog.text

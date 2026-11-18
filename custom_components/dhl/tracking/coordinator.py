@@ -237,6 +237,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._fallback_misses: set[str] = set()
         # DHL Paket only answers a German IP; elsewhere it fails every poll.
         self._warned_paket_failure = False
+        self._warned_not_found: set[str] = set()
 
         self._known_state: dict[str, ParcelStatus] | None = None
         self._known_delivery_times: dict[str, tuple[str | None, str | None]] | None = (
@@ -580,6 +581,29 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             err,
         )
 
+    def _warn_not_found(self, codes: list[str], shapes: dict[str, str]) -> None:
+        """Warn once per code that no backend knows after a full lookup."""
+        for code in codes:
+            if code in self._warned_not_found or code in self._sources:
+                continue
+            if self._backend_of(code) is not None:
+                continue
+            if (
+                shapes[code] in (BACKEND_EXPRESS, BACKEND_UNKNOWN)
+                and code not in self._attempted_codes
+                and not self._express_disabled
+            ):
+                # Still waiting for its turn on the Express backend.
+                continue
+            self._warned_not_found.add(code)
+            _LOGGER.warning(
+                "DHL tracking code %s was not found on any DHL tracking "
+                "backend. A new label can take a while to appear; if it stays "
+                "like this, check the code. DHL Paket Germany codes are only "
+                "answered from a German IP address.",
+                code,
+            )
+
     def _publish_one(self, code: str, shape: str, include_history: bool) -> dict:
         sources = self._sources.get(code)
         if not sources:
@@ -616,6 +640,7 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
         self._delivered_codes &= tracked
         self._attempted_codes &= tracked
         self._fallback_misses &= tracked
+        self._warned_not_found &= tracked
         self._status_by_code = {
             c: s for c, s in self._status_by_code.items() if c in tracked
         }
@@ -677,6 +702,8 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             ]
             if untried:
                 await self._async_try_fallbacks(untried[0])
+
+        self._warn_not_found(codes, shapes)
 
         include_history = self._include_history
         normalized = [

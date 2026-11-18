@@ -322,6 +322,11 @@ failure once per run and logs the rest at debug level; every other backend
 still warns on every failure. A parcel Paket decides keeps
 `normalize_parcel_de`'s dhl.de link instead of the dhl.com page.
 
+**A code no backend knows warns once per run.** `_warn_not_found` waits
+until an Express-routed or unknown-shape code has had its Express attempt,
+so a code still queued for Express never warns early (issue #36: a
+`00340…` code sat on `unknown` with nothing in the log).
+
 **DHL Freight Sweden is a fallback behind Express for a code with a valid
 Express check digit.** Only an Express request that leaves no Express record
 sends such a code on to Hamta and Iberia (`_async_try_fallbacks`). Once
