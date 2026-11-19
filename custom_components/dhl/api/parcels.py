@@ -14,6 +14,7 @@ from datetime import datetime
 import logging
 
 from ..const import HISTORY_MAX_EVENTS, NEW_ISSUE_URL, ParcelStatus
+from ..delivery_window import is_pickup, local_zone, planned_for_status, planned_window
 from ..tracking.parcels import parse_iso
 
 _LOGGER = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ def normalize_parcel_unified(
             status_obj.get("description"),
         )
 
-    delivered = status_obj.get("statusCode") == "delivered"
+    delivered = status is ParcelStatus.DELIVERED
     delivered_at = None
     if delivered:
         delivered_at = next(
@@ -157,16 +158,18 @@ def normalize_parcel_unified(
             status_obj.get("timestamp"),
         )
 
-    planned_from = planned_to = None
-    if not delivered:
-        frame = shipment.get("estimatedDeliveryTimeFrame")
-        if isinstance(frame, dict) and (
-            frame.get("estimatedFrom") or frame.get("estimatedThrough")
-        ):
-            planned_from = frame.get("estimatedFrom")
-            planned_to = frame.get("estimatedThrough")
-        elif shipment.get("estimatedTimeOfDelivery"):
-            planned_from = planned_to = shipment["estimatedTimeOfDelivery"]
+    window_start = window_end = None
+    frame = shipment.get("estimatedDeliveryTimeFrame")
+    if isinstance(frame, dict) and (
+        frame.get("estimatedFrom") or frame.get("estimatedThrough")
+    ):
+        window_start = frame.get("estimatedFrom")
+        window_end = frame.get("estimatedThrough")
+    elif shipment.get("estimatedTimeOfDelivery"):
+        window_start = shipment["estimatedTimeOfDelivery"]
+    planned_from, planned_to = planned_for_status(
+        status, *planned_window(window_start, window_end, zone=local_zone())
+    )
 
     history: list[dict] | None = None
     if include_history:
@@ -193,7 +196,7 @@ def normalize_parcel_unified(
         "delivered_at": delivered_at,
         "planned_from": planned_from,
         "planned_to": planned_to,
-        "pickup": False,
+        "pickup": is_pickup(None, status),
         "pickup_point": None,
         "url": None,
         "weight": _weight_kg(details),

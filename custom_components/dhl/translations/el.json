@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Επόμενη παράδοση"
       },
+      "en_route_to_pickup_point": {
+        "name": "Καθ' οδόν προς το σημείο παραλαβής",
+        "unit_of_measurement": "δέματα"
+      },
       "awaiting_pickup": {
         "name": "Έτοιμα για παραλαβή",
         "unit_of_measurement": "δέματα"

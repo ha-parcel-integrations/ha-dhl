@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Lần giao hàng tiếp theo"
       },
+      "en_route_to_pickup_point": {
+        "name": "Đang đến điểm nhận hàng",
+        "unit_of_measurement": "kiện hàng"
+      },
       "awaiting_pickup": {
         "name": "Chờ nhận hàng",
         "unit_of_measurement": "kiện hàng"

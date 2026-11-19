@@ -581,7 +581,7 @@ async def test_outgoing_delivered_fires_delivered_not_status_changed(hass):
     assert delivered[0].data["barcode"] == "OUT1"
 
 
-async def test_outgoing_status_change_fires_status_changed(hass):
+async def test_outgoing_return_flag_fires_no_status_change(hass):
     entry = _entry()
     entry.add_to_hass(hass)
     returning = element(
@@ -604,9 +604,7 @@ async def test_outgoing_status_change_fires_status_changed(hass):
     await coordinator._async_update_data()
     await hass.async_block_till_done()
 
-    assert len(events) == 1
-    assert events[0].data["old_status"] == ParcelStatus.UNKNOWN
-    assert events[0].data["new_status"] == ParcelStatus.RETURNING
+    assert events == []
 
 
 async def test_event_carries_device_id(hass):

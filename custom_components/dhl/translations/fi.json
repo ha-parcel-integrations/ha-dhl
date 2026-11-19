@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Seuraava toimitus"
       },
+      "en_route_to_pickup_point": {
+        "name": "Matkalla noutopisteeseen",
+        "unit_of_measurement": "pakettia"
+      },
       "awaiting_pickup": {
         "name": "Valmis noudettavaksi",
         "unit_of_measurement": "pakettia"

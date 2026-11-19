@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 from homeassistant.util import dt as dt_util
 import pytest
 
-from custom_components.dhl.delivery_window import end_of_day
+from custom_components.dhl.delivery_window import planned_window
 from custom_components.dhl.tracking.parcels import (
     BACKEND_KEY,
     apply_delivered_filter,
@@ -126,9 +126,9 @@ def test_tracking_page_url_quotes_the_code():
         # A UTC moment late in the evening is already the next day in Amsterdam.
         ("2026-09-22T22:15:00Z", "2026-09-23T23:59:59+02:00"),
         ("2026-04-28T22:00:00+00:00", "2026-04-29T23:59:59+02:00"),
-        ("2026-07-07T21:59:00", "2026-07-07T23:59:59"),
-        ("not a moment", None),
+        ("2026-07-07T21:59:00", "2026-07-07T23:59:59+02:00"),
     ],
 )
-def test_end_of_day_is_the_recipients_day(moment, expected):
-    assert end_of_day(moment, dt_util.get_time_zone("Europe/Amsterdam")) == expected
+def test_a_moment_ends_on_the_recipients_day(moment, expected):
+    zone = dt_util.get_time_zone("Europe/Amsterdam")
+    assert planned_window(moment, None, zone=zone)[1] == expected

@@ -142,10 +142,9 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         )
         # Same suppression, for the outgoing bucket — see
         # `_fire_outgoing_change_events`. Keyed on (status, delivered) rather
-        # than status alone: status is force-``UNKNOWN`` for every outgoing
-        # parcel (the fortschritt ladder is unconfirmed for that direction),
-        # so it can never actually reach ``DELIVERED`` — the terminal hop is
-        # detected from the independently-derived `delivered` bool instead.
+        # than status alone: an outgoing parcel stays ``UNKNOWN`` until
+        # ``istZugestellt`` lifts it to ``DELIVERED``, and a finished return
+        # keeps ``RETURNING`` — the terminal hop is read from `delivered`.
         self._known_outgoing_state: dict[str, tuple[ParcelStatus, bool]] | None = None
         # Cached device id, attached to every fired event so device-trigger
         # automations can filter to this account's device.
@@ -422,10 +421,7 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
         ``_outgoing_parcel_status_changed``), and there is no outgoing
         ``registered`` or ``delivery_time_changed``. The terminal hop is
         read off the `delivered` bool rather than `status == DELIVERED` —
-        `status` is force-``UNKNOWN`` for every outgoing parcel (the
-        fortschritt ladder is unconfirmed for that direction, see
-        account/countries/de/__init__.py), so it can never actually reach
-        ``DELIVERED`` on its own.
+        a finished return keeps ``RETURNING`` yet is delivered.
         """
         if self._known_outgoing_state is None:
             return

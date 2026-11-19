@@ -118,19 +118,20 @@ def test_delivery_frame_is_passed_through_with_its_own_offset():
     assert parcel["planned_to"] == "2026-09-29T14:00:00+02:00"
 
 
-def test_single_eta_is_a_point():
+def test_single_eta_runs_to_the_end_of_that_day(amsterdam):
     parcel = _normalize(shipment(estimatedTimeOfDelivery="2026-09-29T12:00:00"))
-    assert parcel["planned_from"] == parcel["planned_to"] == "2026-09-29T12:00:00"
+    assert parcel["planned_from"] == "2026-09-29T12:00:00+02:00"
+    assert parcel["planned_to"] == "2026-09-29T23:59:59+02:00"
 
 
-def test_empty_frame_falls_back_to_the_eta():
+def test_empty_frame_falls_back_to_the_eta(amsterdam):
     parcel = _normalize(
         shipment(
             estimatedDeliveryTimeFrame={},
             estimatedTimeOfDelivery="2026-09-29T12:00:00",
         )
     )
-    assert parcel["planned_from"] == "2026-09-29T12:00:00"
+    assert parcel["planned_from"] == "2026-09-29T12:00:00+02:00"
 
 
 def test_no_window_once_delivered():

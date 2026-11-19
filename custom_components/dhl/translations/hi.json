@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "अगली डिलीवरी"
       },
+      "en_route_to_pickup_point": {
+        "name": "पिकअप पॉइंट के रास्ते में",
+        "unit_of_measurement": "पार्सल"
+      },
       "awaiting_pickup": {
         "name": "संग्रह की प्रतीक्षा में",
         "unit_of_measurement": "पार्सल"

@@ -163,6 +163,23 @@ async def test_per_parcel_sensor_spawn_and_remove(hass):
         )
 
 
+async def test_pickup_sensors_are_registered_and_not_swept(hass):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    for key in ("awaiting_pickup", "en_route_to_pickup_point"):
+        registry.async_get_or_create(
+            "sensor", DOMAIN, f"{entry.entry_id}_{key}", config_entry=entry
+        )
+
+    with patch(f"{CLIENT}.async_get_incoming", new=AsyncMock(return_value=([], False))):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    for key in ("awaiting_pickup", "en_route_to_pickup_point"):
+        assert registry.async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_{key}")
+
+
 def _tracking_entry(codes: list[str] | None = None) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,

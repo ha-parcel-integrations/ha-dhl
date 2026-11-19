@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Pengiriman berikutnya"
       },
+      "en_route_to_pickup_point": {
+        "name": "Menuju titik pengambilan",
+        "unit_of_measurement": "paket"
+      },
       "awaiting_pickup": {
         "name": "Menunggu diambil",
         "unit_of_measurement": "paket"

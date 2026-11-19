@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "การจัดส่งครั้งถัดไป"
       },
+      "en_route_to_pickup_point": {
+        "name": "กำลังไปยังจุดรับพัสดุ",
+        "unit_of_measurement": "พัสดุ"
+      },
       "awaiting_pickup": {
         "name": "รอรับพัสดุ",
         "unit_of_measurement": "พัสดุ"

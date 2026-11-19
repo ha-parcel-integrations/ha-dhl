@@ -123,10 +123,13 @@ meant every ordinary parcel out for delivery (issue #27). Don't tighten it
 back toward a poll count or a same-day threshold.
 
 **Outgoing keys delivery detection differently from incoming — on purpose.**
-`status` is force-`UNKNOWN` for every outgoing parcel (the ladder was calibrated
-against incoming sources only), so `_fire_outgoing_change_events` detects the
-terminal hop from the independently-derived `delivered` bool, not
-`status == DELIVERED`. **Do not "simplify" this back to mirroring
+An outgoing parcel's `status` starts `UNKNOWN` (the ladder was calibrated
+against incoming sources only) and `istZugestellt` lifts it to `DELIVERED`; an
+outgoing return keeps its normal mapping (the return flags set `returning` on
+incoming parcels only) and is `delivered` once it arrives. A finished
+`RETURNING` parcel is delivered without being `DELIVERED`, so
+`_fire_outgoing_change_events` detects the terminal hop from the `delivered`
+bool, not `status == DELIVERED`. **Do not "simplify" this back to mirroring
 `_fire_change_events`.**
 
 **The outgoing direction value is `ABGEHEND`, not `AUSGEHEND`.** Both OSS
@@ -156,8 +159,8 @@ needs. `CONF_TRACKED_CODES` is redacted by hand (a bare string list has no key
 to match).
 
 **On the account source `weight`/`dimensions` are always `None`; `pickup_point`
-is set only when a pickup arrival's latest event links its location** (parsed
-from the link text). Keep `const.py`'s `CAPABILITIES_BY_VARIANT["Account"]` in sync if that
+is the name in the link of the pickup event** (parsed from the link text, address
+left off), and stays set after collection. Keep `const.py`'s `CAPABILITIES_BY_VARIANT["Account"]` in sync if that
 changes.
 
 **Do not design toward folding in `ha-dhl-nl`.** It is a separate released repo
@@ -466,6 +469,32 @@ is what makes this hold.
 
 **Never the key in a `unique_id`, title, log or diagnostics.** `unique_id` and
 title carry a SHA-256 prefix; the key lives only in `entry.data`.
+
+## Parcel contract: window, pickup, delivered
+
+- `delivery_window.py` holds the helpers every source shares (`planned_window`,
+  `planned_for_status`, `is_pickup`); never copy them into a source. Backends
+  without a country (gateway, express, unified, mojdhl) read a window in Home
+  Assistant's own zone, Germany in `Europe/Berlin`.
+- `planned_*` are emptied at `at_pickup_point`, `returning` and `delivered`; a
+  single moment runs to 23:59:59 of the local day, so no coordinator stretches
+  it afterwards.
+- `delivered` is `status is DELIVERED`, plus `returning` once the carrier says
+  the return is finished (Germany: `istZugestellt`; gateway: `deliveredAt`). The
+  flags decide the status, never `delivered` afterwards, and a finished return
+  fires no `_delivered` event.
+- `pickup` stays true once a pickup-point parcel is collected (Germany: any
+  event that said "zur Abholung bereit"; Poland account: `packageType` Locker).
+  The public Mój DHL lookup has no structured field, so its `pickup` follows the
+  status and timeline step only and can fall back to false after collection.
+  Unified and express have no pickup points (constant `False`).
+- Two pickup sensors: `awaiting_pickup` counts `at_pickup_point`;
+  `en_route_to_pickup_point` counts parcels with `pickup` true that are neither
+  `at_pickup_point` nor `returning`. Both exist on every source and read 0 until
+  a parcel qualifies.
+- An explicit delivered signal wins over `at_pickup_point` (gateway:
+  `deliveredAt`). No payload has shown `deliveredAt` set on a drop-off at the
+  point; if one does, the gateway must stop letting it win there.
 
 ## Running tests
 

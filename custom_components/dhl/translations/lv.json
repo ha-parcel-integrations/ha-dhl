@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Nākamā piegāde"
       },
+      "en_route_to_pickup_point": {
+        "name": "Ceļā uz izsniegšanas punktu",
+        "unit_of_measurement": "pakas"
+      },
       "awaiting_pickup": {
         "name": "Gatavs saņemšanai",
         "unit_of_measurement": "pakas"

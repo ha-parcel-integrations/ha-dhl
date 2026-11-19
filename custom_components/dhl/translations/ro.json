@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Următoarea livrare"
       },
+      "en_route_to_pickup_point": {
+        "name": "În drum spre punctul de ridicare",
+        "unit_of_measurement": "colete"
+      },
       "awaiting_pickup": {
         "name": "În așteptarea ridicării",
         "unit_of_measurement": "colete"

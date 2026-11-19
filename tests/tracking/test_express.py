@@ -197,20 +197,22 @@ def test_planned_from_combines_edd_date_and_permissive_time_formats():
     assert parcel["planned_from"] == "2026-08-01T13:07:00+00:00"
 
 
-def test_planned_from_falls_back_to_midnight_on_unparseable_time():
+def test_an_unparseable_time_makes_the_edd_a_whole_day(amsterdam):
     raw = express_in_transit()
     raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = "not a time"
     parcel = normalize_parcel_express(raw)
-    assert parcel["planned_from"] == "2026-08-01T00:00:00+00:00"
+    assert parcel["planned_from"] == "2026-08-01T00:00:00+02:00"
+    assert parcel["planned_to"] == "2026-08-01T23:59:59+02:00"
 
 
-def test_planned_from_falls_back_to_midnight_on_missing_time():
+def test_a_missing_time_makes_the_edd_a_whole_day(amsterdam):
     raw = express_in_transit()
     raw["eddDate"] = "2026-08-01"
     raw["eddTime"] = ""
     parcel = normalize_parcel_express(raw)
-    assert parcel["planned_from"] == "2026-08-01T00:00:00+00:00"
+    assert parcel["planned_from"] == "2026-08-01T00:00:00+02:00"
+    assert parcel["planned_to"] == "2026-08-01T23:59:59+02:00"
 
 
 def test_planned_from_none_without_edd_date():

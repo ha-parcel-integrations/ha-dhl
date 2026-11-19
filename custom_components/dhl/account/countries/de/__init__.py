@@ -12,7 +12,7 @@ equivalent — see :mod:`.session`.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 import html
 import logging
 import re
@@ -35,7 +35,7 @@ from ....const import (
     DHLAuthError,
     ParcelStatus,
 )
-from ....delivery_window import end_of_day
+from ....delivery_window import is_pickup, planned_for_status, planned_window
 from .session import DHLDeAuthError, DHLDeSession, DHLDeSessionError
 
 _LOGGER = logging.getLogger(__name__)
@@ -541,12 +541,26 @@ def _reads_ready_for_pickup(verlauf: dict, events: list) -> bool:
     )
 
 
+def _ready_event_texts(events: list) -> list[str]:
+    """Status texts of the events that said a parcel was ready for pickup."""
+    texts = []
+    for event in events:
+        status = event.get("status") if isinstance(event, dict) else None
+        if isinstance(status, str) and _READY_FOR_PICKUP_RE.search(
+            _TAG_RE.sub("", status)
+        ):
+            texts.append(status)
+    return texts
+
+
 def _pickup_point_from_events(events: list) -> str | None:
-    """Return the location named by the link in the latest event's status text.
+    """Return the location named by the link in the newest event that has one.
 
     The "ready for pickup" event embeds the location as an anchor
     (``<a …>Packstation 216, street, zip city</a>``); the anchor text is
-    language-independent, unlike the sentence around it.
+    language-independent, unlike the sentence around it. Later events (the
+    collection) carry no link, so the newest *linked* event is read and a
+    collected parcel keeps its point.
     """
     for event in reversed(events):
         status = event.get("status") if isinstance(event, dict) else None
@@ -554,9 +568,10 @@ def _pickup_point_from_events(events: list) -> str | None:
             continue
         match = _ANCHOR_RE.search(status)
         if match is None:
-            return None
+            continue
         text = html.unescape(_TAG_RE.sub("", match.group(1)))
-        return " ".join(text.split()) or None
+        name = " ".join(text.split(",")[0].split())
+        return name or None
     return None
 
 
@@ -800,21 +815,32 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
     if von or bis:
         if (von and not _is_date_only(von)) or (bis and not _is_date_only(bis)):
             _warn_timed_delivery_window_once(von, bis)
-        planned_from, planned_to = _parse_de_timestamp(von), _parse_de_timestamp(bis)
-        if planned_to and _is_date_only(bis):
-            # A real account sends the pair as bare dates (issue #26), which
-            # put both ends of the window on the day's first instant.
-            planned_to = end_of_day(planned_to, _BERLIN)
+        start, end = von, bis
     elif fenster:
-        planned_from, planned_to = _parse_de_timestamp(fenster) or fenster, None
+        start, end = fenster, None
     elif datum:
-        planned_from, planned_to = _parse_de_timestamp(datum), None
+        start, end = datum, None
     else:
         return None, None
-    if planned_from and not planned_to:
-        # A single moment means "that day", not "that second".
-        planned_to = end_of_day(planned_from, _BERLIN)
-    return planned_from, planned_to
+    planned_from, planned_to = planned_window(start, end, zone=_BERLIN)
+    for value, result in ((start, planned_from), (end, planned_to)):
+        if value and result is None:
+            _parse_de_timestamp(value)
+    return _in_utc(planned_from), _in_utc(planned_to, keep_end_of_day=True)
+
+
+def _in_utc(value: str | None, *, keep_end_of_day: bool = False) -> str | None:
+    """Re-express a window timestamp in UTC, the spelling this source publishes.
+
+    An end of day stays in Berlin time, so it still reads ``23:59:59``.
+    """
+    if value is None:
+        return None
+    parsed = datetime.fromisoformat(value)
+    local = parsed.astimezone(_BERLIN)
+    if keep_end_of_day and local.time().replace(microsecond=0) == time(23, 59, 59):
+        return local.isoformat()
+    return parsed.astimezone(UTC).isoformat()
 
 
 def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
@@ -863,22 +889,23 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
 
     # Contested: two sources read istZugestellt, one derives from the
     # ladder. Read the flag when present, else derive; warn once per parcel
-    # if they ever disagree.
+    # if they ever disagree. The flag decides the status, so delivered
+    # follows the status below.
     delivered_flag = details.get("istZugestellt")
     try:
         derived_delivered = int(fortschritt) >= int(maximal_fortschritt or 5)  # type: ignore[arg-type]  # None raises TypeError, handled below
     except (TypeError, ValueError):
         derived_delivered = status is ParcelStatus.DELIVERED
     if isinstance(delivered_flag, bool):
-        delivered = delivered_flag
+        journey_over = delivered_flag
         if delivered_flag != derived_delivered:
             _warn_delivered_conflict(barcode)
     else:
-        delivered = derived_delivered
-
-    delivered_at = (
-        _parse_de_timestamp(verlauf.get("datumAktuellerStatus")) if delivered else None
-    )
+        journey_over = derived_delivered
+    if journey_over and status is not ParcelStatus.DELIVERED:
+        status = ParcelStatus.DELIVERED
+    elif not journey_over and status is ParcelStatus.DELIVERED:
+        status = ParcelStatus.IN_TRANSIT
 
     events = verlauf.get("events")
     events = events if isinstance(events, list) else []
@@ -886,29 +913,36 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
 
     zustellung = details.get("zustellung")
     zustellung = zustellung if isinstance(zustellung, dict) else {}
-    planned_from, planned_to = (
-        (None, None) if delivered else _delivery_window(zustellung)
-    )
+    planned_from, planned_to = _delivery_window(zustellung)
 
-    pickup_point = None
-    if (
-        status is ParcelStatus.OUT_FOR_DELIVERY
-        and not delivered
-        and (
-            _is_ready_at_packstation(zustellung)
-            or _reads_ready_for_pickup(verlauf, events)
-        )
-    ):
+    at_pickup_point = _is_ready_at_packstation(zustellung) or _reads_ready_for_pickup(
+        verlauf, events
+    )
+    if status is ParcelStatus.OUT_FOR_DELIVERY and at_pickup_point:
         status = ParcelStatus.AT_PICKUP_POINT
-        pickup_point = _pickup_point_from_events(events)
 
     # Confirmed live: shipment-level `retoure`/`ruecksendung` flags, distinct
     # from the per-event `events[].ruecksendung` — ORed since either can be
     # the one actually set.
     retoure = details.get("retoure")
     ruecksendung = details.get("ruecksendung")
-    if bool(retoure) or bool(ruecksendung):
+    if (bool(retoure) or bool(ruecksendung)) and not is_outgoing:
         status = ParcelStatus.RETURNING
+
+    # A return that DHL reports finished is back at the sender.
+    delivered = status is ParcelStatus.DELIVERED or (
+        status is ParcelStatus.RETURNING and journey_over
+    )
+    delivered_at = (
+        _parse_de_timestamp(verlauf.get("datumAktuellerStatus")) if delivered else None
+    )
+    planned_from, planned_to = planned_for_status(status, planned_from, planned_to)
+    pickup = is_pickup(
+        at_pickup_point,
+        status,
+        (ParcelStatus.AT_PICKUP_POINT for _ in _ready_event_texts(events)),
+    )
+    pickup_point = _pickup_point_from_events(events) if pickup else None
 
     tracking_url = (
         f"{DHL_DE_PUBLIC_TRACKING_URL}?piececode={quote(barcode)}"
@@ -932,7 +966,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         "delivered_at": delivered_at,
         "planned_from": planned_from,
         "planned_to": planned_to,
-        "pickup": status is ParcelStatus.AT_PICKUP_POINT,
+        "pickup": pickup,
         "pickup_point": pickup_point,
         "url": tracking_url,
         "weight": None,

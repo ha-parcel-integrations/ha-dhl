@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Következő kézbesítés"
       },
+      "en_route_to_pickup_point": {
+        "name": "Úton az átvételi pont felé",
+        "unit_of_measurement": "csomag"
+      },
       "awaiting_pickup": {
         "name": "Átvételre kész",
         "unit_of_measurement": "csomag"

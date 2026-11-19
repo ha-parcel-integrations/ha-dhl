@@ -164,12 +164,12 @@ def test_unmapped_category_falls_back_to_unknown_and_warns_once(caplog):
         )  # second call is suppressed — one-shot per category
 
 
-def test_planned_from_is_the_last_events_moment_indication():
+def test_planned_from_is_the_last_events_moment_indication(amsterdam):
     raw = gateway_element(moment="2026-02-13T13:00:00+01:00")
     parcel = normalize_parcel_gateway(raw)
 
     assert parcel["planned_from"] == "2026-02-13T13:00:00+01:00"
-    assert parcel["planned_to"] is None
+    assert parcel["planned_to"] == "2026-02-13T23:59:59+01:00"
 
 
 def test_a_delivered_parcel_has_no_plan_left():
@@ -311,6 +311,19 @@ def test_a_collection_notice_is_at_pickup_point():
         status="NOTIFICATION_FOR_PARCELSHOP_COLLECTION_HAS_BEEN_SENT",
     )
     assert normalize_parcel_gateway(raw)["status"] == ParcelStatus.AT_PICKUP_POINT
+
+
+def test_delivered_at_wins_over_a_collection_notice():
+    raw = gateway_element(
+        category="UNDERWAY",
+        status="NOTIFICATION_FOR_PARCELSHOP_COLLECTION_HAS_BEEN_SENT",
+        delivered_at="2099-02-13T15:02:22Z",
+    )
+    parcel = normalize_parcel_gateway(raw)
+
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert parcel["delivered"] is True
+    assert parcel["delivered_at"] == "2099-02-13T15:02:22Z"
 
 
 def test_raw_keeps_every_event_even_when_history_is_capped():

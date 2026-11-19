@@ -525,17 +525,20 @@ same way, on the raw payload rather than the normalized one.
 feeding `DHLOutgoingParcelsSensor` / `DHLOutgoingDeliveredSensor`. There are no
 per-parcel outgoing sensors, matching ha-dhl-nl's summary-only pattern.
 
-**`status` is force-`UNKNOWN` for every outgoing parcel** (one-shot
+**`status` starts as `UNKNOWN` for every outgoing parcel** (one-shot
 `_warn_outgoing_status_unconfirmed_once`): the ladder was calibrated purely
 against incoming reconstruction sources, so applying it to an outgoing
-element would be a guess. `retoure` / `ruecksendung` can still override to
-`RETURNING`, since that is a separate, direction-agnostic flag.
+element would be a guess. For outgoing parcels the `retoure` / `ruecksendung`
+flags do not set `returning`; only incoming parcels take that override, so an
+outgoing return keeps its normal mapping and is `delivered` once it arrives.
 
-Because `status` can never reach `DELIVERED` for outgoing parcels,
-`_fire_outgoing_change_events` detects the terminal hop from the
-independently-derived `delivered` bool instead of `status == DELIVERED`. **Do
-not "simplify" this back to mirroring `_fire_change_events`** — the two key
-delivery detection differently on purpose. Outgoing events
+An outgoing parcel's status stays `UNKNOWN` until `istZugestellt` (or the
+derived ladder) says the journey is over; that flag is folded into the status,
+so an outgoing parcel reaches `DELIVERED` only then. A finished `RETURNING`
+parcel is delivered without being `DELIVERED`, so
+`_fire_outgoing_change_events` detects the terminal hop from
+`delivered`, and **must not be "simplified" back to mirroring
+`_fire_change_events`**. Outgoing events
 (`dhl_outgoing_parcel_status_changed` / `_delivered`) have no `registered` or
 `delivery_time_changed` counterpart, matching ha-dhl-nl.
 

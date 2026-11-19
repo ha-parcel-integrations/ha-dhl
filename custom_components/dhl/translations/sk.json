@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Očakávané doručenie"
       },
+      "en_route_to_pickup_point": {
+        "name": "Na ceste na odberné miesto",
+        "unit_of_measurement": "zásielky"
+      },
       "awaiting_pickup": {
         "name": "Pripravené na vyzdvihnutie",
         "unit_of_measurement": "zásielky"

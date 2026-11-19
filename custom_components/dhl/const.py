@@ -103,7 +103,7 @@ DHL_DE_DISCOVERY_URL = f"{DHL_DE_OIDC_ROOT}/.well-known/openid-configuration"
 
 # The current DHL Paket app's public native client authenticates fine but
 # gets an empty account-inbox listing back — confirmed live, repeatedly.
-# This client id authenticates with an empty Basic-auth secret rather than
+# This client id signs in with an empty Basic-auth password rather than
 # PKCE-only, and does return real inbox data.
 DHL_DE_CLIENT_ID = "83471082-5c13-4fce-8dcb-19d2a3fca413"
 DHL_DE_REDIRECT_URI = "dhllogin://de.deutschepost.dhl/login"

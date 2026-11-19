@@ -28,7 +28,6 @@ from custom_components.dhl.account.countries.de.session import (
     DHLDeSessionError,
 )
 from custom_components.dhl.const import DHLApiError, DHLAuthError, ParcelStatus
-from custom_components.dhl.delivery_window import end_of_day
 from tests.payloads import (
     ACTIVE_CODE,
     active_sample,
@@ -503,7 +502,7 @@ def test_normalize_outgoing_status_warning_fires_only_once(caplog):
     assert caplog.text.lower().count("fortschritt ladder was only ever confirmed") == 1
 
 
-def test_normalize_outgoing_retoure_still_wins_over_unknown():
+def test_normalize_outgoing_retoure_does_not_set_returning():
     raw = element(
         ACTIVE_CODE,
         fortschritt=3,
@@ -511,7 +510,21 @@ def test_normalize_outgoing_retoure_still_wins_over_unknown():
         sendungsrichtung="AUSGEHEND",
         retoure=True,
     )
-    assert normalize_parcel_de(raw)["status"] == ParcelStatus.RETURNING
+    assert normalize_parcel_de(raw)["status"] == ParcelStatus.UNKNOWN
+
+
+def test_normalize_outgoing_delivered_retoure_is_delivered():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=5,
+        ist_zugestellt=True,
+        sendungsname="Jane Doe",
+        sendungsrichtung="AUSGEHEND",
+        retoure=True,
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["status"] == ParcelStatus.DELIVERED
+    assert parcel["delivered"] is True
 
 
 def test_is_outgoing_element_true_for_ausgehend():
@@ -613,7 +626,6 @@ def test_delivery_window_falls_back_to_singular_fenster():
     parcel = normalize_parcel_de(raw)
     assert parcel["planned_from"] == "2026-04-29T11:00:00+00:00"
     # End of that day in Germany, wherever Home Assistant itself is set.
-    assert parcel["planned_to"] == end_of_day(parcel["planned_from"], BERLIN)
     assert parcel["planned_to"] == "2026-04-29T23:59:59+02:00"
 
 

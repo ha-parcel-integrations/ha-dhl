@@ -8,7 +8,7 @@ from typing import Any
 
 import aiohttp
 
-from ..account.countries.pl import map_pl_status
+from ..account.countries.pl import _TIMELINE, map_pl_status
 from ..account.countries.pl.session import async_solve_altcha
 from ..const import (
     DHL_MOJDHL_MIN_CODE_LENGTH,
@@ -18,6 +18,7 @@ from ..const import (
     DHLApiError,
     ParcelStatus,
 )
+from ..delivery_window import is_pickup, local_zone, planned_for_status, planned_window
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -127,6 +128,14 @@ def normalize_parcel_mojdhl(raw: dict, *, include_history: bool = False) -> dict
     step = raw.get("timelineStep") if isinstance(raw.get("timelineStep"), str) else None
     status = map_pl_status(raw_status, step)
     delivered = status is ParcelStatus.DELIVERED
+    planned_from, planned_to = planned_for_status(
+        status,
+        *planned_window(
+            _utc(raw.get("planOfDeliveryFromUtc")),
+            _utc(raw.get("planOfDeliveryToUtc")),
+            zone=local_zone(),
+        ),
+    )
 
     return {
         "carrier": "DHL",
@@ -141,9 +150,9 @@ def normalize_parcel_mojdhl(raw: dict, *, include_history: bool = False) -> dict
             if delivered
             else None
         ),
-        "planned_from": None if delivered else _utc(raw.get("planOfDeliveryFromUtc")),
-        "planned_to": None if delivered else _utc(raw.get("planOfDeliveryToUtc")),
-        "pickup": status is ParcelStatus.AT_PICKUP_POINT,
+        "planned_from": planned_from,
+        "planned_to": planned_to,
+        "pickup": is_pickup(None, status, (_TIMELINE.get(step or ""),)),
         "pickup_point": None,
         "url": None,
         "weight": None,

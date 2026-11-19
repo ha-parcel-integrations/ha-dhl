@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "An chéad seachadadh eile"
       },
+      "en_route_to_pickup_point": {
+        "name": "Ar an mbealach go pointe bailithe",
+        "unit_of_measurement": "pacáistí"
+      },
       "awaiting_pickup": {
         "name": "Ag fanacht le bailiú",
         "unit_of_measurement": "pacáistí"

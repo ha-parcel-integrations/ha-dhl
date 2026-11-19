@@ -21,6 +21,7 @@ from ..const import (
     DHLApiError,
     ParcelStatus,
 )
+from ..delivery_window import is_pickup, local_zone, planned_for_status, planned_window
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -204,6 +205,16 @@ def _map_event(event: dict) -> ParcelStatus:
     return status
 
 
+def _quiet_event_status(event: dict) -> ParcelStatus | None:
+    """An event's status without the unmapped-category warning."""
+    status = event.get("status")
+    mapped = _STATUS_MAP.get(status) if isinstance(status, str) else None
+    if mapped is not None:
+        return mapped
+    category = event.get("category")
+    return _CATEGORY_MAP.get(category) if isinstance(category, str) else None
+
+
 def _map_status(events: list[dict]) -> tuple[ParcelStatus, str | None]:
     if not events:
         return ParcelStatus.UNKNOWN, None
@@ -230,7 +241,31 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
             for event in events[-HISTORY_MAX_EVENTS:]
         ]
 
-    delivered = bool(raw.get("deliveredAt"))
+    if raw.get("deliveredAt") and status not in (
+        ParcelStatus.DELIVERED,
+        ParcelStatus.RETURNING,
+    ):
+        status = ParcelStatus.DELIVERED
+    # A return DHL stamps with a delivery time is back at the sender: it stays
+    # ``returning`` but the journey is over.
+    delivered = status is ParcelStatus.DELIVERED or (
+        status is ParcelStatus.RETURNING and bool(raw.get("deliveredAt"))
+    )
+    delivered_at = None
+    if delivered:
+        delivered_at = raw.get("deliveredAt") or next(
+            (
+                event.get("timestamp")
+                for event in reversed(events)
+                if _quiet_event_status(event) is ParcelStatus.DELIVERED
+            ),
+            None,
+        )
+    planned_from, planned_to = planned_for_status(
+        status,
+        *planned_window(last.get("momentIndication"), None, zone=local_zone()),
+    )
+    pickup = is_pickup(None, status, (_quiet_event_status(event) for event in events))
     return {
         "carrier": "DHL",
         "barcode": raw.get("barcode"),
@@ -239,10 +274,10 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
         "status": status,
         "raw_status": raw_status,
         "delivered": delivered,
-        "delivered_at": raw.get("deliveredAt"),
-        "planned_from": None if delivered else last.get("momentIndication"),
-        "planned_to": None,
-        "pickup": False,
+        "delivered_at": delivered_at,
+        "planned_from": planned_from,
+        "planned_to": planned_to,
+        "pickup": pickup,
         "pickup_point": None,
         "url": None,
         "weight": None,

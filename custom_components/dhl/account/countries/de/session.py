@@ -1,7 +1,7 @@
 """The DHL Germany OIDC session: PKCE authorization, token exchange, refresh.
 
 Akamai CIAM at ``login.dhl.de``, Authorization Code + PKCE, client
-authenticated with an empty Basic-auth secret. This module owns the whole
+signed in with an empty Basic-auth password. This module owns the whole
 token lifecycle:
 
 - **Config-flow time**: :meth:`DHLDeSession.async_authorization_url` builds
@@ -341,7 +341,7 @@ class DHLDeSession:
         return self._id_token
 
     async def _async_refresh(self) -> None:
-        """``grant_type=refresh_token`` with an empty Basic-auth secret."""
+        """``grant_type=refresh_token`` with an empty Basic-auth password."""
         if self.refresh_token is None:
             raise DHLDeSessionError(
                 "no refresh_token to refresh with — the config entry is not set up"

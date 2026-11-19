@@ -26,6 +26,7 @@ from ..const import (
     DHLExpressThrottledError,
     ParcelStatus,
 )
+from ..delivery_window import local_zone, planned_for_status, planned_window
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -204,7 +205,9 @@ def _planned_from(raw: dict) -> str | None:
     edd_date = raw.get("eddDate")
     if not edd_date:
         return None
-    edd_time = _parse_edd_time(raw.get("eddTime")) or "00:00:00"
+    edd_time = _parse_edd_time(raw.get("eddTime"))
+    if edd_time is None:
+        return str(edd_date)
     # The backend converts the EDD to the request's timezoneOffset, "+00:00".
     return f"{edd_date}T{edd_time}+00:00"
 
@@ -360,6 +363,9 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
     checkpoints = raw.get("checkpoints") or []
     newest = _newest_checkpoint(raw)
     delivered = status is ParcelStatus.DELIVERED
+    planned_from, planned_to = planned_for_status(
+        status, *planned_window(_planned_from(raw), None, zone=local_zone())
+    )
 
     return {
         "carrier": "DHL",
@@ -368,11 +374,11 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
         "receiver": None,
         "status": status,
         # The top-level status stays empty until delivery.
-        "raw_status": raw.get("status") or newest.get("description") or "",
+        "raw_status": raw.get("status") or newest.get("description") or None,
         "delivered": delivered,
         "delivered_at": _checkpoint_timestamp(newest) if delivered else None,
-        "planned_from": None if delivered else _planned_from(raw),
-        "planned_to": None,
+        "planned_from": planned_from,
+        "planned_to": planned_to,
         "pickup": False,
         "pickup_point": None,
         "url": None,

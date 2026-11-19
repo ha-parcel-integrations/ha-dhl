@@ -53,7 +53,6 @@ from ..const import (
     DHLExpressThrottledError,
     ParcelStatus,
 )
-from ..delivery_window import end_of_day
 from . import (
     BACKEND_EXPRESS,
     BACKEND_GATEWAY,
@@ -721,9 +720,6 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             if self._backend_of(code) != BACKEND_PAKET:
                 # dhl.de's own page shows a German parcel without a click.
                 parcel["url"] = tracking_page_url(code, locale)
-            if parcel["planned_from"] and not parcel["planned_to"]:
-                # A single moment from DHL means "that day", not "that second".
-                parcel["planned_to"] = end_of_day(parcel["planned_from"])
             if code not in self._raw_cache:
                 # Nothing from DHL yet; the placeholder is not a DHL record.
                 parcel["raw"] = {}

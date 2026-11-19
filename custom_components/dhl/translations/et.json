@@ -230,6 +230,10 @@
       "next_delivery": {
         "name": "Järgmine tarne"
       },
+      "en_route_to_pickup_point": {
+        "name": "Teel väljastuspunkti",
+        "unit_of_measurement": "pakki"
+      },
       "awaiting_pickup": {
         "name": "Väljastuspunktis ootamas",
         "unit_of_measurement": "pakki"

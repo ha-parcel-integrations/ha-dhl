@@ -7,6 +7,7 @@ import logging
 import aiohttp
 
 from ....const import NEW_ISSUE_URL, DHLApiError, DHLAuthError, ParcelStatus
+from ....delivery_window import is_pickup
 from .session import DHLPlSession
 
 _LOGGER = logging.getLogger(__name__)
@@ -201,7 +202,11 @@ def normalize_parcel_pl(raw: dict, *, include_history: bool = False) -> dict:
         "delivered_at": timestamp if status is ParcelStatus.DELIVERED else None,
         "planned_from": None,
         "planned_to": None,
-        "pickup": status is ParcelStatus.AT_PICKUP_POINT,
+        "pickup": is_pickup(
+            raw.get("packageType") == "Locker",
+            status,
+            (_TIMELINE.get(ladder_status or ""),),
+        ),
         "pickup_point": None,
         "url": None,
         "weight": None,

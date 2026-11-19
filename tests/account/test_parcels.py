@@ -141,7 +141,7 @@ def test_packstation_arrival_is_at_pickup_point_with_the_station_named():
     parcel = normalize_parcel(_at_packstation(), country="DE")
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["pickup"] is True
-    assert parcel["pickup_point"] == "Packstation 216, Hauptstr. 1, 12345 Berlin"
+    assert parcel["pickup_point"] == "Packstation 216"
 
 
 def test_a_smart_packstation_is_also_ready_for_pickup():
@@ -153,7 +153,7 @@ def test_a_smart_packstation_is_also_ready_for_pickup():
     parcel = normalize_parcel(_at_packstation(zustellung=zustellung), country="DE")
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
     assert parcel["pickup"] is True
-    assert parcel["pickup_point"] == "Packstation 216, Hauptstr. 1, 12345 Berlin"
+    assert parcel["pickup_point"] == "Packstation 216"
 
 
 def test_pickup_point_is_unescaped_plain_text():
@@ -161,7 +161,7 @@ def test_pickup_point_is_unescaped_plain_text():
     parcel = normalize_parcel(
         _at_packstation(events=[{"datum": "d", "status": event}]), country="DE"
     )
-    assert parcel["pickup_point"] == "Packstation & Co, 1"
+    assert parcel["pickup_point"] == "Packstation & Co"
 
 
 def test_packstation_arrival_without_a_parsable_link_keeps_status_but_no_point():
@@ -207,7 +207,7 @@ def test_filiale_arrival_is_read_from_the_ready_for_pickup_text():
         country="DE",
     )
     assert parcel["status"] == ParcelStatus.AT_PICKUP_POINT
-    assert parcel["pickup_point"] == "Filiale 512, Bahnhofstr. 2, 12345 Berlin"
+    assert parcel["pickup_point"] == "Filiale 512"
 
 
 def test_ready_for_pickup_text_in_kurz_status_is_enough():
@@ -227,12 +227,13 @@ def test_announced_pickup_is_not_yet_ready():
     assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
 
 
-def test_collected_packstation_parcel_is_delivered_not_at_pickup_point():
+def test_collected_packstation_parcel_is_delivered_and_keeps_its_pickup_point():
     parcel = normalize_parcel(
         _at_packstation(fortschritt=5, ist_zugestellt=True), country="DE"
     )
     assert parcel["status"] == ParcelStatus.DELIVERED
-    assert parcel["pickup_point"] is None
+    assert parcel["pickup"] is True
+    assert parcel["pickup_point"] == "Packstation 216"
 
 
 def test_capabilities_are_known_values():

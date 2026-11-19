@@ -246,6 +246,7 @@ Standard HA removal applies: **Settings → Devices & Services → DHL → ⋮ �
 | `sensor.dhl_<hub>_incoming_parcels` | Number of active tracked parcels, full list under the `parcels` attribute |
 | `sensor.dhl_<hub>_parcel_<code>` | One per tracked parcel; state is the canonical status, attributes carry the full normalised parcel |
 | `sensor.dhl_<hub>_next_delivery` | Earliest expected delivery moment across all active parcels |
+| `sensor.dhl_<hub>_en_route_to_pickup_point` | Incoming parcels on their way to a pickup point that have not arrived yet |
 | `sensor.dhl_<hub>_awaiting_pickup` | Incoming parcels that are ready to collect at a pickup point |
 | `sensor.dhl_<hub>_delivered_parcels` | Recently delivered parcels (see the retention option) |
 | `sensor.dhl_<hub>_outgoing_parcels` | Number of active outgoing parcels, full list under the `parcels` attribute |
