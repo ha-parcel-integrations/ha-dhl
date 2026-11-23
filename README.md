@@ -318,7 +318,7 @@ Every payload is the full normalised parcel plus the hub's `device_id`. Events a
 
 | Service | Fields | Description |
 |---|---|---|
-| `dhl.track_parcel` | `tracking_code`, `direction` (optional, `incoming` by default), `config_entry_id` (optional) | Track a parcel by its tracking number |
+| `dhl.track_parcel` | `tracking_code`, `direction` (optional, `incoming` by default), `contents` (optional), `config_entry_id` (optional) | Track a parcel by its tracking number |
 | `dhl.untrack_parcel` | `tracking_code`, `config_entry_id` (optional) | Stop tracking a manually-added parcel |
 | `dhl.update_contents` | `tracking_code`, `contents` (empty clears it), `config_entry_id` (optional) | Set what is in a parcel, in your own words; goes to every entry that lists the code, or to the one named by `config_entry_id` |
 
