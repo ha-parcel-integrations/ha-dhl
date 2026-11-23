@@ -183,6 +183,10 @@
         "direction": {
           "name": "Virziens",
           "description": "Vai tu šo sūtījumu saņem vai sūti. DHL izsekošanas dati to neatšķir. Atkārtots izsaukums ar otru virzienu pārvieto jau izsekotu sūtījumu. DHL kontā netiek izmantots, tas virzienu zina pats."
+        },
+        "contents": {
+          "name": "Saturs",
+          "description": "Kas ir sūtījumā, saviem vārdiem. Atkārtota izsaukšana sekotam sūtījumam saturu aizstāj; tukšs teksts to izdzēš."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL ieraksts",
           "description": "No kura konfigurētā DHL ieraksta noņemt šo sūtījumu. Bez tā tiek izmantots tavs vienīgais DHL ieraksts, citādi tavs vienīgais DHL konts."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Atjaunināt sūtījuma saturu",
+      "description": "Saviem vārdiem norādiet, kas ir sūtījumā ar šo izsekošanas kodu. Tukšs teksts saturu izdzēš.",
+      "fields": {
+        "tracking_code": {
+          "name": "Izsekošanas kods",
+          "description": "DHL izsekošanas numurs."
+        },
+        "contents": {
+          "name": "Saturs",
+          "description": "Kas ir sūtījumā, saviem vārdiem. Tukšs teksts to izdzēš."
+        },
+        "config_entry_id": {
+          "name": "Konts",
+          "description": "Konts, kuram vērtību saglabāt. Nepieciešams, ja neviens konts vēl nepazīst kodu."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Paka {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Neviens konts nepazīst šo kodu. Izvēlieties kontu, kuram to saglabāt."
     }
   }
 }

@@ -183,6 +183,10 @@
         "direction": {
           "name": "Richtung",
           "description": "Ob du diese Sendung empfängst oder versendest. Die Tracking-Daten von DHL können das nicht unterscheiden. Ein erneuter Aufruf mit der anderen Richtung verschiebt eine bereits verfolgte Sendung. Bei einem DHL-Konto ohne Wirkung, da es die Richtung selbst kennt."
+        },
+        "contents": {
+          "name": "Inhalt",
+          "description": "Was im Paket ist, in deinen eigenen Worten. Ein erneuter Aufruf für ein verfolgtes Paket ersetzt den Inhalt; ein leerer Text löscht ihn."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL-Eintrag",
           "description": "Aus welchem eingerichteten DHL-Eintrag diese Sendung entfernt wird. Ohne Angabe wird dein einziger DHL-Eintrag verwendet, sonst dein einziges DHL-Konto."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Paketinhalt aktualisieren",
+      "description": "Lege für eine Sendungsnummer fest, was im Paket ist, in deinen eigenen Worten. Ein leerer Text löscht den Inhalt.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sendungsnummer",
+          "description": "Die DHL-Sendungsnummer."
+        },
+        "contents": {
+          "name": "Inhalt",
+          "description": "Was im Paket ist, in deinen eigenen Worten. Ein leerer Text löscht ihn."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Das Konto, für das dies gespeichert wird. Nötig, wenn noch kein Konto den Code kennt."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Paket {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Kein Konto kennt diesen Code. Wähle das Konto, für das er gespeichert werden soll."
     }
   }
 }

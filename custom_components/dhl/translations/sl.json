@@ -183,6 +183,10 @@
         "direction": {
           "name": "Smer",
           "description": "Ali ta paket prejemaš ali ga pošiljaš. Sledilni podatki DHL tega ne razlikujejo. Ponoven klic z nasprotno smerjo premakne že sledeni paket. Ne uporablja se pri računu DHL, ki smer pozna sam."
+        },
+        "contents": {
+          "name": "Vsebina",
+          "description": "Kaj je v paketu, z lastnimi besedami. Ponoven klic za spremljan paket vsebino zamenja; prazno besedilo jo izbriše."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Vnos DHL",
           "description": "Iz katerega nastavljenega vnosa DHL odstraniti ta paket. Brez tega se uporabi tvoj edini vnos DHL, sicer tvoj edini račun DHL."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Posodobi vsebino paketa",
+      "description": "Z lastnimi besedami nastavite, kaj je v paketu s to sledilno kodo. Prazno besedilo vsebino izbriše.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledilna koda",
+          "description": "Številka za sledenje DHL."
+        },
+        "contents": {
+          "name": "Vsebina",
+          "description": "Kaj je v paketu, z lastnimi besedami. Prazno besedilo jo izbriše."
+        },
+        "config_entry_id": {
+          "name": "Račun",
+          "description": "Račun, za katerega se vrednost shrani. Potreben, ko kode še ne pozna noben račun."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Paket {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Nobeden račun ne pozna te kode. Izberite račun, za katerega jo shranite."
     }
   }
 }

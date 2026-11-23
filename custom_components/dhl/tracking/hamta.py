@@ -173,6 +173,7 @@ def normalize_parcel_hamta(raw: dict, *, include_history: bool = False) -> dict:
         "barcode": raw.get("trackingNumber"),
         "sender": _party(raw, "CZ"),
         "receiver": _party(raw, "CN"),
+        "contents": None,
         "status": status,
         "raw_status": events[-1].get("eventText") if events else None,
         "delivered": delivered,

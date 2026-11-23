@@ -20,6 +20,7 @@ and never queued for Express again.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 import hashlib
 import logging
@@ -53,6 +54,7 @@ from ..const import (
     DHLExpressThrottledError,
     ParcelStatus,
 )
+from ..contents import ContentsStore, normalize_code
 from . import (
     BACKEND_EXPRESS,
     BACKEND_GATEWAY,
@@ -197,6 +199,10 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=compute_poll_interval(entry.entry_id, []),
         )
         self._client = client
+        self.contents_store = ContentsStore(hass, entry.entry_id)
+        # Every code this entry lists: update_contents asks which entry a code
+        # belongs to.
+        self.known_codes: frozenset[str] = frozenset()
         self.delivered: list[dict] = []
         self.outgoing: list[dict] = []
         self.delivered_outgoing: list[dict] = []
@@ -607,6 +613,22 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                 code,
             )
 
+    def _apply_contents(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Put the user's own contents text over the carrier's, when there is one."""
+        for code, parcel in entries:
+            user_value = self.contents_store.get(code)
+            if user_value is not None:
+                parcel["contents"] = user_value
+
+    def _remember_codes(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Note every code this entry lists, delivered ones past retention included."""
+        self.known_codes = frozenset(
+            normalize_code(value)
+            for code, parcel in entries
+            for value in (code, parcel.get("barcode"))
+            if value
+        )
+
     def _publish_one(self, code: str, shape: str, include_history: bool) -> dict:
         sources = self._sources.get(code)
         if not sources:
@@ -724,6 +746,9 @@ class DHLTrackingCoordinator(DataUpdateCoordinator[list[dict]]):
                 # Nothing from DHL yet; the placeholder is not a DHL record.
                 parcel["raw"] = {}
 
+        by_code = list(zip(codes, normalized, strict=True))
+        self._apply_contents(by_code)
+        self._remember_codes(by_code)
         self._delivered_codes = {
             code
             for (code, _), parcel in zip(raws, normalized, strict=True)

@@ -183,6 +183,10 @@
         "direction": {
           "name": "Hướng",
           "description": "Bạn đang nhận hay gửi bưu kiện này. Dữ liệu theo dõi của DHL không phân biệt được hai trường hợp. Gọi lại với hướng còn lại sẽ chuyển bưu kiện đang được theo dõi. Không dùng cho tài khoản DHL, vốn tự biết hướng."
+        },
+        "contents": {
+          "name": "Nội dung",
+          "description": "Những gì có trong bưu kiện, bằng lời của bạn. Gọi lại cho một bưu kiện đang theo dõi sẽ thay thế nội dung; văn bản trống sẽ xóa nội dung."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Mục DHL",
           "description": "Xóa bưu kiện này khỏi mục DHL đã cấu hình nào. Nếu bỏ trống, dùng mục DHL duy nhất của bạn, nếu không thì tài khoản DHL duy nhất của bạn."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Cập nhật nội dung bưu kiện",
+      "description": "Đặt nội dung của một bưu kiện theo mã theo dõi, bằng lời của bạn. Văn bản trống sẽ xóa nội dung.",
+      "fields": {
+        "tracking_code": {
+          "name": "Mã vận đơn",
+          "description": "Mã theo dõi DHL."
+        },
+        "contents": {
+          "name": "Nội dung",
+          "description": "Những gì có trong bưu kiện, bằng lời của bạn. Văn bản trống sẽ xóa nội dung."
+        },
+        "config_entry_id": {
+          "name": "Tài khoản",
+          "description": "Tài khoản cần lưu giá trị này. Cần khi chưa có tài khoản nào biết mã này."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Kiện hàng {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Không tài khoản nào biết mã này. Hãy chọn tài khoản để lưu."
     }
   }
 }

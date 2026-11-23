@@ -10,6 +10,7 @@ inbox is fetched by number and merged in.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 import logging
 
@@ -39,6 +40,7 @@ from ..const import (
     NEW_ISSUE_URL,
     ParcelStatus,
 )
+from ..contents import ContentsStore, normalize_code
 from .client import DHLApiClient, DHLApiError, DHLAuthError
 from .countries.de.session import DHLDeSession
 from .parcels import (
@@ -124,6 +126,10 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=compute_poll_interval(entry.entry_id, []),
         )
         self._client = client
+        self.contents_store = ContentsStore(hass, entry.entry_id)
+        # Every code this entry lists: update_contents asks which entry a code
+        # belongs to.
+        self.known_codes: frozenset[str] = frozenset()
         self._de_session = de_session
         self.delivered: list[dict] = []
         # Outgoing (sendungsrichtung: ABGEHEND) elements, split out of the
@@ -228,6 +234,22 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             if result is not None:
                 extra.append(result)
         return extra
+
+    def _apply_contents(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Put the user's own contents text over the carrier's, when there is one."""
+        for code, parcel in entries:
+            user_value = self.contents_store.get(code)
+            if user_value is not None:
+                parcel["contents"] = user_value
+
+    def _remember_codes(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Note every code this entry lists, delivered ones past retention included."""
+        self.known_codes = frozenset(
+            normalize_code(value)
+            for code, parcel in entries
+            for value in (code, parcel.get("barcode"))
+            if value
+        )
 
     def _warn_rate_limited(self, rate_limited: bool) -> None:
         """Log a WARNING on the false->true flip only."""
@@ -358,6 +380,8 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             normalize_parcel(raw, country=country, include_history=include_history)
             for raw in incoming_elements
         ]
+        incoming_entries = [(parcel.get("barcode"), parcel) for parcel in normalized]
+        self._apply_contents(incoming_entries)
         active = [parcel for parcel in normalized if not parcel["delivered"]]
         delivered = [parcel for parcel in normalized if parcel["delivered"]]
 
@@ -387,6 +411,9 @@ class DHLCoordinator(DataUpdateCoordinator[list[dict]]):
             normalize_parcel(raw, country=country, include_history=include_history)
             for raw in outgoing_elements
         ]
+        outgoing_entries = [(p.get("barcode"), p) for p in normalized_outgoing]
+        self._apply_contents(outgoing_entries)
+        self._remember_codes(incoming_entries + outgoing_entries)
         active_outgoing = [p for p in normalized_outgoing if not p["delivered"]]
         delivered_outgoing = [p for p in normalized_outgoing if p["delivered"]]
 

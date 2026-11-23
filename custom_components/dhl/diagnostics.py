@@ -51,6 +51,7 @@ TO_REDACT = {
     "barcode",
     "sender",
     "receiver",
+    "contents",
     "url",
     # the DE payload's own field names — "id" is the tracking number,
     # "name" is sendungsdetails.zustellung.empfaenger.name,

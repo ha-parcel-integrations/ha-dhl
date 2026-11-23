@@ -183,6 +183,10 @@
         "direction": {
           "name": "Direction",
           "description": "Whether you are receiving this parcel or sending it. DHL's tracking data cannot tell the two apart. Calling this again with the other direction moves an already tracked parcel. Not used on a DHL account, which knows the direction itself."
+        },
+        "contents": {
+          "name": "Contents",
+          "description": "What is in the parcel, in your own words. Calling this again for a tracked parcel replaces it; an empty text clears it."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL entry",
           "description": "Which configured DHL entry to remove this parcel from. Without it, your only DHL entry is used, or else your only DHL account."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Update parcel contents",
+      "description": "Set what is in a parcel, in your own words, for a tracking code. An empty text clears it.",
+      "fields": {
+        "tracking_code": {
+          "name": "Tracking code",
+          "description": "The DHL tracking number."
+        },
+        "contents": {
+          "name": "Contents",
+          "description": "What is in the parcel, in your own words. An empty text clears it."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The account to store this for. Needed when no account lists the code yet."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Parcel {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "No account lists this code. Choose the account to store it for."
     }
   }
 }

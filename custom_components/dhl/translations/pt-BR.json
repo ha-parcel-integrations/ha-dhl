@@ -183,6 +183,10 @@
         "direction": {
           "name": "Direção",
           "description": "Se você está recebendo ou enviando este pacote. Os dados de rastreio da DHL não distinguem os dois casos. Chamar de novo com a outra direção move um pacote já rastreado. Não é usado em uma conta DHL, que já sabe a direção."
+        },
+        "contents": {
+          "name": "Conteúdo",
+          "description": "O que há no pacote, com suas próprias palavras. Chamar novamente para um pacote acompanhado substitui o conteúdo; um texto vazio o apaga."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Entrada DHL",
           "description": "De qual entrada DHL configurada remover este pacote. Sem ela, é usada sua única entrada DHL ou, caso contrário, sua única conta DHL."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Atualizar o conteúdo do pacote",
+      "description": "Defina o que há em um pacote, com suas próprias palavras, para um código de rastreamento. Um texto vazio apaga o conteúdo.",
+      "fields": {
+        "tracking_code": {
+          "name": "Código de rastreio",
+          "description": "O número de rastreamento DHL."
+        },
+        "contents": {
+          "name": "Conteúdo",
+          "description": "O que há no pacote, com suas próprias palavras. Um texto vazio o apaga."
+        },
+        "config_entry_id": {
+          "name": "Conta",
+          "description": "A conta para a qual salvar isto. Necessária quando nenhuma conta conhece o código ainda."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Pacote {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Nenhuma conta conhece este código. Escolha a conta para a qual salvá-lo."
     }
   }
 }

@@ -183,6 +183,10 @@
         "direction": {
           "name": "Kryptis",
           "description": "Ar šią siuntą gaunate, ar siunčiate. DHL sekimo duomenys jų neatskiria. Pakartotinis iškvietimas su kita kryptimi perkelia jau sekamą siuntą. DHL paskyroje nenaudojama – ji kryptį žino pati."
+        },
+        "contents": {
+          "name": "Turinys",
+          "description": "Kas yra siuntoje, savais žodžiais. Pakartotinai iškvietus sekamai siuntai, turinys pakeičiamas; tuščias tekstas jį ištrina."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL įrašas",
           "description": "Iš kurio sukonfigūruoto DHL įrašo pašalinti šią siuntą. Be jo naudojamas vienintelis jūsų DHL įrašas, kitu atveju – vienintelė jūsų DHL paskyra."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Atnaujinti siuntos turinį",
+      "description": "Savais žodžiais nurodykite, kas yra siuntoje su šiuo sekimo kodu. Tuščias tekstas turinį ištrina.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sekimo kodas",
+          "description": "DHL sekimo numeris."
+        },
+        "contents": {
+          "name": "Turinys",
+          "description": "Kas yra siuntoje, savais žodžiais. Tuščias tekstas jį ištrina."
+        },
+        "config_entry_id": {
+          "name": "Paskyra",
+          "description": "Paskyra, kuriai reikšmė išsaugoma. Reikalinga, kai nė viena paskyra dar nežino kodo."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Siunta {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Nė viena paskyra nežino šio kodo. Pasirinkite paskyrą, kuriai jį išsaugoti."
     }
   }
 }

@@ -12,6 +12,7 @@ is a reauth for the whole entry, not a per-parcel error.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 import logging
 import time
@@ -36,6 +37,7 @@ from ..const import (
     DOMAIN,
     ParcelStatus,
 )
+from ..contents import ContentsStore, normalize_code
 from ..tracking import tracked_direction
 from ..tracking.parcels import (
     apply_delivered_filter,
@@ -80,6 +82,10 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
             update_interval=compute_poll_interval(entry.entry_id, []),
         )
         self._client = client
+        self.contents_store = ContentsStore(hass, entry.entry_id)
+        # Every code this entry lists: update_contents asks which entry a code
+        # belongs to.
+        self.known_codes: frozenset[str] = frozenset()
         self.delivered: list[dict] = []
         self.outgoing: list[dict] = []
         self.delivered_outgoing: list[dict] = []
@@ -240,6 +246,8 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
                 continue
             entries.append((code, parcel))
 
+        self._apply_contents(entries)
+        self._remember_codes(entries)
         self._delivered_codes = {
             code for code, parcel in entries if parcel["delivered"]
         }
@@ -302,6 +310,22 @@ class DHLUnifiedCoordinator(DataUpdateCoordinator[list[dict]]):
             else None
         )
         return normalized_active
+
+    def _apply_contents(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Put the user's own contents text over the carrier's, when there is one."""
+        for code, parcel in entries:
+            user_value = self.contents_store.get(code)
+            if user_value is not None:
+                parcel["contents"] = user_value
+
+    def _remember_codes(self, entries: Sequence[tuple[object, dict]]) -> None:
+        """Note every code this entry lists, delivered ones past retention included."""
+        self.known_codes = frozenset(
+            normalize_code(value)
+            for code, parcel in entries
+            for value in (code, parcel.get("barcode"))
+            if value
+        )
 
     def _fire_outgoing_change_events(self, parcels: list[dict]) -> None:
         """Fire status/delivered events for outgoing parcels.

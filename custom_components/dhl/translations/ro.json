@@ -183,6 +183,10 @@
         "direction": {
           "name": "Direcție",
           "description": "Dacă primești acest colet sau îl expediezi. Datele de urmărire DHL nu pot face distincția. Un nou apel cu cealaltă direcție mută un colet deja urmărit. Nu se folosește la un cont DHL, care știe singur direcția."
+        },
+        "contents": {
+          "name": "Conținut",
+          "description": "Ce se află în colet, cu cuvintele tale. Apelarea din nou pentru un colet urmărit înlocuiește conținutul; un text gol îl șterge."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Intrare DHL",
           "description": "Din ce intrare DHL configurată se elimină acest colet. Fără ea, se folosește singura ta intrare DHL, altfel singurul tău cont DHL."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Actualizează conținutul coletului",
+      "description": "Setează, cu cuvintele tale, ce se află într-un colet, pentru un cod de urmărire. Un text gol șterge conținutul.",
+      "fields": {
+        "tracking_code": {
+          "name": "Cod de urmărire",
+          "description": "Numărul de urmărire DHL."
+        },
+        "contents": {
+          "name": "Conținut",
+          "description": "Ce se află în colet, cu cuvintele tale. Un text gol îl șterge."
+        },
+        "config_entry_id": {
+          "name": "Cont",
+          "description": "Contul pentru care se salvează valoarea. Necesar când niciun cont nu cunoaște încă codul."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Colet {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Niciun cont nu cunoaște acest cod. Alege contul pentru care îl salvezi."
     }
   }
 }

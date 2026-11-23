@@ -261,7 +261,7 @@ implementing:
 | `coordinator.py` / `parcels.py` (domain root) | no — compatibility re-exports onto `account/coordinator.py` etc., for the pre-split public import path |
 | `const.py` | partly (shared contract + DE-specific/PL-specific/tracking-specific constants) |
 | `config_flow.py` (source menu + account's country router/OIDC/SMS flows + tracking's and api's setup/options steps) | **yes** — no precedent elsewhere in the suite |
-| `services.py` (`dhl.track_parcel`/`untrack_parcel`) | no — every source; dispatches on the resolved entry's source (`CONF_TRACKED_CODES` for an account, `CONF_PARCELS` otherwise) |
+| `services.py` (`dhl.track_parcel`/`untrack_parcel`/`update_contents`) | no — every source; dispatches on the resolved entry's source (`CONF_TRACKED_CODES` for an account, `CONF_PARCELS` otherwise) |
 | `account/client.py` (transport dispatcher; error types in `const.py`) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/parcels.py` (`normalize_parcel`/`is_outgoing` country dispatch, sort, delivered-filter) | no — dispatches into `account/countries/de/` and `account/countries/pl/` |
 | `account/coordinator.py` | partly (tracked-code merge, rate-limit/stall WARNINGs, PL cookie-jar persistence) |

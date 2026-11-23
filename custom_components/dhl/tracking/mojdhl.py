@@ -142,6 +142,7 @@ def normalize_parcel_mojdhl(raw: dict, *, include_history: bool = False) -> dict
         "barcode": raw.get("shipmentNumber"),
         "sender": raw.get("sender") or None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": raw.get("step") or raw_status,
         "delivered": delivered,

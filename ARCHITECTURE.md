@@ -266,7 +266,7 @@ custom_components/dhl/
 ├── sensor.py              summary, per-parcel, outgoing and diagnostic sensors
 ├── button.py              refresh button
 ├── calendar.py            read-only deliveries calendar
-├── services.py            dhl.track_parcel / dhl.untrack_parcel (every source)
+├── services.py            dhl.track_parcel / untrack_parcel / update_contents (every source)
 ├── device.py / device_trigger.py / diagnostics.py
 ├── account/
 │   ├── client.py          transport dispatcher; error types live in const.py

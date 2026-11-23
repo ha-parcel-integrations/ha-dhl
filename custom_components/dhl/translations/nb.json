@@ -183,6 +183,10 @@
         "direction": {
           "name": "Retning",
           "description": "Om du mottar eller sender denne pakken. DHLs sporingsdata kan ikke skille mellom de to. Et nytt kall med den andre retningen flytter en pakke som allerede spores. Brukes ikke på en DHL-konto, som selv kjenner retningen."
+        },
+        "contents": {
+          "name": "Innhold",
+          "description": "Hva som er i pakken, med dine egne ord. Hvis du kaller den på nytt for en fulgt pakke, erstattes innholdet; en tom tekst fjerner det."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL-oppføring",
           "description": "Hvilken konfigurert DHL-oppføring pakken skal fjernes fra. Uten den brukes din eneste DHL-oppføring, ellers din eneste DHL-konto."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Oppdater pakkens innhold",
+      "description": "Angi med dine egne ord hva som er i en pakke, for et sporingsnummer. En tom tekst fjerner innholdet.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sporingskode",
+          "description": "DHL-sporingsnummeret."
+        },
+        "contents": {
+          "name": "Innhold",
+          "description": "Hva som er i pakken, med dine egne ord. En tom tekst fjerner det."
+        },
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "Kontoen verdien lagres for. Kreves når ingen konto kjenner koden ennå."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Pakke {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Ingen konto kjenner denne koden. Velg kontoen den skal lagres for."
     }
   }
 }

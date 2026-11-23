@@ -960,6 +960,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         # redacted, inside `raw`.
         "sender": sender,
         "receiver": receiver,
+        "contents": None,
         "status": status,
         "raw_status": raw_status,
         "delivered": delivered,

@@ -12,6 +12,11 @@ track_parcel:
           options:
             - "incoming"
             - "outgoing"
+    contents:
+      required: false
+      example: "Running shoes"
+      selector:
+        text:
     config_entry_id:
       required: false
       selector:
@@ -23,6 +28,24 @@ untrack_parcel:
     tracking_code:
       required: true
       example: "3S00123456789"
+      selector:
+        text:
+    config_entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: dhl
+
+update_contents:
+  fields:
+    tracking_code:
+      required: true
+      example: "3S00123456789"
+      selector:
+        text:
+    contents:
+      required: false
+      example: "Running shoes"
       selector:
         text:
     config_entry_id:

@@ -271,6 +271,7 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
         "barcode": raw.get("barcode"),
         "sender": None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": raw_status,
         "delivered": delivered,

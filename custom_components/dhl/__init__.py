@@ -32,6 +32,7 @@ from .const import (
     TRACKING_STORAGE_KEY,
     TRACKING_STORAGE_VERSION,
 )
+from .contents import ContentsStore
 from .services import async_setup_services, async_unload_services
 from .tracking.coordinator import DHLTrackingCoordinator
 
@@ -67,6 +68,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         session = async_get_clientsession(hass)
         unified_client = DHLUnifiedClient(session, entry.data[CONF_API_KEY])
         unified_coordinator = DHLUnifiedCoordinator(hass, unified_client, entry)
+        await unified_coordinator.contents_store.async_load()
         await unified_coordinator.async_config_entry_first_refresh()
         entry.runtime_data = DHLData(
             client=unified_client,
@@ -91,6 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
         de_session = None
         pl_session = None
 
+        await tracking_coordinator.contents_store.async_load()
         await tracking_coordinator.async_load_cache()
         await tracking_coordinator.async_config_entry_first_refresh()
 
@@ -145,6 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool:
     coordinator = DHLCoordinator(hass, client, entry, de_session=de_session)
 
     try:
+        await coordinator.contents_store.async_load()
         # Fetch initial data here, before forwarding to platforms. Raising
         # ConfigEntryNotReady/ConfigEntryAuthFailed from a forwarded platform
         # is too late for HA to catch cleanly (it logs a warning and
@@ -199,7 +203,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> bool
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: DHLConfigEntry) -> None:
-    """Delete a tracking entry's persisted cache when the entry is removed."""
+    """Delete the entry's persisted cache and contents when it is removed."""
+    await ContentsStore(hass, entry.entry_id).async_remove()
     if entry.data.get(CONF_SOURCE, SOURCE_ACCOUNT) == SOURCE_TRACKING:
         await Store(
             hass,

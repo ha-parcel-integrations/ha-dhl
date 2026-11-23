@@ -183,6 +183,10 @@
         "direction": {
           "name": "Směr",
           "description": "Zda zásilku přijímáte, nebo odesíláte. Sledovací data DHL to nerozliší. Opětovné zavolání s opačným směrem už sledovanou zásilku přesune. U účtu DHL se nepoužije, ten směr zná sám."
+        },
+        "contents": {
+          "name": "Obsah",
+          "description": "Co je v balíku, vlastními slovy. Opětovné volání pro sledovaný balík obsah nahradí; prázdný text jej smaže."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Položka DHL",
           "description": "Ze které nastavené položky DHL se má zásilka odebrat. Bez ní se použije vaše jediná položka DHL, jinak váš jediný účet DHL."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Aktualizovat obsah balíku",
+      "description": "Nastavte vlastními slovy, co je v balíku s daným sledovacím číslem. Prázdný text obsah smaže.",
+      "fields": {
+        "tracking_code": {
+          "name": "Sledovací kód",
+          "description": "Sledovací číslo DHL."
+        },
+        "contents": {
+          "name": "Obsah",
+          "description": "Co je v balíku, vlastními slovy. Prázdný text jej smaže."
+        },
+        "config_entry_id": {
+          "name": "Účet",
+          "description": "Účet, pro který se hodnota uloží. Potřebné, když kód zatím nezná žádný účet."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Zásilka {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Tento kód nezná žádný účet. Vyberte účet, pro který ho uložit."
     }
   }
 }

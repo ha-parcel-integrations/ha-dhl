@@ -229,6 +229,7 @@ def normalize_parcel_iberia(raw: dict, *, include_history: bool = False) -> dict
         "barcode": raw.get("ExpeditionNumber"),
         "sender": None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": _wording(events[0]) if events else None,
         "delivered": delivered,

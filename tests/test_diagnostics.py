@@ -21,6 +21,7 @@ from custom_components.dhl.const import (
 )
 from custom_components.dhl.diagnostics import (
     TO_REDACT,
+    TO_REDACT_API,
     async_get_config_entry_diagnostics,
 )
 from custom_components.dhl.tracking.coordinator import DHLTrackingCoordinator
@@ -51,6 +52,7 @@ def test_redaction_preserves_the_full_key_set():
         "barcode": raw["id"],
         "sender": None,
         "receiver": None,
+        "contents": "Running shoes",
         "status": "out_for_delivery",
         "raw_status": "text",
         "delivered": False,
@@ -69,6 +71,7 @@ def test_redaction_preserves_the_full_key_set():
     )
     assert redacted["raw"]["id"] == "**REDACTED**"
     assert redacted["barcode"] == "**REDACTED**"
+    assert redacted["contents"] == "**REDACTED**"
     # every type is preserved: a redacted bool stays a bool, an int an int
     assert isinstance(redacted["delivered"], bool)
 
@@ -104,6 +107,7 @@ async def test_diagnostics_redacts_and_counts(hass):
             "barcode": raw["id"],
             "sender": None,
             "receiver": None,
+            "contents": "Running shoes",
             "status": "out_for_delivery",
             "url": "https://track/1?piececode=abc",
             "raw": raw,
@@ -124,6 +128,7 @@ async def test_diagnostics_redacts_and_counts(hass):
     assert result["entry_options"][CONF_TRACKED_CODES] == ["**REDACTED**"]
     assert result["incoming"][0]["barcode"] == "**REDACTED**"
     assert result["incoming"][0]["url"] == "**REDACTED**"
+    assert result["incoming"][0]["contents"] == "**REDACTED**"
     assert (
         result["incoming"][0]["raw"]["sendungsdetails"]["zustellung"]["empfaenger"][
             "name"
@@ -231,3 +236,13 @@ async def test_diagnostics_account_source_has_no_tracking_block(hass):
     result = await async_get_config_entry_diagnostics(hass, entry)
 
     assert result["tracking"] is None
+
+
+def test_the_api_redaction_set_covers_the_contents_too():
+    parcel = {"barcode": "A", "contents": "Running shoes", "status": "in_transit"}
+
+    assert async_redact_data(parcel, TO_REDACT_API) == {
+        "barcode": "**REDACTED**",
+        "contents": "**REDACTED**",
+        "status": "in_transit",
+    }

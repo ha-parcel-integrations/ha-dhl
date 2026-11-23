@@ -183,6 +183,10 @@
         "direction": {
           "name": "Suunta",
           "description": "Vastaanotatko vai lähetätkö tämän paketin. DHL:n seurantatiedot eivät erota näitä. Uusi kutsu toisella suunnalla siirtää jo seurattavan paketin. Ei käytössä DHL-tilillä, joka tietää suunnan itse."
+        },
+        "contents": {
+          "name": "Sisältö",
+          "description": "Mitä paketissa on, omin sanoin. Kutsuminen uudelleen seurattavalle paketille korvaa sisällön; tyhjä teksti tyhjentää sen."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL-merkintä",
           "description": "Mistä määritetystä DHL-merkinnästä paketti poistetaan. Ilman sitä käytetään ainoaa DHL-merkintääsi, muuten ainoaa DHL-tiliäsi."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Päivitä paketin sisältö",
+      "description": "Aseta seurantakoodille omin sanoin, mitä paketissa on. Tyhjä teksti tyhjentää sisällön.",
+      "fields": {
+        "tracking_code": {
+          "name": "Seurantakoodi",
+          "description": "DHL-seurantanumero."
+        },
+        "contents": {
+          "name": "Sisältö",
+          "description": "Mitä paketissa on, omin sanoin. Tyhjä teksti tyhjentää sen."
+        },
+        "config_entry_id": {
+          "name": "Tili",
+          "description": "Tili, jolle arvo tallennetaan. Tarvitaan, kun mikään tili ei vielä tunne koodia."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Paketti {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Mikään tili ei tunne tätä koodia. Valitse tili, jolle se tallennetaan."
     }
   }
 }

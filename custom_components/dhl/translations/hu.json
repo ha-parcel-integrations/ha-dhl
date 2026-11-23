@@ -183,6 +183,10 @@
         "direction": {
           "name": "Irány",
           "description": "Hogy ezt a csomagot kapod vagy te adtad fel. A DHL követési adatai ezt nem tudják megkülönböztetni. A szolgáltatás ismételt hívása a másik iránnyal áthelyezi a már követett csomagot. DHL-fióknál nincs hatása, az maga ismeri az irányt."
+        },
+        "contents": {
+          "name": "Tartalom",
+          "description": "Mi van a csomagban, saját szavaiddal. Egy követett csomagnál az újbóli meghívás lecseréli a tartalmat; az üres szöveg törli."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "DHL-bejegyzés",
           "description": "Melyik beállított DHL-bejegyzésből kerüljön ki a csomag. Enélkül az egyetlen DHL-bejegyzésed, különben az egyetlen DHL-fiókod lesz használva."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Csomag tartalmának frissítése",
+      "description": "Add meg saját szavaiddal, mi van a csomagban egy nyomkövetési kódhoz. Az üres szöveg törli a tartalmat.",
+      "fields": {
+        "tracking_code": {
+          "name": "Nyomkövetési kód",
+          "description": "A DHL-nyomkövetési szám."
+        },
+        "contents": {
+          "name": "Tartalom",
+          "description": "Mi van a csomagban, saját szavaiddal. Az üres szöveg törli."
+        },
+        "config_entry_id": {
+          "name": "Fiók",
+          "description": "A fiók, amelyhez az érték mentésre kerül. Akkor kell, ha egyik fiók sem ismeri még a kódot."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Csomag {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Egyik fiók sem ismeri ezt a kódot. Válaszd ki a fiókot, amelyhez menteni szeretnéd."
     }
   }
 }

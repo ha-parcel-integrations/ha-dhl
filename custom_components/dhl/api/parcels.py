@@ -190,6 +190,7 @@ def normalize_parcel_unified(
         "barcode": code,
         "sender": None,
         "receiver": None,
+        "contents": None,
         "status": status,
         "raw_status": status_obj.get("status"),
         "delivered": delivered,

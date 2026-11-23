@@ -372,6 +372,7 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
         "barcode": raw.get("id"),
         "sender": None,
         "receiver": None,
+        "contents": None,
         "status": status,
         # The top-level status stays empty until delivery.
         "raw_status": raw.get("status") or newest.get("description") or None,

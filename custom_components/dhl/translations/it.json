@@ -183,6 +183,10 @@
         "direction": {
           "name": "Direzione",
           "description": "Se stai ricevendo o spedendo questo pacco. I dati di tracciamento DHL non distinguono i due casi. Una nuova chiamata con l'altra direzione sposta un pacco già tracciato. Non usato su un account DHL, che conosce già la direzione."
+        },
+        "contents": {
+          "name": "Contenuto",
+          "description": "Che cosa c'è nel pacco, con parole tue. Richiamando di nuovo l'azione per un pacco monitorato, il contenuto viene sostituito; un testo vuoto lo cancella."
         }
       }
     },
@@ -197,6 +201,24 @@
         "config_entry_id": {
           "name": "Voce DHL",
           "description": "Da quale voce DHL configurata rimuovere questo pacco. Senza, viene usata la tua unica voce DHL, altrimenti il tuo unico account DHL."
+        }
+      }
+    },
+    "update_contents": {
+      "name": "Aggiorna il contenuto del pacco",
+      "description": "Imposta che cosa c'è in un pacco, con parole tue, per un codice di tracciamento. Un testo vuoto cancella il contenuto.",
+      "fields": {
+        "tracking_code": {
+          "name": "Codice di tracciamento",
+          "description": "Il numero di tracciamento DHL."
+        },
+        "contents": {
+          "name": "Contenuto",
+          "description": "Che cosa c'è nel pacco, con parole tue. Un testo vuoto lo cancella."
+        },
+        "config_entry_id": {
+          "name": "Account",
+          "description": "L'account per cui salvare il valore. Necessario quando nessun account conosce ancora il codice."
         }
       }
     }
@@ -256,6 +278,11 @@
       "parcel": {
         "name": "Pacco {barcode}"
       }
+    }
+  },
+  "exceptions": {
+    "update_contents_entry_required": {
+      "message": "Nessun account conosce questo codice. Scegli l'account per cui salvarlo."
     }
   }
 }
