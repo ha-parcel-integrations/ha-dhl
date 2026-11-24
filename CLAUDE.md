@@ -109,11 +109,11 @@ disagreement), `raw_status` (`.status`, log `.kurzStatus`), and the delivery
 window (`Von`/`Bis` pair, else singular `zustellzeitfenster`/`zustelldatum`).
 The window's pair branch is **confirmed live** (issue #26) and no longer
 warns; the singular keys still warn, one WARNING per key. **The pair arrives
-as bare dates** — a date-only `Bis` is stretched to the end of that day, and
-the day is resolved in `Europe/Berlin`, never in Home Assistant's own zone.
-A pair carrying a time of day has never been seen and warns once with its
-values; `liveTracking` warns once with its field names and types only, since
-its values can place the van near the recipient (issue #35).
+as bare dates until the delivery day**, then with a time of day and the
+Berlin offset once live tracking starts (issue #41). A date-only `Bis` is
+stretched to the end of that day, and the day is resolved in
+`Europe/Berlin`, never in Home Assistant's own zone. `liveTracking` is never
+logged: its coordinates can place the van near the recipient.
 
 **The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
 `DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival

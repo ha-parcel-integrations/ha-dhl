@@ -53,8 +53,6 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
-    de_module._timed_delivery_window_logged = False
-    de_module._live_tracking_shape_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
@@ -66,8 +64,6 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
-    de_module._timed_delivery_window_logged = False
-    de_module._live_tracking_shape_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
 
 
@@ -661,42 +657,31 @@ def test_delivery_window_von_bis_pair_does_not_warn(caplog):
     assert "delivery-window" not in caplog.text.lower()
 
 
-def test_timed_delivery_window_pair_warns_once_with_its_values(caplog):
+def test_timed_delivery_window_pair_is_used_silently(caplog):
+    """Seen live with a time of day (issue #41)."""
     raw = element(
         ACTIVE_CODE,
         fortschritt=4,
         zustellung={
-            "zustellzeitfensterVon": "2026-11-17T13:50:00+01:00",
-            "zustellzeitfensterBis": "2026-11-17T15:20:00+01:00",
+            "zustellzeitfensterVon": "2026-11-24T11:20:00+01:00",
+            "zustellzeitfensterBis": "2026-11-24T12:50:00+01:00",
         },
     )
     parcel = normalize_parcel_de(raw)
-    normalize_parcel_de(raw)
-    assert caplog.text.count("with a time of day for the first time") == 1
-    assert "zustellzeitfensterVon=2026-11-17T13:50:00+01:00" in caplog.text
-    assert parcel["planned_from"] == "2026-11-17T12:50:00+00:00"
-    assert parcel["planned_to"] == "2026-11-17T14:20:00+00:00"
+    assert "delivery window" not in caplog.text.lower()
+    assert parcel["planned_from"] == "2026-11-24T10:20:00+00:00"
+    assert parcel["planned_to"] == "2026-11-24T11:50:00+00:00"
 
 
-def test_live_tracking_warns_once_with_its_shape_not_its_values(caplog):
+def test_live_tracking_is_never_logged(caplog):
     raw = element(
         ACTIVE_CODE,
         fortschritt=4,
-        live_tracking={"countdown": 7, "position": {"lat": 52.1, "lon": 13.4}},
+        live_tracking={"distance": 1.5, "tourCoords": {"lat": 52.1, "lng": 13.4}},
     )
     normalize_parcel_de(raw)
-    normalize_parcel_de(raw)
-    assert caplog.text.count("sent live tracking for a parcel") == 1
-    assert "{'countdown': 'int', 'position': {'lat': 'float', 'lon': 'float'}}" in (
-        caplog.text
-    )
+    assert "live tracking" not in caplog.text.lower()
     assert "52.1" not in caplog.text
-
-
-def test_live_tracking_list_and_scalar_shapes():
-    assert de_module._shape([{"a": "x"}, {"a": "y"}]) == [{"a": "str"}]
-    assert de_module._shape([]) == []
-    assert de_module._shape("https://example.invalid") == "str"
 
 
 def test_delivery_window_shape_warns_once(caplog):
