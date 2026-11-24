@@ -820,7 +820,7 @@ def _live_tracking_window(
     if any(value and not _is_date_only(value) for value in (von, bis)):
         return None
     day = von if _is_date_only(von) else bis if _is_date_only(bis) else None
-    ends = []
+    ends: list[str | None] = []
     for value in (timeframe.get("from"), timeframe.get("to")):
         if not isinstance(value, str) or not value.strip():
             ends.append(None)
