@@ -112,8 +112,12 @@ warns; the singular keys still warn, one WARNING per key. **The pair arrives
 as bare dates until the delivery day**, then with a time of day and the
 Berlin offset once live tracking starts (issue #41). A date-only `Bis` is
 stretched to the end of that day, and the day is resolved in
-`Europe/Berlin`, never in Home Assistant's own zone. `liveTracking` is never
-logged: its coordinates can place the van near the recipient.
+`Europe/Berlin`, never in Home Assistant's own zone. A timed pair wins; a
+date-only pair takes its time from `liveTracking.timeframe` (issue #38),
+whose `from`/`to` spelling is unseen — an ISO time is used as sent, a bare
+time only on the pair's own day, and the first use or an unreadable value
+warns once with the timeframe. The rest of `liveTracking` is never logged:
+its coordinates can place the van near the recipient.
 
 **The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
 `DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival

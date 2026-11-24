@@ -579,6 +579,7 @@ _unexpected_keys_logged: set[str] = set()
 _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
 _delivery_window_keys_logged: set[str] = set()
+_live_tracking_window_logged = False
 _timestamp_parse_failed_logged = False
 _outgoing_status_unconfirmed_logged = False
 
@@ -671,6 +672,20 @@ def _warn_delivery_window_shape(keys_present: list[str]) -> None:
             NEW_ISSUE_URL,
             keys_present,
         )
+
+
+def _warn_live_tracking_window_once(timeframe: Any) -> None:
+    """One-shot: the live-tracking timeframe filled a window the pair left open."""
+    global _live_tracking_window_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
+    if _live_tracking_window_logged:
+        return
+    _live_tracking_window_logged = True
+    _LOGGER.warning(
+        "DHL Germany's delivery window came from its live tracking for the "
+        "first time. Open an issue and paste this line: %s\n  timeframe=%s",
+        NEW_ISSUE_URL,
+        timeframe,
+    )
 
 
 def _warn_timestamp_parse_failed_once(value: Any) -> None:
@@ -784,6 +799,45 @@ def _delivery_window(zustellung: dict) -> tuple[str | None, str | None]:
     return _in_utc(planned_from), _in_utc(planned_to, keep_end_of_day=True)
 
 
+_TIME_OF_DAY_RE = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?$")
+
+
+def _live_tracking_window(
+    live_tracking: Any, zustellung: dict
+) -> tuple[str | None, str | None] | None:
+    """The live-tracking timeframe, when the ``Von``/``Bis`` pair has no time of day.
+
+    A timed pair wins. A bare time is placed on the pair's day, never on a
+    guessed one.
+    """
+    if not isinstance(live_tracking, dict):
+        return None
+    timeframe = live_tracking.get("timeframe")
+    if not isinstance(timeframe, dict) or not timeframe.get("from"):
+        return None
+    von = zustellung.get("zustellzeitfensterVon")
+    bis = zustellung.get("zustellzeitfensterBis")
+    if any(value and not _is_date_only(value) for value in (von, bis)):
+        return None
+    day = von if _is_date_only(von) else bis if _is_date_only(bis) else None
+    ends = []
+    for value in (timeframe.get("from"), timeframe.get("to")):
+        if not isinstance(value, str) or not value.strip():
+            ends.append(None)
+        elif _TIME_OF_DAY_RE.match(value.strip()) and day:
+            ends.append(f"{str(day)[:10]}T{value.strip()}")
+        elif "T" in value:
+            ends.append(value.strip())
+        else:
+            _warn_live_tracking_window_once(timeframe)
+            return None
+    planned_from, planned_to = planned_window(ends[0], ends[1], zone=_BERLIN)
+    _warn_live_tracking_window_once(timeframe)
+    if planned_from is None:
+        return None
+    return _in_utc(planned_from), _in_utc(planned_to, keep_end_of_day=True)
+
+
 def _in_utc(value: str | None, *, keep_end_of_day: bool = False) -> str | None:
     """Re-express a window timestamp in UTC, the spelling this source publishes.
 
@@ -866,7 +920,9 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
 
     zustellung = details.get("zustellung")
     zustellung = zustellung if isinstance(zustellung, dict) else {}
-    planned_from, planned_to = _delivery_window(zustellung)
+    planned_from, planned_to = _live_tracking_window(
+        details.get("liveTracking"), zustellung
+    ) or _delivery_window(zustellung)
 
     at_pickup_point = _is_ready_at_packstation(zustellung) or _reads_ready_for_pickup(
         verlauf, events

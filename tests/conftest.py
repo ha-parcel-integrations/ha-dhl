@@ -35,6 +35,7 @@ def reset_one_shot_warnings():
     de._raw_status_kurz_status_logged = False
     de._delivery_window_keys_logged.clear()
     de._timestamp_parse_failed_logged = False
+    de._live_tracking_window_logged = False
     session._client_retirement_warned = False
     pl._unmapped_status_logged.clear()
     iberia._warned.clear()

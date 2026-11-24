@@ -53,6 +53,7 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
+    de_module._live_tracking_window_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
@@ -64,6 +65,7 @@ def _reset_one_shot_state():
     de_module._raw_status_kurz_status_logged = False
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
+    de_module._live_tracking_window_logged = False
     de_module._outgoing_status_unconfirmed_logged = False
 
 
@@ -666,9 +668,11 @@ def test_timed_delivery_window_pair_is_used_silently(caplog):
             "zustellzeitfensterVon": "2026-11-24T11:20:00+01:00",
             "zustellzeitfensterBis": "2026-11-24T12:50:00+01:00",
         },
+        live_tracking={"timeframe": {"from": "10:00", "to": "11:00"}},
     )
     parcel = normalize_parcel_de(raw)
     assert "delivery window" not in caplog.text.lower()
+    assert "live tracking" not in caplog.text.lower()
     assert parcel["planned_from"] == "2026-11-24T10:20:00+00:00"
     assert parcel["planned_to"] == "2026-11-24T11:50:00+00:00"
 
@@ -682,6 +686,85 @@ def test_live_tracking_is_never_logged(caplog):
     normalize_parcel_de(raw)
     assert "live tracking" not in caplog.text.lower()
     assert "52.1" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("timeframe", "expected_from", "expected_to"),
+    [
+        (
+            {"from": "11:20", "to": "12:50"},
+            "2026-11-24T10:20:00+00:00",
+            "2026-11-24T11:50:00+00:00",
+        ),
+        (
+            {"from": "2026-11-24T11:20:00+01:00", "to": "2026-11-24T12:50:00+01:00"},
+            "2026-11-24T10:20:00+00:00",
+            "2026-11-24T11:50:00+00:00",
+        ),
+    ],
+)
+def test_live_tracking_timeframe_fills_a_date_only_pair(
+    caplog, timeframe, expected_from, expected_to
+):
+    """A date-only pair next to a timed live-tracking timeframe (issue #38)."""
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        zustellung={
+            "zustellzeitfensterVon": "2026-11-24",
+            "zustellzeitfensterBis": "2026-11-24",
+        },
+        live_tracking={"timeframe": timeframe, "tourCoords": {"lat": 52.1}},
+    )
+    parcel = normalize_parcel_de(raw)
+    normalize_parcel_de(raw)
+    assert parcel["planned_from"] == expected_from
+    assert parcel["planned_to"] == expected_to
+    assert caplog.text.count("came from its live tracking") == 1
+    assert "52.1" not in caplog.text
+
+
+def test_live_tracking_bare_time_without_a_day_is_not_guessed():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        zustellung={},
+        live_tracking={"timeframe": {"from": "11:20", "to": "12:50"}},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["planned_from"] is None
+
+
+@pytest.mark.parametrize(
+    "timeframe",
+    [{"from": "gleich", "to": "12:50"}, {"from": "2026-11-24Tx", "to": None}],
+)
+def test_live_tracking_unreadable_timeframe_keeps_the_pair_and_warns(caplog, timeframe):
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        zustellung={
+            "zustellzeitfensterVon": "2026-11-24",
+            "zustellzeitfensterBis": "2026-11-24",
+        },
+        live_tracking={"timeframe": timeframe},
+    )
+    parcel = normalize_parcel_de(raw)
+    assert parcel["planned_from"] == "2026-11-23T23:00:00+00:00"
+    assert "came from its live tracking" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "live_tracking", [None, "x", {"timeframe": None}, {"timeframe": {"to": "12:50"}}]
+)
+def test_live_tracking_without_a_timeframe_keeps_the_pair(live_tracking):
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        zustellung={"zustellzeitfensterVon": "2026-11-24"},
+        live_tracking=live_tracking,
+    )
+    assert normalize_parcel_de(raw)["planned_from"] == "2026-11-23T23:00:00+00:00"
 
 
 def test_delivery_window_shape_warns_once(caplog):
