@@ -154,6 +154,35 @@ def test_empty_status_with_past_edd_is_unknown_not_in_transit():
     assert parcel["status"] == ParcelStatus.UNKNOWN
 
 
+def test_in_transit_status_falls_through_to_the_checkpoint(caplog):
+    """A real parcel before delivery (issue #40)."""
+    raw = express_in_transit()
+    raw["status"] = "IN TRANSIT"
+    raw["checkpoints"][0]["description"] = (
+        "Arrived at DHL Delivery Facility  PRATTELN - SWITZERLAND"
+    )
+    raw["checkpoints"][0]["location"] = "PRATTELN - SWITZERLAND"
+    parcel = normalize_parcel_express(raw)
+    assert parcel["status"] == ParcelStatus.IN_TRANSIT
+    assert parcel["raw_status"] == "IN TRANSIT"
+    assert "unrecognised status" not in caplog.text
+
+
+def test_in_transit_status_with_an_out_for_delivery_checkpoint():
+    raw = express_in_transit()
+    raw["status"] = "IN TRANSIT"
+    raw["checkpoints"][0]["description"] = "Shipment is out with courier for delivery"
+    parcel = normalize_parcel_express(raw)
+    assert parcel["status"] == ParcelStatus.OUT_FOR_DELIVERY
+
+
+def test_unmapped_status_still_reads_the_checkpoint():
+    raw = express_in_transit()
+    raw["status"] = "SOMETHING_ELSE"
+    raw["checkpoints"][0]["description"] = "Processed at ZURICH - SWITZERLAND"
+    assert normalize_parcel_express(raw)["status"] == ParcelStatus.IN_TRANSIT
+
+
 def test_unmapped_status_warns_once(caplog):
     with caplog.at_level("WARNING"):
         raw = {"id": "X", "status": "SOMETHING_ELSE", "checkpoints": []}

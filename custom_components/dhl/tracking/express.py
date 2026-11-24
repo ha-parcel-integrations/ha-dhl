@@ -164,22 +164,24 @@ def _warn_unmapped_status(raw_status: str) -> None:
         return
     _warned_statuses.add(raw_status)
     _LOGGER.warning(
-        "DHL Express reported an unrecognised status %r — mapped to "
-        "'unknown'. Please report this: %s",
+        "DHL Express reported an unrecognised status %r — the newest "
+        "checkpoint decides instead. Please report this: %s",
         raw_status,
         NEW_ISSUE_URL,
     )
+
+
+# Seen on a real parcel before delivery (issue #40); it is too coarse to tell
+# a parcel out for delivery apart, so the newest checkpoint still decides.
+_IN_FLIGHT_STATUSES = frozenset({"IN TRANSIT"})
 
 
 def _map_status(raw: dict) -> ParcelStatus:
     raw_status = raw.get("status") or ""
     if raw_status == "DELIVERED":
         return ParcelStatus.DELIVERED
-    if raw_status:
+    if raw_status and raw_status not in _IN_FLIGHT_STATUSES:
         _warn_unmapped_status(raw_status)
-        return ParcelStatus.UNKNOWN
-    # The top-level status is only ever filled in on delivery; until then the
-    # newest checkpoint is the best signal.
     latest = _newest_checkpoint(raw)
     if not latest:
         return ParcelStatus.UNKNOWN
@@ -374,7 +376,7 @@ def normalize_parcel_express(raw: dict, *, include_history: bool = False) -> dic
         "receiver": None,
         "contents": None,
         "status": status,
-        # The top-level status stays empty until delivery.
+        # The top-level status can be empty before delivery.
         "raw_status": raw.get("status") or newest.get("description") or None,
         "delivered": delivered,
         "delivered_at": _checkpoint_timestamp(newest) if delivered else None,

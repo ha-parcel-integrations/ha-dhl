@@ -397,9 +397,11 @@ parcel.** The checkpoints carry free English text and no code, with the
 facility appended in capitals (`Processed at MILAN - MALPENSA - ITALY`), so
 `_CHECKPOINT_PREFIXES` matches the start of the text. Anything else is
 `unknown` with one WARNING per description, with the facility stripped so a new
-location doesn't warn again. The top-level `status` is only filled on
-delivery; before that the parcel status is the newest checkpoint's, falling
-back to `in_transit` on a future EDD. A code with no checkpoints at all (the
+location doesn't warn again. Only a top-level `status` of `DELIVERED`
+decides; otherwise the parcel status is the newest checkpoint's, falling
+back to `in_transit` on a future EDD. Before delivery the top-level `status`
+is empty or `IN TRANSIT` (issue #40); any other value warns once but still
+falls through to the checkpoints, never to `unknown`. A code with no checkpoints at all (the
 not-yet-fetched placeholder) is `unknown` without a warning.
 
 **Express times: the EDD is UTC, the checkpoints are local.** The backend
