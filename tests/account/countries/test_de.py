@@ -688,6 +688,54 @@ def test_live_tracking_is_never_logged(caplog):
     assert "52.1" not in caplog.text
 
 
+def _out_for_delivery(**live_tracking) -> dict:
+    return element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        status_text="Die Sendung wurde in das Zustellfahrzeug geladen.",
+        ist_zugestellt=False,
+        live_tracking={"authorized": True, "state": "reduced", **live_tracking},
+    )
+
+
+def test_published_raw_has_no_position_and_no_token():
+    raw = _out_for_delivery(
+        countdownTextKey="CD20",
+        distance=0.5,
+        tourCoords={"lat": 52.1, "lng": 13.4},
+        destinationCoords={"lat": 52.2, "lng": 13.5},
+        vehicle={"lat": 52.3, "lng": 13.6},
+    )
+    raw["sendungsdetails"]["services"] = {
+        "statusbenachrichtigung": {"authenticationRequired": True},
+        "verfuegen": {"zsmShipmentToken": "eyJraWQiOiJ4In0..abc", "other": 1},
+    }
+    published = normalize_parcel_de(raw)["raw"]
+    live = published["sendungsdetails"]["liveTracking"]
+    assert live == {
+        "authorized": True,
+        "state": "reduced",
+        "countdownTextKey": "CD20",
+        "distance": 0.5,
+    }
+    assert published["sendungsdetails"]["services"] == {
+        "statusbenachrichtigung": {"authenticationRequired": True},
+        "verfuegen": {"other": 1},
+    }
+    for value in ("52.1", "52.2", "52.3", "eyJraWQ"):
+        assert value not in str(published)
+    # DHL's own answer is left as it came.
+    assert "tourCoords" in raw["sendungsdetails"]["liveTracking"]
+    assert "zsmShipmentToken" in raw["sendungsdetails"]["services"]["verfuegen"]
+
+
+def test_published_raw_without_details_is_a_copy():
+    raw = {"id": ACTIVE_CODE, "sendungsdetails": "x"}
+    published = normalize_parcel_de(raw)["raw"]
+    assert published["sendungsdetails"] == "x"
+    assert published is not raw
+
+
 @pytest.mark.parametrize(
     ("timeframe", "expected_from", "expected_to"),
     [

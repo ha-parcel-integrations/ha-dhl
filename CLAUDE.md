@@ -117,7 +117,9 @@ date-only pair takes its time from `liveTracking.timeframe` (issue #38),
 whose `from`/`to` spelling is unseen — an ISO time is used as sent, a bare
 time only on the pair's own day, and the first use or an unreadable value
 warns once with the timeframe. The rest of `liveTracking` is never logged:
-its coordinates can place the van near the recipient.
+its coordinates can place the van near the recipient. Nor are they published:
+`_published_raw` drops live tracking's coordinates and the
+`zsmShipmentToken` from `raw`.
 
 **The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
 `DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival
