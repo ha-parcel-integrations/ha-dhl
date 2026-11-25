@@ -450,6 +450,20 @@ and warns on disagreement:
 | `raw_status` | `.status` | log `.kurzStatus` |
 | delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26, as bare dates, and with a time of day on the delivery day (issue #41); a date-only pair takes its time from `liveTracking.timeframe`, unseen, warns once (issue #38) | singular `zustellzeitfenster` / `zustelldatum` |
 
+**Live tracking is read, never published whole.** `raw.stops_away` comes from
+`liveTracking.countdownTextKey`, the key DHL's website turns into its text:
+`CD01` is one stop, `CD02` is `liveTracking.countdown` stops, `CD10` to `CD50`
+are "more than N" (`raw.stops_away_is_minimum`). Only while out for delivery.
+The keys are read from DHL's website code and texts, not yet from a parcel on
+this integration: the first read warns once, an unknown key warns once per key.
+`_published_raw` drops every `*Coords` (or `lat`/`lng`) value from live tracking,
+the van's and the destination's position, and `services.verfuegen.zsmShipmentToken`,
+before `raw` reaches attributes and events. Seen locked (`authorized: false`) on
+a by-number lookup and on an account parcel addressed to someone else at the
+account's address; the website unlocks it with the recipient's postal code, a
+request that needs browser-only bot cookies. Unlocked on an account parcel
+addressed to the account holder: not seen yet.
+
 **`payload: confirmed`, 1.0.0.** A real account's populated `sendungen` elements
 have been observed on the wire, via both the account inbox and the by-number
 search. Every mapping decision still carries a one-shot `WARNING` with an

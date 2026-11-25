@@ -54,6 +54,8 @@ def _reset_one_shot_state():
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
     de_module._live_tracking_window_logged = False
+    de_module._live_tracking_stops_logged = False
+    de_module._live_tracking_countdown_keys_logged.clear()
     de_module._outgoing_status_unconfirmed_logged = False
     yield
     de_module._sendungsliste_values_logged.clear()
@@ -66,6 +68,8 @@ def _reset_one_shot_state():
     de_module._delivery_window_keys_logged.clear()
     de_module._timestamp_parse_failed_logged = False
     de_module._live_tracking_window_logged = False
+    de_module._live_tracking_stops_logged = False
+    de_module._live_tracking_countdown_keys_logged.clear()
     de_module._outgoing_status_unconfirmed_logged = False
 
 
@@ -686,6 +690,115 @@ def test_live_tracking_is_never_logged(caplog):
     normalize_parcel_de(raw)
     assert "live tracking" not in caplog.text.lower()
     assert "52.1" not in caplog.text
+
+
+def _out_for_delivery(**live_tracking) -> dict:
+    return element(
+        ACTIVE_CODE,
+        fortschritt=4,
+        status_text="Die Sendung wurde in das Zustellfahrzeug geladen.",
+        ist_zugestellt=False,
+        live_tracking={"authorized": True, "state": "reduced", **live_tracking},
+    )
+
+
+@pytest.mark.parametrize(
+    ("key", "countdown", "stops", "minimum"),
+    [
+        ("CD01", None, 1, False),
+        ("CD02", 2, 2, False),
+        ("CD02", 5, 5, False),
+        ("CD02", "4", 4, False),
+        ("CD10", None, 10, True),
+        ("CD20", None, 20, True),
+        ("CD50", None, 50, True),
+    ],
+)
+def test_live_tracking_countdown_is_the_stop_count(key, countdown, stops, minimum):
+    live = {"countdownTextKey": key}
+    if countdown is not None:
+        live["countdown"] = countdown
+    parcel = normalize_parcel_de(_out_for_delivery(**live))
+    assert parcel["raw"]["stops_away"] == stops
+    assert parcel["raw"]["stops_away_is_minimum"] is minimum
+
+
+def test_the_first_stop_count_asks_once_for_confirmation(caplog):
+    normalize_parcel_de(_out_for_delivery(countdownTextKey="CD20"))
+    normalize_parcel_de(_out_for_delivery(countdownTextKey="CD01"))
+    assert caplog.text.count("stop count for the first time") == 1
+    assert "countdownTextKey=CD20" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("key", "countdown"),
+    [("CD03", None), ("CD25", None), ("XY", None), ("CD02", None), ("CD02", True)],
+)
+def test_an_unreadable_countdown_leaves_the_stops_empty_and_warns_once(
+    caplog, key, countdown
+):
+    live = {"countdownTextKey": key, "countdown": countdown}
+    for _ in range(2):
+        parcel = normalize_parcel_de(_out_for_delivery(**live))
+        assert parcel["raw"]["stops_away"] is None
+    assert caplog.text.count("stop countdown we cannot read") == 1
+
+
+@pytest.mark.parametrize("live_tracking", [None, {}, {"authorized": False}, "x"])
+def test_no_countdown_means_no_stop_count(live_tracking, caplog):
+    raw = element(ACTIVE_CODE, fortschritt=4, live_tracking=live_tracking)
+    parcel = normalize_parcel_de(raw)
+    assert parcel["raw"]["stops_away"] is None
+    assert parcel["raw"]["stops_away_is_minimum"] is False
+    assert "stop" not in caplog.text
+
+
+def test_a_stop_count_only_counts_while_out_for_delivery():
+    raw = element(
+        ACTIVE_CODE,
+        fortschritt=5,
+        ist_zugestellt=True,
+        live_tracking={"countdownTextKey": "CD01"},
+    )
+    assert normalize_parcel_de(raw)["raw"]["stops_away"] is None
+
+
+def test_published_raw_has_no_position_and_no_token():
+    raw = _out_for_delivery(
+        countdownTextKey="CD20",
+        distance=0.5,
+        tourCoords={"lat": 52.1, "lng": 13.4},
+        destinationCoords={"lat": 52.2, "lng": 13.5},
+        vehicle={"lat": 52.3, "lng": 13.6},
+    )
+    raw["sendungsdetails"]["services"] = {
+        "statusbenachrichtigung": {"authenticationRequired": True},
+        "verfuegen": {"zsmShipmentToken": "eyJraWQiOiJ4In0..abc", "other": 1},
+    }
+    published = normalize_parcel_de(raw)["raw"]
+    live = published["sendungsdetails"]["liveTracking"]
+    assert live == {
+        "authorized": True,
+        "state": "reduced",
+        "countdownTextKey": "CD20",
+        "distance": 0.5,
+    }
+    assert published["sendungsdetails"]["services"] == {
+        "statusbenachrichtigung": {"authenticationRequired": True},
+        "verfuegen": {"other": 1},
+    }
+    for value in ("52.1", "52.2", "52.3", "eyJraWQ"):
+        assert value not in str(published)
+    # DHL's own answer is left as it came.
+    assert "tourCoords" in raw["sendungsdetails"]["liveTracking"]
+    assert "zsmShipmentToken" in raw["sendungsdetails"]["services"]["verfuegen"]
+
+
+def test_published_raw_without_details_is_a_copy():
+    raw = {"id": ACTIVE_CODE, "sendungsdetails": "x"}
+    published = normalize_parcel_de(raw)["raw"]
+    assert published["sendungsdetails"] == "x"
+    assert published is not raw
 
 
 @pytest.mark.parametrize(

@@ -260,6 +260,22 @@ Outgoing parcels are shipments DHL reports as sent *by* your account rather than
 
 On a tracking hub DHL's tracking data cannot tell a parcel you sent from one you receive, so you choose: a code filed under **Outgoing parcels** is counted on the outgoing sensors and fires the outgoing events, with its normal status.
 
+### Stops away (DHL Germany)
+
+While a German parcel is out for delivery, DHL's live tracking can count the driver's remaining stops. The parcel sensor carries that as `raw.stops_away`, for example for a notification when the driver is close:
+
+```yaml
+triggers:
+  - trigger: template
+    value_template: >-
+      {{ (state_attr('sensor.dhl_<hub>_parcel_<code>', 'raw') or {}).get('stops_away') in [1, 2, 3] }}
+```
+
+- **DHL gives an exact number only near the end** ("Nur noch 2 Zustellstopps"). Further away it says "more than 10/20/…/50"; `stops_away` is then that number and `raw.stops_away_is_minimum` is `true`.
+- **Only when DHL unlocks live tracking.** DHL's website shows it once the recipient's postal code is entered, which this integration cannot send. A parcel looked up by number, or one in your account that is addressed to someone else, stays locked, and `stops_away` is then `null`. Whether DHL unlocks it for parcels addressed to the account holder has not been seen yet; the first stop count logs a warning asking you to confirm it.
+- **It is as fresh as the last poll.**
+- **Never in attributes or events:** the van's position, the destination's coordinates, and the token DHL's "Sendung verfügen" accepts. They are dropped from `raw` before it is published.
+
 ## Parcel status reference
 
 The `status` field is the carrier-agnostic enum shared by the whole integration family, and its exact source depends on which DHL backend produced a given parcel.
