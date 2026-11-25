@@ -852,6 +852,45 @@ def _in_utc(value: str | None, *, keep_end_of_day: bool = False) -> str | None:
     return parsed.astimezone(UTC).isoformat()
 
 
+def _is_coordinate(key: str, value: Any) -> bool:
+    return key.lower().endswith("coords") or (
+        isinstance(value, dict) and {"lat", "lng"} <= value.keys()
+    )
+
+
+def _published_raw(raw: dict) -> dict:
+    """The element as it may be published: never a position or a token.
+
+    Live tracking holds the van's position and the destination's, which is
+    the recipient's address; `services.verfuegen.zsmShipmentToken` is what
+    DHL's "Sendung verfügen" accepts to change the delivery. Attributes and
+    event data (stored by the recorder) carry `raw`, so both are left out.
+    The input is never changed.
+    """
+    details = raw.get("sendungsdetails")
+    if not isinstance(details, dict):
+        return dict(raw)
+    details = dict(details)
+    live_tracking = details.get("liveTracking")
+    if isinstance(live_tracking, dict):
+        details["liveTracking"] = {
+            key: value
+            for key, value in live_tracking.items()
+            if not _is_coordinate(key, value)
+        }
+    services = details.get("services")
+    if isinstance(services, dict) and isinstance(services.get("verfuegen"), dict):
+        details["services"] = {
+            **services,
+            "verfuegen": {
+                key: value
+                for key, value in services["verfuegen"].items()
+                if key != "zsmShipmentToken"
+            },
+        }
+    return {**raw, "sendungsdetails": details}
+
+
 def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     """Return a carrier-agnostic parcel dict for one ``sendungen`` element.
 
@@ -982,7 +1021,7 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         "weight": None,
         "dimensions": None,
         "history": history,
-        "raw": raw,
+        "raw": _published_raw(raw),
     }
 
 

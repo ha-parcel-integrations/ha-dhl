@@ -258,6 +258,8 @@ A delivered parcel moves from its per-parcel sensor to the delivered sensor auto
 
 Outgoing parcels are shipments DHL reports as sent *by* your account rather than to it — DHL exposes this as a `sendungsrichtung` field (`ANKOMMEND`/`EINGEHEND` incoming, `ABGEHEND` outgoing) on the same account-inbox listing incoming parcels come from, no separate endpoint. Their canonical `status` always reports `unknown`: the 0-5 progress ladder below was only ever confirmed against incoming shipments, so guessing what it means for an outgoing one isn't done — the raw DHL status text is still available as `raw_status`.
 
+DHL's live tracking holds the van's position and the destination's coordinates, and every German parcel carries a token DHL's "Sendung verfügen" accepts. Neither reaches attributes or events: they are dropped from `raw` before it is published.
+
 On a tracking hub DHL's tracking data cannot tell a parcel you sent from one you receive, so you choose: a code filed under **Outgoing parcels** is counted on the outgoing sensors and fires the outgoing events, with its normal status.
 
 ## Parcel status reference

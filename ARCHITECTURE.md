@@ -450,6 +450,11 @@ and warns on disagreement:
 | `raw_status` | `.status` | log `.kurzStatus` |
 | delivery window | the `Von`/`Bis` pair — **confirmed live**, issue #26, as bare dates, and with a time of day on the delivery day (issue #41); a date-only pair takes its time from `liveTracking.timeframe`, unseen, warns once (issue #38) | singular `zustellzeitfenster` / `zustelldatum` |
 
+**Live tracking is never published whole.** `_published_raw` drops every
+`*Coords` (or `lat`/`lng`) value from live tracking, the van's and the
+destination's position, and `services.verfuegen.zsmShipmentToken`, before `raw`
+reaches attributes and events.
+
 **`payload: confirmed`, 1.0.0.** A real account's populated `sendungen` elements
 have been observed on the wire, via both the account inbox and the by-number
 search. Every mapping decision still carries a one-shot `WARNING` with an
