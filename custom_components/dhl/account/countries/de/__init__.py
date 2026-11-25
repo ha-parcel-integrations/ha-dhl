@@ -580,6 +580,8 @@ _delivered_conflict_logged: set[str] = set()
 _raw_status_kurz_status_logged = False
 _delivery_window_keys_logged: set[str] = set()
 _live_tracking_window_logged = False
+_live_tracking_stops_logged = False
+_live_tracking_countdown_keys_logged: set[str] = set()
 _timestamp_parse_failed_logged = False
 _outgoing_status_unconfirmed_logged = False
 
@@ -685,6 +687,37 @@ def _warn_live_tracking_window_once(timeframe: Any) -> None:
         "first time. Open an issue and paste this line: %s\n  timeframe=%s",
         NEW_ISSUE_URL,
         timeframe,
+    )
+
+
+def _warn_live_tracking_stops_once(key: str, countdown: Any) -> None:
+    """One-shot: the stop countdown was read for the first time."""
+    global _live_tracking_stops_logged  # noqa: PLW0603 - one-shot warning flag, reset by tests
+    if _live_tracking_stops_logged:
+        return
+    _live_tracking_stops_logged = True
+    _LOGGER.warning(
+        "DHL Germany's live tracking gave a stop count for the first time. "
+        "Open an issue and paste this line, with the number of stops the DHL "
+        "website showed: %s\n  countdownTextKey=%s countdown=%r",
+        NEW_ISSUE_URL,
+        key,
+        countdown,
+    )
+
+
+def _warn_live_tracking_countdown_key(key: str, countdown: Any) -> None:
+    """One WARNING per countdown key this integration cannot read."""
+    if key in _live_tracking_countdown_keys_logged:
+        return
+    _live_tracking_countdown_keys_logged.add(key)
+    _LOGGER.warning(
+        "DHL Germany's live tracking named a stop countdown we cannot read, so "
+        "stops_away is left empty. Open an issue and paste this line: %s\n"
+        "  countdownTextKey=%s countdown=%r",
+        NEW_ISSUE_URL,
+        key,
+        countdown,
     )
 
 
@@ -852,6 +885,43 @@ def _in_utc(value: str | None, *, keep_end_of_day: bool = False) -> str | None:
     return parsed.astimezone(UTC).isoformat()
 
 
+# DHL's website text for each key: "Nur noch 1 Zustellstopp" (CD01), "Nur noch
+# {countdown} Zustellstopps" (CD02) and "Noch etwas mehr als N Zustellstopps"
+# (CD10 to CD50, N being the key's number).
+_COUNTDOWN_KEY_RE = re.compile(r"^CD(\d{2})$")
+
+
+def _stops_away(live_tracking: Any) -> tuple[int | None, bool]:
+    """The stops left before this parcel, and whether that is only a minimum."""
+    if not isinstance(live_tracking, dict):
+        return None, False
+    key = live_tracking.get("countdownTextKey")
+    if not isinstance(key, str) or not key:
+        return None, False
+    countdown = live_tracking.get("countdown")
+    match = _COUNTDOWN_KEY_RE.match(key)
+    number = int(match.group(1)) if match else None
+    if number == 1:
+        stops, minimum = 1, False
+    elif number == 2:
+        value = (
+            int(countdown)
+            if isinstance(countdown, str) and countdown.isdigit()
+            else countdown
+        )
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            _warn_live_tracking_countdown_key(key, countdown)
+            return None, False
+        stops, minimum = value, False
+    elif number is not None and number >= 10 and number % 10 == 0:
+        stops, minimum = number, True
+    else:
+        _warn_live_tracking_countdown_key(key, countdown)
+        return None, False
+    _warn_live_tracking_stops_once(key, countdown)
+    return stops, minimum
+
+
 def _is_coordinate(key: str, value: Any) -> bool:
     return key.lower().endswith("coords") or (
         isinstance(value, dict) and {"lat", "lng"} <= value.keys()
@@ -992,6 +1062,12 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
     )
     pickup_point = _pickup_point_from_events(events) if pickup else None
 
+    stops_away, stops_away_is_minimum = (
+        _stops_away(details.get("liveTracking"))
+        if status is ParcelStatus.OUT_FOR_DELIVERY
+        else (None, False)
+    )
+
     tracking_url = (
         f"{DHL_DE_PUBLIC_TRACKING_URL}?piececode={quote(barcode)}"
         if barcode
@@ -1021,7 +1097,11 @@ def normalize_parcel_de(raw: dict, *, include_history: bool = False) -> dict:
         "weight": None,
         "dimensions": None,
         "history": history,
-        "raw": _published_raw(raw),
+        "raw": {
+            **_published_raw(raw),
+            "stops_away": stops_away,
+            "stops_away_is_minimum": stops_away_is_minimum,
+        },
     }
 
 

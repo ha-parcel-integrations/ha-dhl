@@ -119,7 +119,8 @@ time only on the pair's own day, and the first use or an unreadable value
 warns once with the timeframe. The rest of `liveTracking` is never logged:
 its coordinates can place the van near the recipient. Nor are they published:
 `_published_raw` drops live tracking's coordinates and the
-`zsmShipmentToken` from `raw`.
+`zsmShipmentToken` from `raw`, and `raw.stops_away` is read from
+`countdownTextKey` (see ARCHITECTURE.md).
 
 **The out-for-delivery stall WARNING is on a wall clock, never a poll count.**
 `DHL_OUT_FOR_DELIVERY_STALL_HOURS` (48 h) is what separates a Filiale arrival
