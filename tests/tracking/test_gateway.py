@@ -172,6 +172,30 @@ def test_planned_from_is_the_last_events_moment_indication(amsterdam):
     assert parcel["planned_to"] == "2026-02-13T23:59:59+01:00"
 
 
+def test_planned_window_falls_back_to_the_planned_delivery_timeframe(amsterdam):
+    raw = gateway_element(
+        category="UNDERWAY",
+        status="INFORMATION_ON_DELIVERY_TRANSMITTED",
+        moment=None,
+        timeframe="2026-02-13T17:30:00+01:00/2026-02-13T21:30:00+01:00",
+    )
+    parcel = normalize_parcel_gateway(raw)
+
+    assert parcel["status"] == ParcelStatus.IN_TRANSIT
+    assert parcel["planned_from"] == "2026-02-13T17:30:00+01:00"
+    assert parcel["planned_to"] == "2026-02-13T21:30:00+01:00"
+
+
+def test_moment_indication_wins_over_the_planned_delivery_timeframe(amsterdam):
+    raw = gateway_element(
+        moment="2026-02-13T18:10:00+01:00",
+        timeframe="2026-02-13T17:30:00+01:00/2026-02-13T21:30:00+01:00",
+    )
+    parcel = normalize_parcel_gateway(raw)
+
+    assert parcel["planned_from"] == "2026-02-13T18:10:00+01:00"
+
+
 def test_a_delivered_parcel_has_no_plan_left():
     raw = gateway_element(
         category="DELIVERED",
