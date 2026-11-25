@@ -15,6 +15,7 @@ def gateway_element(
     delivered_at: str | None = None,
     moment: str | None = "2026-02-13T13:00:00+01:00",
     extra_events: list[dict] | None = None,
+    timeframe: str | None = None,
 ) -> dict:
     events = [
         {
@@ -47,6 +48,7 @@ def gateway_element(
         "isReturn": False,
         "events": events,
         **({"deliveredAt": delivered_at} if delivered_at else {}),
+        **({"plannedDeliveryTimeframe": timeframe} if timeframe else {}),
     }
 
 

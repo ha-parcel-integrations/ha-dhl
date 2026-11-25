@@ -222,6 +222,21 @@ def _map_status(events: list[dict]) -> tuple[ParcelStatus, str | None]:
     return _map_event(last), last.get("status")
 
 
+def _planned(raw: dict, last: dict) -> tuple[str | None, str | None]:
+    """The last event's moment, else the shipment's planned delivery timeframe.
+
+    The timeframe is an ISO 8601 interval (``start/end``), on the shipment and
+    on the event that announced it.
+    """
+    if last.get("momentIndication"):
+        return planned_window(last["momentIndication"], None, zone=local_zone())
+    frame = raw.get("plannedDeliveryTimeframe")
+    if not isinstance(frame, str) or not frame:
+        return None, None
+    start, _, end = frame.partition("/")
+    return planned_window(start or None, end or None, zone=local_zone())
+
+
 def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dict:
     """Map one gateway response object onto the canonical parcel shape."""
     events = raw.get("events") or []
@@ -261,10 +276,7 @@ def normalize_parcel_gateway(raw: dict, *, include_history: bool = False) -> dic
             ),
             None,
         )
-    planned_from, planned_to = planned_for_status(
-        status,
-        *planned_window(last.get("momentIndication"), None, zone=local_zone()),
-    )
+    planned_from, planned_to = planned_for_status(status, *_planned(raw, last))
     pickup = is_pickup(None, status, (_quiet_event_status(event) for event in events))
     return {
         "carrier": "DHL",
